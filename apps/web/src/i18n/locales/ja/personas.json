@@ -38,6 +38,9 @@
 	"quiz": {
 		"title": "質問クイズ",
 		"description": "あなたの好みや性格の傾向を教えてください。ペルソナ生成に利用されます。",
+		"prev": "前へ",
+		"next": "次へ",
+		"submit": "送信する",
 		"submit_success": "回答を保存しました",
 		"submit_error": "保存に失敗しました"
 	},

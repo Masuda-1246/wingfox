@@ -54,7 +54,13 @@ export function OnboardingQuiz() {
 	);
 
 	const current = sortedQuestions[step];
-	const options = current ? normalizeOptions(current.options) : [];
+	const options = current
+		? normalizeOptions(
+				t(`quiz.questions.${current.id}.options`, {
+					returnObjects: true,
+				}) as string[] | Record<string, unknown>,
+			)
+		: [];
 	const currentSelected = current ? answers[current.id] ?? [] : [];
 	const progress = sortedQuestions.length > 0 ? (step + 1) / sortedQuestions.length : 0;
 
@@ -130,10 +136,10 @@ export function OnboardingQuiz() {
 						<>
 							<div>
 								<span className="text-xs font-medium text-muted-foreground">
-									{current.category}
+									{t(`quiz.categories.${current.category}`)}
 								</span>
 								<h3 className="text-lg font-semibold mt-1">
-									{current.question_text}
+									{t(`quiz.questions.${current.id}.text`)}
 								</h3>
 							</div>
 							<div
