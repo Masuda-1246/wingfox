@@ -4,8 +4,12 @@ const DEFAULT_MODEL = "ministral-8b-latest";
 export const MISTRAL_LARGE = "mistral-large-latest";
 export const MISTRAL_LIGHT = "ministral-8b-latest";
 
+const clientCache = new Map<string, Mistral>();
+
 export function getMistralClient(apiKey: string) {
-	return new Mistral({
+	const existing = clientCache.get(apiKey);
+	if (existing) return existing;
+	const client = new Mistral({
 		apiKey,
 		retryConfig: {
 			strategy: "backoff",
@@ -18,6 +22,8 @@ export function getMistralClient(apiKey: string) {
 			retryConnectionErrors: true,
 		},
 	});
+	clientCache.set(apiKey, client);
+	return client;
 }
 
 export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
