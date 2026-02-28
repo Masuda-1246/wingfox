@@ -377,7 +377,7 @@ export function Chat() {
 								<div className="flex items-start gap-3">
 									<FoxAvatar
 										variant={session.partnerFoxVariant}
-										className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-border"
+										className="w-10 h-10 md:w-12 md:h-12"
 									/>
 									<div className="flex-1 min-w-0">
 										<div className="flex justify-between items-center mb-1">

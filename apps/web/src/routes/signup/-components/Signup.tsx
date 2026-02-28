@@ -1,4 +1,3 @@
-import { UpperHeader } from "@/components/layouts/UpperHeader";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
@@ -54,7 +53,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 				ref={ref}
 				className={cn(
 					"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-					error && "border-red-500 focus-visible:ring-red-500",
+									error && "border-destructive focus-visible:ring-destructive",
 					className,
 				)}
 				{...props}
@@ -157,9 +156,8 @@ export function Signup() {
 
 	return (
 		<>
-			<UpperHeader />
-			<div className="p-4 md:p-6 w-full h-full flex flex-col items-center justify-center">
-				<div className="w-full max-w-[480px] space-y-8 p-8 md:p-12 rounded-2xl border border-border bg-card">
+			<div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6">
+				<div className="w-full max-w-[480px] space-y-8 rounded-2xl border border-border bg-card p-8 md:p-10 shadow-sm">
 					<div className="space-y-2 text-center">
 						<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
 							{t("signup.title")}
@@ -192,7 +190,7 @@ export function Signup() {
 									error={!!errors.email}
 								/>
 								{errors.email && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.email}
 									</p>
 								)}
@@ -233,7 +231,7 @@ export function Signup() {
 									</button>
 								</div>
 								{errors.password && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.password}
 									</p>
 								)}
@@ -276,7 +274,7 @@ export function Signup() {
 									</button>
 								</div>
 								{errors.confirmPassword && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.confirmPassword}
 									</p>
 								)}
