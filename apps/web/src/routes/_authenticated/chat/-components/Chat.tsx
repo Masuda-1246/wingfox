@@ -100,7 +100,7 @@ export function Chat() {
 	const { user } = useAuth();
 	const queryClient = useQueryClient();
 	const { data: matchingData, isLoading } = useMatchingResults(
-		{ status: "fox_conversation_completed,partner_chat_started,direct_chat_requested,direct_chat_active" },
+		{ status: "fox_conversation_in_progress,fox_conversation_completed,partner_chat_started,direct_chat_requested,direct_chat_active" },
 		{ enabled: !!user },
 	);
 	const matches = matchingData?.data ?? [];
@@ -299,6 +299,8 @@ export function Chat() {
 			const msg = e instanceof Error ? e.message : "";
 			if (msg.includes("already in progress")) {
 				toast.info(t("fox_search_in_progress"));
+			} else if (msg.includes("No eligible partners")) {
+				toast.info(t("fox_search_no_candidates"));
 			} else {
 				console.error(e);
 				toast.error(t("fox_search_error"));
@@ -341,10 +343,10 @@ export function Chat() {
 
 	// Set first match as active when matches load or current session is removed
 	useEffect(() => {
-		if (sessions.length > 0 && (!activeSessionId || !sessions.find((s) => s.id === activeSessionId))) {
+		if (sessions.length > 0 && (!activeSessionId || !sessions.find((s) => s.id === activeSessionId)) && !activeFoxConvMap[activeSessionId]) {
 			setActiveSessionId(sessions[0].id);
 		}
-	}, [sessions, activeSessionId]);
+	}, [sessions, activeSessionId, activeFoxConvMap]);
 
 	const handleReport = () => {
 		setShowReportModal(false);

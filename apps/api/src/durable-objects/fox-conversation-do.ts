@@ -108,6 +108,10 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.from("fox_conversations")
 				.update({ status: "failed" })
 				.eq("id", conversationId);
+			await supabase
+				.from("matches")
+				.update({ status: "pending" })
+				.eq("id", matchId);
 			return new Response("Persona not found", { status: 400 });
 		}
 
@@ -251,13 +255,6 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				)
 				.join("\n");
 
-			const scorePrompt = buildConversationScorePrompt(logText);
-			const scoreRaw = await chatComplete(
-				apiKey,
-				[{ role: "user", content: scorePrompt }],
-				{ maxTokens: 300, responseFormat: { type: "json_object" } },
-			);
-
 			const ConversationScoreSchema = z.object({
 				score: z.number().min(0).max(100),
 				excitement_level: z.number().min(0).max(1),
@@ -271,6 +268,12 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			let conversationScore = 50;
 			let analysis: Record<string, unknown> = {};
 			try {
+				const scorePrompt = buildConversationScorePrompt(logText);
+				const scoreRaw = await chatComplete(
+					apiKey,
+					[{ role: "user", content: scorePrompt }],
+					{ maxTokens: 1024, responseFormat: { type: "json_object" } },
+				);
 				const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
 				conversationScore = parsed.score;
 				analysis = {
@@ -280,7 +283,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					topic_distribution: parsed.topic_distribution,
 				};
 			} catch (e) {
-				console.error("[FoxConversationDO] Score parsing failed:", e);
+				console.warn("[FoxConversationDO] Score computation failed, using default score(50):", e);
 			}
 
 			// Update match scores
@@ -350,6 +353,11 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			.from("fox_conversations")
 			.update({ status: "failed" })
 			.eq("id", state.conversationId);
+
+		await supabase
+			.from("matches")
+			.update({ status: "pending" })
+			.eq("id", state.matchId);
 
 		this.broadcast({ type: "error", message: reason });
 	}

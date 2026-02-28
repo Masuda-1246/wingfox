@@ -64,7 +64,7 @@ export async function searchAndStartFoxConversation(
 		.insert({
 			user_a_id: userA,
 			user_b_id: userB,
-			status: "pending",
+			status: "fox_conversation_in_progress",
 		})
 		.select("id")
 		.single();
@@ -167,7 +167,7 @@ export async function searchAndStartMultipleFoxConversations(
 				.insert({
 					user_a_id: userA,
 					user_b_id: userB,
-					status: "pending",
+					status: "fox_conversation_in_progress",
 				})
 				.select("id")
 				.single();
