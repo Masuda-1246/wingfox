@@ -382,15 +382,13 @@ export function Chat() {
 
 	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
+		setInputValue("");
 		try {
 			if (activeTab === "direct" && directChatRoomId) {
 				await sendDirect.mutateAsync(text);
 			} else if (activeTab === "partner_fox" && partnerFoxChatId) {
 				await sendPartnerFox.mutateAsync(text);
-			} else {
-				return;
 			}
-			setInputValue("");
 		} catch (e) {
 			console.error(e);
 			toast.error(t("send_failed"));

@@ -63,6 +63,32 @@ export function useSendPartnerFoxMessage(id: string | undefined | null) {
 			});
 			return unwrapApiResponse(res);
 		},
+		onMutate: async (content) => {
+			const queryKey = ["partner-fox-chats", id, "messages"];
+			await queryClient.cancelQueries({ queryKey });
+			const previous = queryClient.getQueryData(queryKey);
+			queryClient.setQueryData(queryKey, (old: any) => {
+				if (!old?.data) return old;
+				return {
+					...old,
+					data: [
+						...old.data,
+						{
+							id: `optimistic-${Date.now()}`,
+							role: "user",
+							content,
+							created_at: new Date().toISOString(),
+						},
+					],
+				};
+			});
+			return { previous };
+		},
+		onError: (_err, _content, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(["partner-fox-chats", id, "messages"], context.previous);
+			}
+		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["partner-fox-chats", id, "messages"] });
 		},
