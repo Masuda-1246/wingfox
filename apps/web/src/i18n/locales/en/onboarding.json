@@ -358,6 +358,12 @@
     "wingfox_gen_failed": "WingFox generation failed",
     "profile_needs_generation": "Profile needs to be generated first.",
     "confirm_failed": "Confirmation failed",
-    "wingfox_not_ready": "WingFox is not ready yet. Start over or wait and try again."
+    "wingfox_not_ready": "WingFox is not ready yet. Start over or wait and try again.",
+    "interaction_dna": "Interaction DNA",
+    "dna_layer1": "Meeting Affinity",
+    "dna_layer2": "Psychological Sync",
+    "dna_layer3": "Future Compatibility",
+    "dna_confidence": "Confidence",
+    "dna_reasoning": "Evidence"
   }
 }
