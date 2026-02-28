@@ -87,16 +87,19 @@ export function Register() {
 	const { t } = useTranslation("auth");
 	const { user, signUp } = useAuth();
 	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	const [formData, setFormData] = useState({
 		identifier: "",
 		password: "",
+		confirmPassword: "",
 	});
 
 	const [errors, setErrors] = useState({
 		identifier: "",
 		password: "",
+		confirmPassword: "",
 	});
 
 	useEffect(() => {
@@ -107,7 +110,7 @@ export function Register() {
 
 	const validateForm = () => {
 		let isValid = true;
-		const newErrors = { identifier: "", password: "" };
+		const newErrors = { identifier: "", password: "", confirmPassword: "" };
 		const email = formData.identifier.trim();
 
 		if (!email) {
@@ -123,6 +126,14 @@ export function Register() {
 			isValid = false;
 		} else if (formData.password.length < 8) {
 			newErrors.password = t("signup.error_password_min_length");
+			isValid = false;
+		}
+
+		if (!formData.confirmPassword) {
+			newErrors.confirmPassword = t("signup.error_confirm_required");
+			isValid = false;
+		} else if (formData.password !== formData.confirmPassword) {
+			newErrors.confirmPassword = t("signup.error_password_mismatch");
 			isValid = false;
 		}
 
@@ -251,6 +262,49 @@ export function Register() {
 								{errors.password && (
 									<p className="text-xs text-destructive font-medium">
 										{errors.password}
+									</p>
+								)}
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="confirmPassword">
+									{t("signup.confirm_password_label")}
+								</Label>
+								<div className="relative">
+									<Input
+										id="confirmPassword"
+										placeholder="••••••••"
+										type={showConfirmPassword ? "text" : "password"}
+										autoComplete="new-password"
+										disabled={loading}
+										value={formData.confirmPassword}
+										onChange={(e) => {
+											setFormData({
+												...formData,
+												confirmPassword: e.target.value,
+											});
+											if (errors.confirmPassword)
+												setErrors({ ...errors, confirmPassword: "" });
+										}}
+										error={!!errors.confirmPassword}
+										className="pr-10"
+									/>
+									<button
+										type="button"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+										tabIndex={-1}
+									>
+										{showConfirmPassword ? (
+											<EyeOff className="h-4 w-4" />
+										) : (
+											<Eye className="h-4 w-4" />
+										)}
+									</button>
+								</div>
+								{errors.confirmPassword && (
+									<p className="text-xs text-destructive font-medium">
+										{errors.confirmPassword}
 									</p>
 								)}
 							</div>
