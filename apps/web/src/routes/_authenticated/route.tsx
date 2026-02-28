@@ -1,12 +1,20 @@
-import { supabase } from "@/lib/supabase";
-import { FullPagePending } from "@/components/route-pending";
 import { UpperHeader } from "@/components/layouts/UpperHeader";
-import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
-import { queryClient } from "@/lib/query-client";
+import { FullPagePending } from "@/components/route-pending";
 import { authMeQueryOptions } from "@/lib/hooks/useAuthMe";
+import { queryClient } from "@/lib/query-client";
+import { supabase } from "@/lib/supabase";
+import {
+	Outlet,
+	createFileRoute,
+	redirect,
+	useLocation,
+} from "@tanstack/react-router";
 
 /** オンボーディング未完了でもアクセス可能なパス（設定など） */
-const ALLOWED_WITHOUT_ONBOARDING = ["/settings", "/speed-dating-standalone"] as const;
+const ALLOWED_WITHOUT_ONBOARDING = [
+	"/settings",
+	"/speed-dating-standalone",
+] as const;
 
 function isAllowedWithoutOnboarding(pathname: string): boolean {
 	return ALLOWED_WITHOUT_ONBOARDING.some(
@@ -24,7 +32,9 @@ export const Route = createFileRoute("/_authenticated")({
 			throw redirect({ to: "/login" });
 		}
 		const pathname =
-			typeof window !== "undefined" ? window.location.pathname : (location?.pathname ?? "");
+			typeof window !== "undefined"
+				? window.location.pathname
+				: (location?.pathname ?? "");
 		let onboardingStatus = "not_started";
 		let profileComplete = false;
 		try {

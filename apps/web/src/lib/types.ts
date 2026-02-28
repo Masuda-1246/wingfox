@@ -56,20 +56,29 @@ export interface Reports {
 export interface MatchResultItem {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
+	partner: {
+		nickname: string;
+		avatar_url: string | null;
+		persona_icon_url?: string | null;
+	} | null;
 	final_score: number | null;
 	profile_score: number | null;
 	conversation_score: number | null;
 	common_tags: string[];
 	status: string;
 	fox_conversation_status: string | null;
+	fox_conversation_id: string | null;
 	created_at: string;
 }
 
 export interface MatchResultDetail {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
+	partner: {
+		nickname: string;
+		avatar_url: string | null;
+		persona_icon_url?: string | null;
+	} | null;
 	profile_score: number | null;
 	conversation_score: number | null;
 	final_score: number | null;

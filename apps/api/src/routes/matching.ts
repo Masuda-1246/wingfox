@@ -61,10 +61,10 @@ matching.get("/results", requireAuth, async (c) => {
 	const matchIds = list.map((x) => x.id);
 	const { data: foxConvs } = await supabase
 		.from("fox_conversations")
-		.select("match_id, status")
+		.select("id, match_id, status")
 		.in("match_id", matchIds);
 	const fcMap = new Map(
-		(foxConvs ?? []).map((f) => [f.match_id, { status: f.status }]),
+		(foxConvs ?? []).map((f) => [f.match_id, { id: f.id, status: f.status }]),
 	);
 
 	// バックエンドで完了/失敗しているのに matches が in_progress のままのものを同期する（DO が match を更新し損ねた場合の自己修復）
@@ -114,6 +114,7 @@ matching.get("/results", requireAuth, async (c) => {
 			common_tags: [] as string[],
 			status,
 			fox_conversation_status: fcMap.get(m.id)?.status ?? null,
+			fox_conversation_id: fcMap.get(m.id)?.id ?? null,
 			created_at: m.created_at,
 		};
 	});

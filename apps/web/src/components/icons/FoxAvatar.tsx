@@ -7,13 +7,7 @@ export function FoxAvatar({
 	className?: string;
 	iconUrl?: string | null;
 }) {
-	return (
-		<img
-			src={iconUrl ?? "/logo.png"}
-			alt=""
-			className={className}
-		/>
-	);
+	return <img src={iconUrl ?? "/logo.png"} alt="" className={className} />;
 }
 
 export const FOX_VARIANT_COUNT = 1;

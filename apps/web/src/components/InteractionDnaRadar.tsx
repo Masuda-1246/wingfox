@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 import type { DnaScoreEntry } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 const DNA_FEATURES = [
 	// Layer 1 — Meeting Affinity
@@ -40,8 +40,8 @@ const FEATURE_LABELS: Record<DnaFeatureKey, { en: string; ja: string }> = {
 
 // Layer boundaries for coloring axis lines
 const LAYER_RANGES: { start: number; end: number; color: string }[] = [
-	{ start: 0, end: 2, color: "var(--secondary)" },       // Layer 1: Meeting Affinity
-	{ start: 3, end: 9, color: "var(--tertiary, var(--secondary))" },  // Layer 2: Psychological Sync
+	{ start: 0, end: 2, color: "var(--secondary)" }, // Layer 1: Meeting Affinity
+	{ start: 3, end: 9, color: "var(--tertiary, var(--secondary))" }, // Layer 2: Psychological Sync
 	{ start: 10, end: 12, color: "var(--primary, var(--secondary))" }, // Layer 3: Future Compatibility
 ];
 
@@ -104,7 +104,9 @@ export function InteractionDnaRadar({
 				width="100%"
 				height="100%"
 				style={{ maxWidth: size, maxHeight: size }}
+				aria-label="Interaction DNA radar chart"
 			>
+				<title>Interaction DNA radar chart</title>
 				{/* Grid polygons */}
 				{[0.25, 0.5, 0.75, 1.0].map((level) => (
 					<polygon
@@ -118,11 +120,11 @@ export function InteractionDnaRadar({
 				))}
 
 				{/* Axis lines */}
-				{DNA_FEATURES.map((_, i) => {
+				{DNA_FEATURES.map((feature, i) => {
 					const { x, y } = polarToXY(i, 1);
 					return (
 						<line
-							key={`axis-${i}`}
+							key={`axis-${feature}`}
 							x1={cx}
 							y1={cy}
 							x2={x}
@@ -149,7 +151,7 @@ export function InteractionDnaRadar({
 					const { x, y } = polarToXY(i, val);
 					return (
 						<circle
-							key={`dot-${i}`}
+							key={`dot-${DNA_FEATURES[i]}`}
 							cx={x}
 							cy={y}
 							r={3}
@@ -160,17 +162,24 @@ export function InteractionDnaRadar({
 
 				{/* Labels */}
 				{showLabels &&
-					DNA_FEATURES.map((key, i) => {
+					DNA_FEATURES.map((key) => {
+						const i = DNA_FEATURES.indexOf(key);
 						const angle = (2 * Math.PI * i) / n - Math.PI / 2;
 						const lx = cx + Math.cos(angle) * labelOffset;
 						const ly = cy + Math.sin(angle) * labelOffset;
 
 						// Determine text-anchor based on position
 						let anchor: "start" | "middle" | "end" = "middle";
-						const normalizedAngle = ((angle + Math.PI * 2) % (Math.PI * 2));
-						if (normalizedAngle > Math.PI * 0.1 && normalizedAngle < Math.PI * 0.9) {
+						const normalizedAngle = (angle + Math.PI * 2) % (Math.PI * 2);
+						if (
+							normalizedAngle > Math.PI * 0.1 &&
+							normalizedAngle < Math.PI * 0.9
+						) {
 							anchor = "start";
-						} else if (normalizedAngle > Math.PI * 1.1 && normalizedAngle < Math.PI * 1.9) {
+						} else if (
+							normalizedAngle > Math.PI * 1.1 &&
+							normalizedAngle < Math.PI * 1.9
+						) {
 							anchor = "end";
 						}
 
@@ -178,7 +187,7 @@ export function InteractionDnaRadar({
 
 						return (
 							<text
-								key={`label-${i}`}
+								key={`label-${key}`}
 								x={lx}
 								y={ly}
 								textAnchor={anchor}

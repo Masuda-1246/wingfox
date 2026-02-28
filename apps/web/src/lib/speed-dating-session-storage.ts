@@ -22,8 +22,18 @@ export function loadSpeedDatingSession(): SpeedDatingSessionState | null {
 		const raw = sessionStorage.getItem(KEY);
 		if (!raw) return null;
 		const data = JSON.parse(raw) as SpeedDatingSessionState;
-		if (!data.personas?.length || !data.sessionId || typeof data.personaIndex !== "number") return null;
-		if (data.personas.length < 3 || data.personaIndex < 0 || data.personaIndex > 2) return null;
+		if (
+			!data.personas?.length ||
+			!data.sessionId ||
+			typeof data.personaIndex !== "number"
+		)
+			return null;
+		if (
+			data.personas.length < 3 ||
+			data.personaIndex < 0 ||
+			data.personaIndex > 2
+		)
+			return null;
 		return data;
 	} catch {
 		return null;

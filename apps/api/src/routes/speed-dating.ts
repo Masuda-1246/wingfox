@@ -82,7 +82,7 @@ const SECTION_ORDER = [
 
 function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "female"; sections: Record<string, string> } {
 	const sections: Record<string, string> = {};
-	let name = "ペルソナ";
+	let name = "";
 	let gender: "male" | "female" = "female";
 	const lines = text.split("\n");
 	let currentSection = "";
@@ -126,7 +126,17 @@ function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "f
 	if (currentSection) {
 		sections[currentSection] = currentContent.join("\n").trim();
 	}
-	return { name, gender, sections };
+
+	// Fallback: if the LLM embedded the name inside the core identity text
+	// instead of outputting it as a separate "name:" line, try to extract it.
+	if (!name && sections.core_identity) {
+		const nameMatch = sections.core_identity.match(/(?:名前|name)[：:]\s*(.+?)(?:[。.、,\n]|$)/i);
+		if (nameMatch?.[1]) {
+			name = nameMatch[1].trim().replace(/[「」]/g, "");
+		}
+	}
+
+	return { name: name || "ペルソナ", gender, sections };
 }
 
 /** POST /api/speed-dating/personas - generate 3 virtual personas */

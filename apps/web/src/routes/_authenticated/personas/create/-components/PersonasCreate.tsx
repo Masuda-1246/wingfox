@@ -1,21 +1,21 @@
+import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
+import { useConfirmProfile, useGenerateProfile } from "@/lib/hooks/useProfile";
 import {
+	useCompleteSpeedDatingSession,
+	useSendSpeedDatingMessage,
 	useSpeedDatingPersonas,
 	useSpeedDatingSessions,
-	useSendSpeedDatingMessage,
-	useCompleteSpeedDatingSession,
 } from "@/lib/hooks/useSpeedDating";
-import { useGenerateProfile, useConfirmProfile } from "@/lib/hooks/useProfile";
-import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
 import { useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import {
 	ArrowRight,
+	CheckCircle2,
 	ChevronRight,
 	Sparkles,
 	Users,
-	CheckCircle2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -35,7 +35,10 @@ interface Guest {
 }
 
 function generateId(): string {
-	return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	return (
+		crypto.randomUUID?.() ??
+		`${Date.now()}-${Math.random().toString(36).slice(2)}`
+	);
 }
 
 interface PersonaDraft {
@@ -65,7 +68,6 @@ export interface ThemeConfig {
 		timerLow: string;
 	};
 }
-
 
 // ─── Static particle data (avoids array-index keys) ─
 
@@ -1411,9 +1413,9 @@ export function PersonasCreate() {
 	const [currentPersonaIndex, setCurrentPersonaIndex] = useState(0);
 	const [_sessionIds, setSessionIds] = useState<string[]>([]);
 	// Local UI state for current guest messages (synced from API responses)
-	const [guestMessages, setGuestMessages] = useState<
-		Record<string, Message[]>
-	>({});
+	const [guestMessages, setGuestMessages] = useState<Record<string, Message[]>>(
+		{},
+	);
 
 	const [draft, setDraft] = useState<PersonaDraft>({
 		name: "",
@@ -1437,7 +1439,8 @@ export function PersonasCreate() {
 						: "初めまして！リラックスして、あなたのことを教えてください。",
 			},
 		],
-		vibe: 20 + (i < currentPersonaIndex ? 50 : i === currentPersonaIndex ? 30 : 0),
+		vibe:
+			20 + (i < currentPersonaIndex ? 50 : i === currentPersonaIndex ? 30 : 0),
 		status:
 			i < currentPersonaIndex
 				? "finished"
@@ -1450,15 +1453,17 @@ export function PersonasCreate() {
 	const [inputValue, setInputValue] = useState("");
 	const [isTyping, setIsTyping] = useState(false);
 
-	const activeGuest =
-		guests.find((g) => g.id === activeGuestId) ?? guests[0];
+	const activeGuest = guests.find((g) => g.id === activeGuestId) ?? guests[0];
 	const currentPersonaId = virtualPersonas[currentPersonaIndex]?.id ?? null;
 	const sendMessage = useSendSpeedDatingMessage(currentSessionId);
 	const completeSession = useCompleteSpeedDatingSession(currentSessionId);
 
 	// Keep activeGuestId in sync with current persona
 	useEffect(() => {
-		if (virtualPersonas.length > 0 && currentPersonaIndex < virtualPersonas.length) {
+		if (
+			virtualPersonas.length > 0 &&
+			currentPersonaIndex < virtualPersonas.length
+		) {
 			setActiveGuestId(virtualPersonas[currentPersonaIndex].id);
 		}
 	}, [virtualPersonas, currentPersonaIndex]);
@@ -1496,16 +1501,23 @@ export function PersonasCreate() {
 				return;
 			}
 			setVirtualPersonas(
-				personas.map((p: { id: string; name: string; persona_type: string }) => ({
-					id: p.id,
-					name: p.name,
-					persona_type: p.persona_type,
-				})),
+				personas.map(
+					(p: { id: string; name: string; persona_type: string }) => ({
+						id: p.id,
+						name: p.name,
+						persona_type: p.persona_type,
+					}),
+				),
 			);
 			const firstSession = await createSession.mutateAsync(personas[0].id);
 			const sessionData = firstSession as {
 				session_id: string;
-				first_message?: { id: string; role: string; content: string; created_at: string };
+				first_message?: {
+					id: string;
+					role: string;
+					content: string;
+					created_at: string;
+				};
 			};
 			setCurrentSessionId(sessionData.session_id);
 			setSessionIds([sessionData.session_id]);
@@ -1515,9 +1527,9 @@ export function PersonasCreate() {
 					...prev,
 					[personas[0].id]: [
 						{
-							id: sessionData.first_message!.id,
+							id: sessionData.first_message?.id ?? generateId(),
 							role: "ai",
-							content: sessionData.first_message!.content,
+							content: sessionData.first_message?.content ?? "",
 						},
 					],
 				}));
@@ -1530,7 +1542,13 @@ export function PersonasCreate() {
 	};
 
 	const handleSendMessage = async () => {
-		if (!inputValue.trim() || isTyping || !currentSessionId || !currentPersonaId) return;
+		if (
+			!inputValue.trim() ||
+			isTyping ||
+			!currentSessionId ||
+			!currentPersonaId
+		)
+			return;
 
 		const userMessage: Message = {
 			id: generateId(),
@@ -1539,17 +1557,19 @@ export function PersonasCreate() {
 		};
 		setGuestMessages((prev) => ({
 			...prev,
-			[currentPersonaId]: [
-				...(prev[currentPersonaId] ?? []),
-				userMessage,
-			],
+			[currentPersonaId]: [...(prev[currentPersonaId] ?? []), userMessage],
 		}));
 		setInputValue("");
 		setIsTyping(true);
 
 		try {
-			const res = await sendMessage.mutateAsync(inputValue) as {
-				persona_message?: { id: string; role: string; content: string; created_at: string };
+			const res = (await sendMessage.mutateAsync(inputValue)) as {
+				persona_message?: {
+					id: string;
+					role: string;
+					content: string;
+					created_at: string;
+				};
 			};
 			const personaMsg = res?.persona_message;
 			if (personaMsg) {
@@ -1574,15 +1594,23 @@ export function PersonasCreate() {
 	};
 
 	const wrapCurrentTable = async () => {
-		if (!currentSessionId || currentPersonaIndex >= virtualPersonas.length) return;
+		if (!currentSessionId || currentPersonaIndex >= virtualPersonas.length)
+			return;
 		try {
 			await completeSession.mutateAsync(undefined);
 			if (currentPersonaIndex < virtualPersonas.length - 1) {
 				const nextIndex = currentPersonaIndex + 1;
 				const nextPersona = virtualPersonas[nextIndex];
-				const nextSession = await createSession.mutateAsync(nextPersona.id) as {
+				const nextSession = (await createSession.mutateAsync(
+					nextPersona.id,
+				)) as {
 					session_id: string;
-					first_message?: { id: string; role: string; content: string; created_at: string };
+					first_message?: {
+						id: string;
+						role: string;
+						content: string;
+						created_at: string;
+					};
 				};
 				setCurrentSessionId(nextSession.session_id);
 				setSessionIds((prev) => [...prev, nextSession.session_id]);
@@ -1592,9 +1620,9 @@ export function PersonasCreate() {
 						...prev,
 						[nextPersona.id]: [
 							{
-								id: nextSession.first_message!.id,
+								id: nextSession.first_message?.id ?? generateId(),
 								role: "ai",
-								content: nextSession.first_message!.content,
+								content: nextSession.first_message?.content ?? "",
 							},
 						],
 					}));
@@ -1615,7 +1643,7 @@ export function PersonasCreate() {
 			<ThemeStyles />
 			<AnimatePresence mode="wait">
 				{step === "initial" && (
-					<motion.div
+					<m.div
 						key="initial"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
@@ -1710,9 +1738,7 @@ export function PersonasCreate() {
 										type="button"
 										onClick={startSpeedDate}
 										disabled={
-											!draft.name ||
-											!draft.gender ||
-											generatePersonas.isPending
+											!draft.name || !draft.gender || generatePersonas.isPending
 										}
 										className="px-10 py-4 bg-foreground text-background rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-30 shadow-xl shadow-black/10"
 									>
@@ -1731,11 +1757,11 @@ export function PersonasCreate() {
 								</p>
 							</div>
 						</div>
-					</motion.div>
+					</m.div>
 				)}
 
 				{step === "speed-date" && (
-					<motion.div
+					<m.div
 						key="speed-date"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
@@ -1786,7 +1812,7 @@ export function PersonasCreate() {
 							<div className="w-full max-w-xl min-h-[140px] flex flex-col items-center justify-center py-8">
 								<AnimatePresence mode="wait">
 									{isTyping ? (
-										<motion.div
+										<m.div
 											key="typing"
 											initial={{ opacity: 0, y: 10 }}
 											animate={{ opacity: 1, y: 0 }}
@@ -1796,24 +1822,25 @@ export function PersonasCreate() {
 											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce" />
 											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce [animation-delay:0.2s]" />
 											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce [animation-delay:0.4s]" />
-										</motion.div>
+										</m.div>
 									) : (
-										<motion.div
+										<m.div
 											key={
-												activeGuest.messages[activeGuest.messages.length - 1]?.id ?? "last"
+												activeGuest.messages[activeGuest.messages.length - 1]
+													?.id ?? "last"
 											}
 											initial={{ opacity: 0, y: 15 }}
 											animate={{ opacity: 1, y: 0 }}
 											className={`p-6 rounded-3xl shadow-xl border-2 text-center text-sm sm:text-base font-medium transition-all ${
-												activeGuest.messages[activeGuest.messages.length - 1]?.role === "ai"
+												activeGuest.messages[activeGuest.messages.length - 1]
+													?.role === "ai"
 													? "bg-white border-secondary/20 text-foreground"
 													: "bg-zinc-900 border-zinc-800 text-white"
 											}`}
 										>
-											{
-												activeGuest.messages[activeGuest.messages.length - 1]?.content ?? ""
-											}
-										</motion.div>
+											{activeGuest.messages[activeGuest.messages.length - 1]
+												?.content ?? ""}
+										</m.div>
 									)}
 								</AnimatePresence>
 							</div>
@@ -1824,9 +1851,7 @@ export function PersonasCreate() {
 										type="text"
 										value={inputValue}
 										onChange={(e) => setInputValue(e.target.value)}
-										onKeyDown={(e) =>
-											e.key === "Enter" && handleSendMessage()
-										}
+										onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
 										placeholder="あなたの言葉を聴かせてください..."
 										className="w-full bg-white border border-border/80 rounded-full px-8 py-5 text-sm focus:outline-none focus:ring-4 focus:ring-secondary/5 transition-all shadow-inner"
 									/>
@@ -1864,11 +1889,11 @@ export function PersonasCreate() {
 								)}
 							</div>
 						</div>
-					</motion.div>
+					</m.div>
 				)}
 
 				{step === "review" && (
-					<motion.div
+					<m.div
 						key="review"
 						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{ opacity: 1, scale: 1 }}
@@ -1931,11 +1956,11 @@ export function PersonasCreate() {
 								<ChevronRight className="w-4 h-4" />
 							</button>
 						</div>
-					</motion.div>
+					</m.div>
 				)}
 
 				{step === "creating" && (
-					<motion.div
+					<m.div
 						key="creating"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
@@ -1955,7 +1980,7 @@ export function PersonasCreate() {
 								{t("create.encoding_patterns")}
 							</p>
 						</div>
-					</motion.div>
+					</m.div>
 				)}
 			</AnimatePresence>
 		</div>

@@ -78,7 +78,8 @@ foxSearch.post("/start", requireAuth, async (c) => {
 		}
 	} else {
 		const bgTask = (async () => {
-			for (const result of results) {
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i];
 				try {
 					await runFoxConversation(supabase, apiKey, result.fox_conversation_id);
 				} catch (err) {
@@ -91,6 +92,10 @@ foxSearch.post("/start", requireAuth, async (c) => {
 						.from("matches")
 						.update({ status: "fox_conversation_failed" })
 						.eq("id", result.match_id);
+				}
+				// Rate-limit guard: delay between conversations to avoid Mistral 429 errors
+				if (i < results.length - 1) {
+					await new Promise((resolve) => setTimeout(resolve, 2000 + Math.floor(Math.random() * 1000)));
 				}
 			}
 		})();

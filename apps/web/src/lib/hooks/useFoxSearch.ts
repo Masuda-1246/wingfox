@@ -1,6 +1,11 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueries,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 const foxSearchApi = client.api["fox-search"] as {
 	start: {
@@ -109,15 +114,21 @@ export function useMultipleFoxConversationStatus(conversationIds: string[]) {
 	const statuses = queries.map((q) => q.data);
 	const allTerminal =
 		conversationIds.length > 0 &&
-		statuses.every(
-			(s) => s?.status === "completed" || s?.status === "failed",
-		);
-	const completedCount = statuses.filter((s) => s?.status === "completed").length;
+		statuses.every((s) => s?.status === "completed" || s?.status === "failed");
+	const completedCount = statuses.filter(
+		(s) => s?.status === "completed",
+	).length;
 	const failedCount = statuses.filter((s) => s?.status === "failed").length;
 
 	// Aggregate progress across all conversations
-	const totalRounds = statuses.reduce((sum, s) => sum + (s?.total_rounds ?? 0), 0);
-	const currentRounds = statuses.reduce((sum, s) => sum + (s?.current_round ?? 0), 0);
+	const totalRounds = statuses.reduce(
+		(sum, s) => sum + (s?.total_rounds ?? 0),
+		0,
+	);
+	const currentRounds = statuses.reduce(
+		(sum, s) => sum + (s?.current_round ?? 0),
+		0,
+	);
 
 	const statusMap = new Map<string, FoxConversationStatus | undefined>();
 	conversationIds.forEach((id, i) => {

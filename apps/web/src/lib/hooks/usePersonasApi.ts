@@ -50,15 +50,20 @@ export function useUpdatePersonaSection(
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (content: string) => {
-			if (!personaId || !sectionId) throw new Error("Persona and section required");
-			const res = await client.api.personas[":personaId"].sections[":sectionId"].$put({
+			if (!personaId || !sectionId)
+				throw new Error("Persona and section required");
+			const res = await client.api.personas[":personaId"].sections[
+				":sectionId"
+			].$put({
 				param: { personaId, sectionId },
 				json: { content },
 			});
 			return unwrapApiResponse(res);
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["personas", personaId, "sections"] });
+			queryClient.invalidateQueries({
+				queryKey: ["personas", personaId, "sections"],
+			});
 			queryClient.invalidateQueries({ queryKey: ["personas", personaId] });
 		},
 	});
