@@ -16,7 +16,10 @@
     "submit_success": "登録しました",
     "submit_error": "保存に失敗しました",
     "error_nickname": "ニックネームを入力してください",
+    "error_nickname_too_long": "ニックネームは50文字以内で入力してください",
     "error_birth_year": "誕生年は1900〜2100の範囲で入力してください",
+    "error_birth_year_invalid": "有効な年を入力してください",
+    "error_birth_year_range": "年は1900〜2100の範囲で入力してください",
     "error_gender": "性別を選択してください"
   },
   "quiz": {
@@ -360,6 +363,9 @@
     "confirm_failed": "確認に失敗しました",
     "wingfox_not_ready": "ウィングフォックスがまだ生成されていません。やり直すか、しばらく待ってから再度お試しください。",
     "interaction_dna": "インタラクションDNA",
+    "disable_auto": "自動生成を無効化",
+    "enable_auto": "自動生成を有効化",
+    "generation_failed_title": "生成に失敗しました。再試行するかページを更新してください。",
     "dna_layer1": "出会いの親和性",
     "dna_layer2": "心理的シンクロ",
     "dna_layer3": "将来の適合性",
