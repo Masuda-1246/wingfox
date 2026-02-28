@@ -29,8 +29,8 @@ if (rootElement && !rootElement.innerHTML) {
 		<StrictMode>
 			<ThemeProvider
 				attribute="class"
-				defaultTheme="system"
-				enableSystem
+				defaultTheme="light"
+				forcedTheme="light"
 				disableTransitionOnChange
 			>
 				<RouterProvider router={router} />
