@@ -11,7 +11,7 @@ export type ChatMessage = { role: "user" | "assistant" | "system"; content: stri
 export async function chatComplete(
 	apiKey: string | undefined,
 	messages: ChatMessage[],
-	options?: { model?: string; maxTokens?: number },
+	options?: { model?: string; maxTokens?: number; temperature?: number },
 ): Promise<string> {
 	if (!apiKey?.trim()) {
 		throw new Error("MISTRAL_API_KEY is not set or empty. Set it in .mise.local.toml or apps/api/.env");
@@ -21,6 +21,7 @@ export async function chatComplete(
 		model: options?.model ?? DEFAULT_MODEL,
 		messages: messages.map((m) => ({ role: m.role, content: m.content })),
 		maxTokens: options?.maxTokens ?? 1024,
+		temperature: options?.temperature,
 	});
 	const content = response.choices?.[0]?.message?.content;
 	return typeof content === "string" ? content : "";
