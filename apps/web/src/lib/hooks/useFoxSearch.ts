@@ -1,6 +1,6 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const foxSearchApi = client.api["fox-search"] as {
 	start: {
@@ -14,7 +14,8 @@ const foxSearchApi = client.api["fox-search"] as {
 };
 
 interface StartFoxSearchResult {
-	conversations: { match_id: string; fox_conversation_id: string }[];
+	match_id: string;
+	fox_conversation_id: string;
 }
 
 interface FoxConversationStatus {
@@ -56,48 +57,4 @@ export function useFoxConversationStatus(
 			return 3000;
 		},
 	});
-}
-
-export function useMultipleFoxConversationStatus(conversationIds: string[]) {
-	const queries = useQueries({
-		queries: conversationIds.map((id) => ({
-			queryKey: ["fox-search", "status", id],
-			queryFn: async () => {
-				const res = await foxSearchApi.status[":conversationId"].$get({
-					param: { conversationId: id },
-				});
-				return unwrapApiResponse<FoxConversationStatus>(res);
-			},
-			enabled: Boolean(id),
-			refetchInterval: (query: { state: { data?: FoxConversationStatus } }) => {
-				const status = query.state.data?.status;
-				if (status === "completed" || status === "failed") return false;
-				return 3000;
-			},
-		})),
-	});
-
-	const statuses = queries.map((q) => q.data);
-	const allTerminal =
-		conversationIds.length > 0 &&
-		statuses.every(
-			(s) => s?.status === "completed" || s?.status === "failed",
-		);
-	const completedCount = statuses.filter((s) => s?.status === "completed").length;
-	const failedCount = statuses.filter((s) => s?.status === "failed").length;
-
-	// Aggregate progress across all conversations
-	const totalRounds = statuses.reduce((sum, s) => sum + (s?.total_rounds ?? 0), 0);
-	const currentRounds = statuses.reduce((sum, s) => sum + (s?.current_round ?? 0), 0);
-
-	return {
-		queries,
-		statuses,
-		allTerminal,
-		completedCount,
-		failedCount,
-		totalRounds,
-		currentRounds,
-		total: conversationIds.length,
-	};
 }
