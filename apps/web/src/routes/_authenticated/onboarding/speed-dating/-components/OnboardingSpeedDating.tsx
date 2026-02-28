@@ -105,6 +105,7 @@ export function OnboardingSpeedDating() {
 		})();
 	}, [previewPersonas, createSession]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional deps; only re-run when cache/error state changes
 	useEffect(() => {
 		if (previewPersonas.length >= 3) return;
 		if (cachedPersonas === undefined) return;
@@ -224,6 +225,7 @@ export function OnboardingSpeedDating() {
 							<AlertTriangle className="inline w-4 h-4 mr-2 -translate-y-px" />
 							{generationError || startError}
 							<button
+								type="button"
 								onClick={() => {
 									setGenerationError(null);
 									setStartError(null);

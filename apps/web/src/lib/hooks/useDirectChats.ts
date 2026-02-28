@@ -92,14 +92,15 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 			const queryKey = ["direct-chats", roomId, "messages"];
 			await queryClient.cancelQueries({ queryKey });
 			const previous = queryClient.getQueryData(queryKey);
-			queryClient.setQueryData(queryKey, (old: any) => {
-				if (!old?.pages) return old;
-				const firstPage = old.pages[0];
+			queryClient.setQueryData(queryKey, (old: unknown) => {
+				if (!old || typeof old !== "object" || !("pages" in old)) return old;
+				const o = old as { pages: Array<{ data: unknown[] }> };
+				if (!o.pages?.[0]) return old;
 				return {
-					...old,
+					...o,
 					pages: [
 						{
-							...firstPage,
+							...o.pages[0],
 							data: [
 								{
 									id: `optimistic-${Date.now()}`,
@@ -109,10 +110,10 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 									is_read: false,
 									created_at: new Date().toISOString(),
 								},
-								...firstPage.data,
+								...o.pages[0].data,
 							],
 						},
-						...old.pages.slice(1),
+						...o.pages.slice(1),
 					],
 				};
 			});

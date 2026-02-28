@@ -315,16 +315,16 @@ export function Settings() {
 								label: t("language_en"),
 							},
 						].map((option) => (
-							<div
+							<button
+								type="button"
 								key={option.id}
-								role="button"
 								tabIndex={0}
 								onClick={() => i18n.changeLanguage(option.id)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") i18n.changeLanguage(option.id);
 								}}
 								className={cn(
-									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
+									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all w-full text-left",
 									i18n.language === option.id
 										? "bg-primary/10 border-primary shadow-sm"
 										: "bg-transparent border-transparent hover:bg-accent",
@@ -339,7 +339,7 @@ export function Settings() {
 									)}
 								/>
 								<p className="text-sm font-medium">{option.label}</p>
-							</div>
+							</button>
 						))}
 					</div>
 				</Card>

@@ -2,5 +2,7 @@
 # コミット前に format と build を実行（マージブロックはCIで実施）
 
 pnpm format
+pnpm check
 git add -u
 pnpm build
+pnpm exec turbo run format build check --no-daemon

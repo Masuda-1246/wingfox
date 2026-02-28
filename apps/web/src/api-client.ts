@@ -32,4 +32,5 @@ const _client = hc<AppType>(getBaseUrl(), {
 });
 
 // Workaround: AppType from @repo/api can resolve to unknown in consumers; use any so client is usable until TS resolution is fixed
+// biome-ignore lint/suspicious/noExplicitAny: intentional workaround for cross-package type resolution
 export const client = _client as any;

@@ -62,7 +62,9 @@ export class OnboardingErrorBoundary extends Component<
 							{this.props.onReset ? "Retry" : "Reload Page"}
 						</Button>
 						<Button
-							onClick={() => (window.location.href = "/onboarding/profile")}
+							onClick={() => {
+								window.location.href = "/onboarding/profile";
+							}}
 							variant="outline"
 							className="rounded-full"
 						>

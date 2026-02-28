@@ -263,6 +263,7 @@ export function OnboardingReview() {
 						</p>
 						<div className="flex gap-3">
 							<button
+								type="button"
 								onClick={handleManualGenerate}
 								disabled={generating}
 								className="px-6 py-2 bg-secondary text-secondary-foreground rounded-full font-medium hover:bg-secondary/90 transition-colors flex items-center gap-2"
@@ -271,6 +272,7 @@ export function OnboardingReview() {
 								{t("review.confirm")}
 							</button>
 							<button
+								type="button"
 								onClick={() => setAutoGenerateEnabled(!autoGenerateEnabled)}
 								className="px-4 py-2 border border-border rounded-full text-sm hover:bg-muted transition-colors flex items-center gap-2"
 							>

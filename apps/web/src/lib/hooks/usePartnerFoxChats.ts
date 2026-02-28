@@ -77,12 +77,13 @@ export function useSendPartnerFoxMessage(id: string | undefined | null) {
 			const queryKey = ["partner-fox-chats", id, "messages"];
 			await queryClient.cancelQueries({ queryKey });
 			const previous = queryClient.getQueryData(queryKey);
-			queryClient.setQueryData(queryKey, (old: any) => {
-				if (!old?.data) return old;
+			queryClient.setQueryData(queryKey, (old: unknown) => {
+				if (!old || typeof old !== "object" || !("data" in old)) return old;
+				const o = old as { data: unknown[] };
 				return {
-					...old,
+					...o,
 					data: [
-						...old.data,
+						...o.data,
 						{
 							id: `optimistic-${Date.now()}`,
 							role: "user",

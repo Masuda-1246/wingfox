@@ -196,6 +196,7 @@ export function Chat() {
 	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
 
 	// Restore activeFoxConvMap from server data on mount/reload
+	// biome-ignore lint/correctness/useExhaustiveDependencies: run only when matches changes; activeFoxConvMap intentionally excluded to avoid loop
 	useEffect(() => {
 		if (Object.keys(activeFoxConvMap).length > 0) return;
 		const restoredMap: Record<string, string> = {};
@@ -426,11 +427,13 @@ export function Chat() {
 	}, [activeMessages.length, activeSessionId, scrollToBottom]);
 
 	// Reset initial scroll flag when session changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset ref when session changes intentionally
 	useEffect(() => {
 		initialScrollDoneRef.current = null;
 	}, [activeSessionId]);
 
 	// Scroll position preservation after loading older messages
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync scroll on layout; activeMessages used as trigger only
 	useEffect(() => {
 		const container = chatContainerRef.current;
 		if (!container) return;
@@ -729,9 +732,9 @@ export function Chat() {
 							</p>
 						) : (
 							sortedSessions.map((session) => (
-								<div
+								<button
+									type="button"
 									key={session.id}
-									role="button"
 									tabIndex={0}
 									onClick={() => {
 										setActiveSessionId(session.id);
@@ -744,7 +747,7 @@ export function Chat() {
 										}
 									}}
 									className={cn(
-										"group relative p-4 rounded-2xl border transition-all cursor-pointer",
+										"group relative p-4 rounded-2xl border transition-all cursor-pointer w-full text-left",
 										activeSessionId === session.id
 											? "bg-card border-secondary/50 ring-1 ring-secondary/20 shadow-sm"
 											: "bg-card border-border hover:bg-accent/50",
@@ -925,7 +928,7 @@ export function Chat() {
 											})()}
 										</div>
 									</div>
-								</div>
+								</button>
 							))
 						)}
 					</div>
