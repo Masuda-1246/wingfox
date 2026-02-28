@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { z } from "zod";
-import { jsonError, type ErrorCode } from "../lib/response";
+import { jsonError } from "../lib/response";
 
 export function errorHandler(err: unknown, c: Context) {
 	if (err instanceof z.ZodError) {

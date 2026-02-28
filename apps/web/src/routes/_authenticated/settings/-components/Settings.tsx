@@ -147,7 +147,7 @@ function SectionHeader({
 export function Settings() {
 	const { t, i18n } = useTranslation("settings");
 	const { data: profile, isLoading, error } = useProfileMe();
-	const updateProfile = useUpdateProfileMe();
+	useUpdateProfileMe();
 	const { data: authMe } = useAuthMe();
 	const updateAuthMe = useUpdateAuthMe();
 
@@ -196,22 +196,6 @@ export function Settings() {
 		}
 	}, [profile]);
 
-	const handleSave = async () => {
-		try {
-			await updateProfile.mutateAsync({
-				basic_info: {
-					display_name: formData.display_name,
-					location: formData.location,
-					bio: formData.bio,
-					age: formData.age,
-				},
-			});
-			toast.success(t("updated_toast"));
-		} catch (err) {
-			console.error(err);
-			toast.error(t("save_error"));
-		}
-	};
 
 	const handleSaveBasicInfo = async () => {
 		const genderApiMap: Record<string, "male" | "female" | "other" | "undisclosed"> = {

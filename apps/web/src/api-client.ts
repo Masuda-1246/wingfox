@@ -8,8 +8,8 @@ function getBaseUrl(): string {
 }
 
 export const client = hc<AppType>(getBaseUrl(), {
-	fetch: async (input, init) => {
-		const { data } = await supabase.auth.getSession({ refresh: true });
+	fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+		const { data } = await supabase.auth.getSession();
 		const headers = new Headers(init?.headers);
 		headers.set("Content-Type", "application/json");
 		if (data.session?.access_token) {
@@ -17,4 +17,4 @@ export const client = hc<AppType>(getBaseUrl(), {
 		}
 		return fetch(input, { ...init, headers });
 	},
-});
+}) as any;

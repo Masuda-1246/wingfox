@@ -11,13 +11,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	ArrowRight,
 	ChevronRight,
-	Mic,
 	Sparkles,
-	User,
 	Users,
 	CheckCircle2,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -53,7 +51,7 @@ interface DateCharacter {
 	foxVariant: number;
 }
 
-interface ThemeConfig {
+export interface ThemeConfig {
 	id: string;
 	name: string;
 	subtitle: string;
@@ -68,99 +66,6 @@ interface ThemeConfig {
 	};
 }
 
-// ─── Constants ───────────────────────────────────────
-
-const TOTAL_DATES = 3;
-
-const ALL_THEMES: ThemeConfig[] = [
-	{
-		id: "aquarium",
-		name: "Deep Blue Lounge",
-		subtitle: "水族館の静けさの中で",
-		character: {
-			name: "Emma",
-			subtitle: "明るくて好奇心旺盛なガイド",
-			foxVariant: 0,
-		},
-		colors: {
-			background:
-				"radial-gradient(ellipse at 30% 50%, #0a3d62 0%, #0e6655 40%, #061224 100%)",
-			accent: "#4fc3f7",
-			bubbleAi: "rgba(79, 195, 247, 0.15)",
-			bubbleUser: "rgba(79, 195, 247, 0.35)",
-			timerNormal: "#4fc3f7",
-			timerLow: "#ef5350",
-		},
-	},
-	{
-		id: "library",
-		name: "The Quiet Corner",
-		subtitle: "古い本に囲まれた静かな空間",
-		character: {
-			name: "Liam",
-			subtitle: "落ち着いた知識人",
-			foxVariant: 1,
-		},
-		colors: {
-			background:
-				"radial-gradient(ellipse at 50% 40%, #3e2723 0%, #4e342e 50%, #1a120b 100%)",
-			accent: "#ffb74d",
-			bubbleAi: "rgba(255, 183, 77, 0.15)",
-			bubbleUser: "rgba(255, 183, 77, 0.35)",
-			timerNormal: "#ffb74d",
-			timerLow: "#ef5350",
-		},
-	},
-	{
-		id: "rooftop",
-		name: "Neon Heights",
-		subtitle: "夜景を見下ろすルーフトップバー",
-		character: {
-			name: "Sakura",
-			subtitle: "優しくてクリエイティブ",
-			foxVariant: 3,
-		},
-		colors: {
-			background: "linear-gradient(180deg, #0d1b2a 0%, #000000 100%)",
-			accent: "#e040fb",
-			bubbleAi: "rgba(224, 64, 251, 0.15)",
-			bubbleUser: "rgba(224, 64, 251, 0.35)",
-			timerNormal: "#e040fb",
-			timerLow: "#ef5350",
-		},
-	},
-	{
-		id: "garden",
-		name: "Sunlit Terrace",
-		subtitle: "木漏れ日が差すガーデンカフェ",
-		character: {
-			name: "Kai",
-			subtitle: "アクティブで冒険好き",
-			foxVariant: 2,
-		},
-		colors: {
-			background:
-				"radial-gradient(ellipse at 40% 30%, #2e7d32 0%, #1b5e20 60%, #0a2e0c 100%)",
-			accent: "#aed581",
-			bubbleAi: "rgba(174, 213, 129, 0.15)",
-			bubbleUser: "rgba(174, 213, 129, 0.35)",
-			timerNormal: "#aed581",
-			timerLow: "#ef5350",
-		},
-	},
-];
-
-function pickRandomThemes(count: number): ThemeConfig[] {
-	const shuffled = [...ALL_THEMES].sort(() => Math.random() - 0.5);
-	return shuffled.slice(0, count);
-}
-
-function formatTime(ms: number): string {
-	const totalSeconds = Math.ceil(ms / 1000);
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = totalSeconds % 60;
-	return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
 
 // ─── Static particle data (avoids array-index keys) ─
 
@@ -277,7 +182,7 @@ function ThemeStyles() {
 
 // ─── Theme Background Components ─────────────────────
 
-function AquariumBg() {
+export function AquariumBg() {
 	return (
 		<>
 			{/* Light rays from above */}
@@ -570,7 +475,7 @@ function AquariumBg() {
 	);
 }
 
-function LibraryBg() {
+export function LibraryBg() {
 	return (
 		<>
 			{/* Window light */}
@@ -735,7 +640,7 @@ function LibraryBg() {
 	);
 }
 
-function RooftopBg() {
+export function RooftopBg() {
 	return (
 		<>
 			{/* Moon */}
@@ -1172,7 +1077,7 @@ function RooftopBg() {
 	);
 }
 
-function GardenBg() {
+export function GardenBg() {
 	return (
 		<>
 			{/* Sun glow */}
@@ -1486,60 +1391,6 @@ function GardenBg() {
 	);
 }
 
-function ThemeBackground({ theme }: { theme: ThemeConfig }) {
-	return (
-		<div
-			className="absolute inset-0 overflow-hidden"
-			style={{ background: theme.colors.background }}
-		>
-			{theme.id === "aquarium" && <AquariumBg />}
-			{theme.id === "library" && <LibraryBg />}
-			{theme.id === "rooftop" && <RooftopBg />}
-			{theme.id === "garden" && <GardenBg />}
-		</div>
-	);
-}
-
-// ─── Sub-components ──────────────────────────────────
-
-function SpeakingIndicator({
-	isSpeaking,
-	accentColor,
-}: { isSpeaking: boolean; accentColor?: string }) {
-	const color = accentColor || "currentColor";
-	if (isSpeaking) {
-		return (
-			<div className="flex items-center gap-2">
-				<div className="flex items-center gap-0.5">
-					<span
-						className="block h-3 w-1 animate-pulse rounded-full [animation-delay:0ms]"
-						style={{ background: color }}
-					/>
-					<span
-						className="block h-4 w-1 animate-pulse rounded-full [animation-delay:150ms]"
-						style={{ background: color }}
-					/>
-					<span
-						className="block h-3 w-1 animate-pulse rounded-full [animation-delay:300ms]"
-						style={{ background: color }}
-					/>
-				</div>
-				<span
-					className="text-[10px] font-black uppercase tracking-widest"
-					style={{ color }}
-				>
-					Speaking
-				</span>
-			</div>
-		);
-	}
-	return (
-		<span className="text-[10px] font-black uppercase tracking-widest text-white/50">
-			Listening
-		</span>
-	);
-}
-
 export function PersonasCreate() {
 	const { t } = useTranslation("personas");
 	const navigate = useNavigate();
@@ -1558,7 +1409,7 @@ export function PersonasCreate() {
 	>([]);
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [currentPersonaIndex, setCurrentPersonaIndex] = useState(0);
-	const [sessionIds, setSessionIds] = useState<string[]>([]);
+	const [_sessionIds, setSessionIds] = useState<string[]>([]);
 	// Local UI state for current guest messages (synced from API responses)
 	const [guestMessages, setGuestMessages] = useState<
 		Record<string, Message[]>

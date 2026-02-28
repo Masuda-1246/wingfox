@@ -32,7 +32,7 @@ function normalizeOptions(
 					},
 		);
 	}
-	const arr = options as OptionItem[] | undefined;
+	const arr = options as unknown as OptionItem[] | undefined;
 	return Array.isArray(arr) ? arr : [];
 }
 

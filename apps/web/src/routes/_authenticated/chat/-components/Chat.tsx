@@ -6,7 +6,6 @@ import { usePartnerFoxChatMessages, useSendPartnerFoxMessage } from "@/lib/hooks
 import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
 import { useCreatePartnerFoxChat } from "@/lib/hooks/usePartnerFoxChats";
-import { useReportUser } from "@/lib/hooks/useModeration";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -141,11 +140,12 @@ export function Chat() {
 				id: activeSessionId,
 				partnerName: partnerName || "マッチ",
 				partnerImage: "https://picsum.photos/200/300?random=0",
+				partnerFoxVariant: 0,
 				lastMessage: "",
 				compatibilityScore: detail?.final_score ?? 0,
 				status: "active",
 				messages: activeMessages,
-			};
+			} as ChatSession;
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	const scrollToBottom = useCallback(() => {

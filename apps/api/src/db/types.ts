@@ -35,6 +35,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["user_profiles"]["Insert"]>;
+				Relationships: [];
 			};
 			quiz_questions: {
 				Row: {
@@ -56,6 +57,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["quiz_questions"]["Insert"]>;
+				Relationships: [];
 			};
 			quiz_answers: {
 				Row: {
@@ -73,6 +75,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["quiz_answers"]["Insert"]>;
+				Relationships: [];
 			};
 			persona_section_definitions: {
 				Row: {
@@ -96,6 +99,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["persona_section_definitions"]["Insert"]>;
+				Relationships: [];
 			};
 			personas: {
 				Row: {
@@ -119,6 +123,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["personas"]["Insert"]>;
+				Relationships: [];
 			};
 			persona_sections: {
 				Row: {
@@ -140,6 +145,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["persona_sections"]["Insert"]>;
+				Relationships: [];
 			};
 			speed_dating_sessions: {
 				Row: {
@@ -163,6 +169,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["speed_dating_sessions"]["Insert"]>;
+				Relationships: [];
 			};
 			speed_dating_messages: {
 				Row: {
@@ -180,6 +187,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["speed_dating_messages"]["Insert"]>;
+				Relationships: [];
 			};
 			profiles: {
 				Row: {
@@ -217,6 +225,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+				Relationships: [];
 			};
 			matches: {
 				Row: {
@@ -244,6 +253,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["matches"]["Insert"]>;
+				Relationships: [];
 			};
 			fox_conversations: {
 				Row: {
@@ -269,6 +279,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["fox_conversations"]["Insert"]>;
+				Relationships: [];
 			};
 			fox_conversation_messages: {
 				Row: {
@@ -288,6 +299,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["fox_conversation_messages"]["Insert"]>;
+				Relationships: [];
 			};
 			partner_fox_chats: {
 				Row: {
@@ -305,6 +317,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["partner_fox_chats"]["Insert"]>;
+				Relationships: [];
 			};
 			partner_fox_messages: {
 				Row: {
@@ -322,6 +335,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["partner_fox_messages"]["Insert"]>;
+				Relationships: [];
 			};
 			chat_requests: {
 				Row: {
@@ -345,6 +359,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["chat_requests"]["Insert"]>;
+				Relationships: [];
 			};
 			direct_chat_rooms: {
 				Row: {
@@ -360,6 +375,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["direct_chat_rooms"]["Insert"]>;
+				Relationships: [];
 			};
 			direct_chat_messages: {
 				Row: {
@@ -379,6 +395,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["direct_chat_messages"]["Insert"]>;
+				Relationships: [];
 			};
 			blocks: {
 				Row: {
@@ -394,6 +411,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["blocks"]["Insert"]>;
+				Relationships: [];
 			};
 			reports: {
 				Row: {
@@ -417,6 +435,7 @@ export type Database = {
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
+				Relationships: [];
 			};
 		};
 		Views: Record<string, never>;

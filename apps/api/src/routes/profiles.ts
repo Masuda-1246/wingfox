@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
+import type { Database } from "../db/types";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
@@ -69,7 +70,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 				status: "draft",
 				version,
 				updated_at: new Date().toISOString(),
-			},
+			} as Database["public"]["Tables"]["profiles"]["Insert"],
 			{ onConflict: "user_id" },
 		)
 		.select()

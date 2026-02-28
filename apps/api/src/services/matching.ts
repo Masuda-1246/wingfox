@@ -1,4 +1,5 @@
 import type { Database } from "../db/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -65,9 +66,7 @@ function getCommunicationScore(a: ProfileRow, b: ProfileRow): number {
 	return 0.7;
 }
 
-function getLifestyleScore(a: ProfileRow, b: ProfileRow): number {
-	const la = (a.lifestyle as Record<string, unknown>) ?? {};
-	const lb = (b.lifestyle as Record<string, unknown>) ?? {};
+function getLifestyleScore(_a: ProfileRow, _b: ProfileRow): number {
 	return 0.6 + Math.random() * 0.2;
 }
 
@@ -76,9 +75,6 @@ function getDealbreakers(p: ProfileRow): string[] {
 	const d = rs.dealbreakers;
 	return Array.isArray(d) ? d.map(String) : [];
 }
-
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../db/types";
 
 export async function executeMatching(supabase: SupabaseClient<Database>, topN: number = 10): Promise<number> {
 	const { data: profiles } = await supabase.from("profiles").select("*").eq("status", "confirmed");

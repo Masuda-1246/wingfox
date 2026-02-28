@@ -2,7 +2,6 @@ import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatDateTime } from "@/lib/date";
 import {
 	usePersonasList,
-	usePersona,
 	usePersonaSections,
 	useUpdatePersonaSection,
 } from "@/lib/hooks/usePersonasApi";
@@ -126,7 +125,6 @@ export function PersonasMe() {
 	const { t } = useTranslation("personas");
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
 	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
-	const { data: personaDetail } = usePersona(myPersona?.id);
 	const { data: sections } = usePersonaSections(myPersona?.id);
 	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
 	const [isEditing, setIsEditing] = useState(false);

@@ -6,6 +6,7 @@
     "dev": "tsx watch ./src/node.ts",
     "dev:worker": "wrangler dev",
     "deploy": "wrangler deploy",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "echo 'No linter configured for API'",
     "format": "echo 'No formatter configured for API'"
   },
@@ -15,13 +16,16 @@
     "wrangler": "^4.14.0"
   },
   "exports": {
-    ".": "./src/types.ts"
+    ".": {
+      "types": "./dist/types.d.ts",
+      "default": "./src/types.ts"
+    }
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "@mistralai/mistralai": "^1.0.0",
     "@hono/node-server": "^1.19.1",
-    "@supabase/supabase-js": "^2.98.0",
+    "@supabase/supabase-js": "^2.49.4",
     "hono": "^4.9.6",
     "zod": "^3.24.0"
   },

@@ -49,7 +49,6 @@ export function OnboardingSpeedDating() {
 	>([]);
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [currentPersonaIndex, setCurrentPersonaIndex] = useState(0);
-	const [sessionIds, setSessionIds] = useState<string[]>([]);
 	const [guestMessages, setGuestMessages] = useState<Record<string, Message[]>>({});
 
 	const guests: Guest[] = virtualPersonas.map((p, i) => ({
@@ -90,13 +89,6 @@ export function OnboardingSpeedDating() {
 		}
 	}, [virtualPersonas, currentPersonaIndex]);
 
-	const handleDraftChange = (
-		field: keyof PersonaDraft,
-		value: string | string[],
-	) => {
-		setDraft((prev) => ({ ...prev, [field]: value }));
-	};
-
 	const toggleInterest = (interest: string) => {
 		setDraft((prev) => {
 			const exists = prev.interests.includes(interest);
@@ -131,7 +123,6 @@ export function OnboardingSpeedDating() {
 				first_message?: { id: string; role: string; content: string; created_at: string };
 			};
 			setCurrentSessionId(sessionData.session_id);
-			setSessionIds([sessionData.session_id]);
 			setCurrentPersonaIndex(0);
 			if (sessionData.first_message) {
 				setGuestMessages((prev) => ({
@@ -208,7 +199,6 @@ export function OnboardingSpeedDating() {
 					first_message?: { id: string; role: string; content: string; created_at: string };
 				};
 				setCurrentSessionId(nextSession.session_id);
-				setSessionIds((prev) => [...prev, nextSession.session_id]);
 				setCurrentPersonaIndex(nextIndex);
 				if (nextSession.first_message) {
 					setGuestMessages((prev) => ({

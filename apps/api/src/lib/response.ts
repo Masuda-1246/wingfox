@@ -20,7 +20,7 @@ const statusByCode: Record<ErrorCode, number> = {
 };
 
 export function jsonData<T>(c: Context, data: T, status = 200) {
-	return c.json({ data }, status);
+	return c.json({ data }, status as 200);
 }
 
 export function jsonError(c: Context, code: ErrorCode, message: string, status?: number) {
@@ -32,6 +32,6 @@ export function jsonError(c: Context, code: ErrorCode, message: string, status?:
 				message,
 			},
 		},
-		httpStatus,
+		httpStatus as 200 | 400 | 401 | 403 | 404 | 409 | 429 | 500,
 	);
 }

@@ -3,8 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { computeMatchScore } from "../services/matching";
-import { DEFAULT_LIMIT, parseLimit, parseCursor } from "../lib/pagination";
+import { parseLimit, parseCursor } from "../lib/pagination";
 
 const matching = new Hono<Env>();
 

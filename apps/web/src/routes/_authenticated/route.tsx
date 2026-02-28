@@ -2,14 +2,8 @@ import { supabase } from "@/lib/supabase";
 import { UpperHeader } from "@/components/layouts/UpperHeader";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 
-const ONBOARDING_PATHS = ["/onboarding/quiz", "/onboarding/speed-dating", "/onboarding/review"] as const;
-
 /** オンボーディング未完了でもアクセス可能なパス（設定など） */
 const ALLOWED_WITHOUT_ONBOARDING = ["/settings"] as const;
-
-function isOnboardingPath(pathname: string): boolean {
-	return ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
 
 function isAllowedWithoutOnboarding(pathname: string): boolean {
 	return ALLOWED_WITHOUT_ONBOARDING.some(

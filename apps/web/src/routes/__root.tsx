@@ -13,11 +13,6 @@ const queryClient = new QueryClient({
 				if (error instanceof ApiError && error.status === 401) return false;
 				return failureCount < 2;
 			},
-			onError: (error: unknown) => {
-				if (error instanceof ApiError && error.status === 401) {
-					window.location.href = "/login";
-				}
-			},
 		},
 		mutations: {
 			onError: (error: unknown) => {

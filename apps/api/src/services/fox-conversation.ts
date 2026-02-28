@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../db/types";
+import type { Database, Json } from "../db/types";
 import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
@@ -101,7 +101,7 @@ export async function runFoxConversation(
 		.update({
 			conversation_score: conversationScore,
 			final_score: finalScore,
-			score_details: { conversation_analysis: analysis },
+			score_details: { conversation_analysis: analysis } as Json,
 			status: "fox_conversation_completed",
 			updated_at: new Date().toISOString(),
 		})
@@ -111,7 +111,7 @@ export async function runFoxConversation(
 		.update({
 			status: "completed",
 			current_round: TOTAL_ROUNDS,
-			conversation_analysis: analysis,
+			conversation_analysis: analysis as Json,
 			completed_at: new Date().toISOString(),
 		})
 		.eq("id", conversationId);

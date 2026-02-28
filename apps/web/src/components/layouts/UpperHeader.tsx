@@ -5,14 +5,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	Bell,
 	ChevronDown,
-	HelpCircle,
 	LogOut,
 	MessageSquare,
 	Search,
 	Settings,
 	UserCircle2,
 } from "lucide-react";
-import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

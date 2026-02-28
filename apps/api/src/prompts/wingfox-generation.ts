@@ -1,5 +1,5 @@
 export function buildWingfoxSectionPrompt(
-	sectionId: string,
+	_sectionId: string,
 	sectionTitle: string,
 	profileJson: string,
 	conversationExcerpts: string,
