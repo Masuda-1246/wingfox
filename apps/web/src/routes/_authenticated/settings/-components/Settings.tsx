@@ -1,6 +1,8 @@
+import { useAuth } from "@/lib/auth";
 import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { useProfileMe, useUpdateProfileMe } from "@/lib/hooks/useProfile";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "@tanstack/react-router";
 import { Globe, Languages, LogOut, Save, Trash2, User } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -137,6 +139,8 @@ function SectionHeader({
 
 export function Settings() {
 	const { t, i18n } = useTranslation("settings");
+	const navigate = useNavigate();
+	const { signOut } = useAuth();
 	const { data: profile, isLoading, error } = useProfileMe();
 	useUpdateProfileMe();
 	const { data: authMe } = useAuthMe();
@@ -198,6 +202,12 @@ export function Settings() {
 			console.error(err);
 			toast.error(t("save_error"));
 		}
+	};
+
+	const handleLogout = async () => {
+		await signOut();
+		toast.success(t("logout_success", "Signed out successfully"));
+		navigate({ to: "/login" });
 	};
 
 	const handleDeleteAccount = async () => {
@@ -360,7 +370,11 @@ export function Settings() {
 								<Button variant="destructive" onClick={handleDeleteAccount}>
 									{t("delete_account")}
 								</Button>
-								<Button variant="ghost" className="text-muted-foreground">
+								<Button
+									variant="ghost"
+									className="text-muted-foreground"
+									onClick={handleLogout}
+								>
 									<LogOut className="w-4 h-4 mr-2" />
 									{t("logout")}
 								</Button>
