@@ -121,14 +121,34 @@ export async function runFoxConversation(
 					)
 					.join("\n\n")
 			: "自己紹介と、相手に一言聞いてください。";
-		const raw = await chatComplete(
-			mistralApiKey,
-			[
-				{ role: "system", content: systemPrompt },
-				{ role: "user", content: context },
-			],
-			{ maxTokens: 60 },
-		);
+		let raw: string | null = null;
+		const MAX_RETRIES = 3;
+		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+			try {
+				raw = await chatComplete(
+					mistralApiKey,
+					[
+						{ role: "system", content: systemPrompt },
+						{ role: "user", content: context },
+					],
+					{ maxTokens: 200 },
+				);
+				break;
+			} catch (err) {
+				if (attempt >= MAX_RETRIES) throw err;
+				const is429 = err instanceof Error && (
+					err.message.includes("429") ||
+					err.message.includes("rate") ||
+					err.message.includes("Too Many Requests")
+				);
+				const jitter = Math.floor(Math.random() * 2000);
+				const delay = is429
+					? 5000 * attempt + jitter
+					: 2000 * attempt + jitter;
+				console.warn(`[runFoxConversation] chatComplete failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms is429=${is429}:`, err);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
 		const content = (raw && truncateFoxMessage(raw)) || "（応答なし）";
 		const speakerUserId = currentSpeaker === "A" ? userA : userB;
 		await supabase.from("fox_conversation_messages").insert({
