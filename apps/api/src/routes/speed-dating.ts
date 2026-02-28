@@ -156,20 +156,18 @@ speedDating.post("/personas", requireAuth, async (c) => {
 
 	const types = ["virtual_similar", "virtual_complementary", "virtual_discovery"] as const;
 
-	// Generate personas sequentially to avoid rate limiting
-	const rawResults: { personaType: typeof types[number]; raw: string }[] = [];
-	const usedNames: string[] = [];
-	for (const personaType of types) {
-		const prompt = buildVirtualPersonaPrompt(quizSummary, personaType, usedNames, lang, personaGender);
-		const raw = await chatComplete(
-			apiKey,
-			[{ role: "user", content: prompt }],
-			{ model: MISTRAL_LARGE, maxTokens: 1500, temperature: 1.0 },
-		);
-		const { name } = parsePersonaMarkdown(raw);
-		if (name) usedNames.push(name);
-		rawResults.push({ personaType, raw });
-	}
+	// Generate all 3 personas in parallel for speed
+	const rawResults = await Promise.all(
+		types.map(async (personaType) => {
+			const prompt = buildVirtualPersonaPrompt(quizSummary, personaType, [], lang, personaGender);
+			const raw = await chatComplete(
+				apiKey,
+				[{ role: "user", content: prompt }],
+				{ maxTokens: 1500, temperature: 1.0 },
+			);
+			return { personaType, raw };
+		}),
+	);
 
 	// Save to DB in parallel
 	const results = await Promise.all(
