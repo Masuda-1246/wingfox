@@ -41,5 +41,7 @@
 	"fox_search_started": "フォックス探索を開始しました！",
 	"fox_search_completed": "フォックス会話が完了しました！新しいマッチが追加されました。",
 	"fox_search_failed": "フォックス会話に失敗しました。もう一度お試しください。",
-	"fox_search_error": "フォックス検索の開始に失敗しました。"
+	"fox_search_error": "フォックス検索の開始に失敗しました。",
+	"no_trait_data": "データなし",
+	"topic_pending": "フォックス会話完了後に表示されます"
 }

@@ -41,5 +41,7 @@
 	"fox_search_started": "Fox exploration started!",
 	"fox_search_completed": "Fox conversation completed! New match added.",
 	"fox_search_failed": "Fox conversation failed. Please try again.",
-	"fox_search_error": "Failed to start fox search."
+	"fox_search_error": "Failed to start fox search.",
+	"no_trait_data": "No data",
+	"topic_pending": "Available after fox conversation completes"
 }

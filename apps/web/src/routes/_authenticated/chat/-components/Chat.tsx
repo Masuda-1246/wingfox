@@ -50,14 +50,49 @@ interface ChatSession {
 	suggestion?: Message;
 }
 
-const labelData = [
-	{ label: "Humor", x: 50, y: 5 },
-	{ label: "Logic", x: 92, y: 30 },
-	{ label: "Empathy", x: 92, y: 70 },
-	{ label: "Vibe", x: 50, y: 95 },
-	{ label: "Wit", x: 8, y: 70 },
-	{ label: "Calm", x: 8, y: 30 },
+interface ScoreDetails {
+	personality?: number;
+	interests?: number;
+	values?: number;
+	communication?: number;
+	lifestyle?: number;
+	conversation_analysis?: {
+		topic_distribution?: { topic: string; percentage: number }[];
+	};
+}
+
+const TRAIT_AXES = [
+	{ key: "personality" as const, label: "Personality" },
+	{ key: "interests" as const, label: "Interests" },
+	{ key: "values" as const, label: "Values" },
+	{ key: "communication" as const, label: "Communication" },
+	{ key: "lifestyle" as const, label: "Lifestyle" },
 ];
+
+const TOPIC_COLORS = [
+	"bg-secondary",
+	"bg-foreground",
+	"bg-muted-foreground",
+	"bg-muted",
+	"bg-secondary/60",
+	"bg-foreground/60",
+];
+
+function getTraitScores(details: unknown): number[] | null {
+	const d = details as ScoreDetails | null;
+	if (!d) return null;
+	const keys = TRAIT_AXES.map((a) => a.key);
+	const scores = keys.map((k) => d[k]);
+	if (scores.every((s) => s == null)) return null;
+	return scores.map((s) => s ?? 0);
+}
+
+function getTopicDistribution(details: unknown): { topic: string; percentage: number }[] | null {
+	const d = details as ScoreDetails | null;
+	const dist = d?.conversation_analysis?.topic_distribution;
+	if (!dist || !Array.isArray(dist) || dist.length === 0) return null;
+	return dist;
+}
 
 export function Chat() {
 	const { t } = useTranslation("chat");
@@ -71,7 +106,7 @@ export function Chat() {
 		partnerFoxVariant: 0,
 		partnerImage: m.partner?.avatar_url ?? "https://picsum.photos/200/300?random=0",
 		lastMessage: "",
-		compatibilityScore: m.final_score ?? 0,
+		compatibilityScore: m.final_score ?? m.profile_score ?? 0,
 		status: "active" as const,
 		messages: [],
 	}));
@@ -91,13 +126,19 @@ export function Chat() {
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
-	const foxConversationId = detail?.fox_conversation_id ?? null;
+	// Use activeFoxConvId (available immediately after search start) or fall back to match detail
+	const foxConversationId = activeFoxConvId ?? detail?.fox_conversation_id ?? null;
+	const isFoxConvLive = Boolean(activeFoxConvId);
 	const partnerId = detail?.partner_id ?? null;
 	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
 
 	const directMessages = useDirectChatMessages(directChatRoomId);
 	const sendDirect = useSendDirectChatMessage(directChatRoomId);
-	const foxMessages = useFoxConversationMessages(foxConversationId);
+	const foxMessages = useFoxConversationMessages(
+		foxConversationId,
+		undefined,
+		{ refetchInterval: isFoxConvLive ? 3000 : false },
+	);
 
 	// Resolve messages for active session from the right source
 	const activeMessages: Message[] = (() => {
@@ -137,7 +178,7 @@ export function Chat() {
 				partnerImage: "https://picsum.photos/200/300?random=0",
 				partnerFoxVariant: 0,
 				lastMessage: "",
-				compatibilityScore: detail?.final_score ?? 0,
+				compatibilityScore: detail?.final_score ?? detail?.profile_score ?? 0,
 				status: "active",
 				messages: activeMessages,
 			} as ChatSession;
@@ -172,6 +213,9 @@ export function Chat() {
 		try {
 			const result = await startFoxSearch.mutateAsync();
 			setActiveFoxConvId(result.fox_conversation_id);
+			// Auto-select the new match and refresh sidebar
+			setActiveSessionId(result.match_id);
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 			toast.success(t("fox_search_started"));
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : "";
@@ -228,6 +272,9 @@ export function Chat() {
 			toast.error(t("unmatch_error"));
 		}
 	};
+
+	const traitScores = getTraitScores(detail?.score_details);
+	const topicDist = getTopicDistribution(detail?.score_details);
 
 	return (
 		<div className="flex h-[calc(100vh-4rem)] w-full bg-background text-foreground overflow-hidden p-4 md:p-6">
@@ -337,6 +384,11 @@ export function Chat() {
 											<h3 className="font-bold text-sm truncate uppercase">
 												{session.partnerName}
 											</h3>
+											{session.compatibilityScore > 0 && (
+												<span className="ml-2 shrink-0 text-[10px] font-black text-secondary bg-secondary/10 px-2 py-0.5 rounded-full border border-secondary/20">
+													{session.compatibilityScore}%
+												</span>
+											)}
 										</div>
 										<p className="text-xs text-muted-foreground truncate line-clamp-1">
 											{session.lastMessage}
@@ -536,130 +588,86 @@ export function Chat() {
 						</p>
 					</div>
 
+					{/* Trait Synergy - 5-axis radar chart from DB */}
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col shrink-0">
 						<div className="flex items-center justify-between mb-4">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
 								{t("trait_synergy")}
 							</span>
-							<div className="flex items-center gap-3">
-								<div className="flex items-center gap-1.5">
-									<div className="w-1.5 h-1.5 rounded-full bg-foreground" />
-									<span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">
-										{t("my")}
-									</span>
-								</div>
-								<div className="flex items-center gap-1.5">
-									<div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-									<span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">
-										{t("partner")}
-									</span>
-								</div>
-							</div>
 						</div>
-						<div className="relative w-full aspect-square flex items-center justify-center">
-							<svg
-								viewBox="0 0 100 100"
-								className="w-full h-full overflow-visible"
-								aria-hidden="true"
-							>
-								{[0.2, 0.4, 0.6, 0.8, 1.0].map((level) => (
-									<polygon
-										key={level}
-										points={[0, 60, 120, 180, 240, 300]
-											.map((deg) => {
-												const rad = (Math.PI / 180) * (deg - 90);
-												return `${50 + 40 * level * Math.cos(rad)},${50 + 40 * level * Math.sin(rad)}`;
-											})
-											.join(" ")}
-										className="fill-none stroke-border stroke-[0.5]"
-									/>
-								))}
-								{[0, 60, 120, 180, 240, 300].map((deg) => {
-									const rad = (Math.PI / 180) * (deg - 90);
-									return (
-										<line
-											key={deg}
-											x1="50"
-											y1="50"
-											x2={50 + 40 * Math.cos(rad)}
-											y2={50 + 40 * Math.sin(rad)}
-											className="stroke-border stroke-[0.5]"
-										/>
-									);
-								})}
-								<motion.polygon
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									points={[
-										{ val: 82 },
-										{ val: 40 },
-										{ val: 90 },
-										{ val: 60 },
-										{ val: 85 },
-										{ val: 45 },
-									]
-										.map((item, i) => {
-											const rad = (Math.PI / 180) * (i * 60 - 90);
-											const dist = (item.val / 100) * 40;
-											return `${50 + dist * Math.cos(rad)},${50 + dist * Math.sin(rad)}`;
-										})
-										.join(" ")}
-									className="fill-foreground/10 stroke-foreground/40 stroke-1"
-								/>
-								<motion.polygon
-									initial={{ opacity: 0, scale: 0.8 }}
-									animate={{ opacity: 1, scale: 1 }}
-									points={[
-										{ val: 92 },
-										{ val: 65 },
-										{ val: 78 },
-										{ val: 85 },
-										{ val: 70 },
-										{ val: 55 },
-									]
-										.map((item, i) => {
-											const rad = (Math.PI / 180) * (i * 60 - 90);
-											const dist = (item.val / 100) * 40;
-											return `${50 + dist * Math.cos(rad)},${50 + dist * Math.sin(rad)}`;
-										})
-										.join(" ")}
-									className="fill-secondary/20 stroke-secondary stroke-1"
-								/>
-								{labelData.map((l) => (
-									<text
-										key={l.label}
-										x={l.x}
-										y={l.y}
-										textAnchor="middle"
-										className="fill-muted-foreground font-black text-[5px] uppercase tracking-tighter"
-									>
-										{l.label}
-									</text>
-								))}
-							</svg>
-						</div>
-						<div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-1">
-							<div className="flex flex-col">
-								<span className="text-[8px] font-black text-muted-foreground uppercase">
-									{t("peak")}
-								</span>
-								<span className="text-xs font-black truncate">HUMOR</span>
+						{traitScores ? (() => {
+							const peakIdx = traitScores.indexOf(Math.max(...traitScores));
+							const avg = Math.round(traitScores.reduce((a, b) => a + b, 0) / traitScores.length);
+							const angles = TRAIT_AXES.map((_, i) => (360 / 5) * i - 90);
+							const labelPositions = angles.map((deg) => {
+								const rad = (Math.PI / 180) * deg;
+								return { x: 50 + 48 * Math.cos(rad), y: 50 + 48 * Math.sin(rad) };
+							});
+							return (
+								<>
+									<div className="relative w-full aspect-square flex items-center justify-center">
+										<svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" aria-hidden="true">
+											{[0.2, 0.4, 0.6, 0.8, 1.0].map((level) => (
+												<polygon
+													key={level}
+													points={angles
+														.map((deg) => {
+															const rad = (Math.PI / 180) * deg;
+															return `${50 + 40 * level * Math.cos(rad)},${50 + 40 * level * Math.sin(rad)}`;
+														})
+														.join(" ")}
+													className="fill-none stroke-border stroke-[0.5]"
+												/>
+											))}
+											{angles.map((deg) => {
+												const rad = (Math.PI / 180) * deg;
+												return (
+													<line key={deg} x1="50" y1="50" x2={50 + 40 * Math.cos(rad)} y2={50 + 40 * Math.sin(rad)} className="stroke-border stroke-[0.5]" />
+												);
+											})}
+											<motion.polygon
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												points={traitScores
+													.map((val, i) => {
+														const rad = (Math.PI / 180) * angles[i];
+														const dist = (val / 100) * 40;
+														return `${50 + dist * Math.cos(rad)},${50 + dist * Math.sin(rad)}`;
+													})
+													.join(" ")}
+												className="fill-secondary/20 stroke-secondary stroke-1"
+											/>
+											{labelPositions.map((pos, i) => (
+												<text key={TRAIT_AXES[i].key} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground font-black text-[4px] uppercase tracking-tighter">
+													{TRAIT_AXES[i].label}
+												</text>
+											))}
+										</svg>
+									</div>
+									<div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-1">
+										<div className="flex flex-col">
+											<span className="text-[8px] font-black text-muted-foreground uppercase">
+												{t("peak")}
+											</span>
+											<span className="text-xs font-black truncate">{TRAIT_AXES[peakIdx].label.toUpperCase()}</span>
+										</div>
+										<div className="flex flex-col items-end">
+											<span className="text-[8px] font-black text-muted-foreground uppercase">
+												{t("avg")}
+											</span>
+											<span className="text-xs font-black">{avg}%</span>
+										</div>
+									</div>
+								</>
+							);
+						})() : (
+							<div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+								{t("no_trait_data")}
 							</div>
-							<div className="flex flex-col items-center">
-								<span className="text-[8px] font-black text-secondary uppercase tracking-tighter">
-									{t("overlap")}
-								</span>
-								<span className="text-xs font-black">81.4%</span>
-							</div>
-							<div className="flex flex-col items-end">
-								<span className="text-[8px] font-black text-muted-foreground uppercase">
-									{t("avg")}
-								</span>
-								<span className="text-xs font-black">74.1%</span>
-							</div>
-						</div>
+						)}
 					</div>
 
+					{/* Topic Distribution from DB */}
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col shrink-0">
 						<div className="flex items-center justify-between mb-6">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
@@ -667,38 +675,27 @@ export function Chat() {
 							</span>
 							<PieChart className="w-3.5 h-3.5 text-secondary/60" />
 						</div>
-						<div className="flex flex-col gap-5">
-							{[
-								{
-									label: t("entertainment"),
-									pct: 45,
-									color: "bg-secondary",
-								},
-								{
-									label: t("lifestyle"),
-									pct: 30,
-									color: "bg-foreground",
-								},
-								{
-									label: t("ideology"),
-									pct: 15,
-									color: "bg-muted-foreground",
-								},
-								{ label: t("other"), pct: 10, color: "bg-muted" },
-							].map((topic) => (
-								<div key={topic.label} className="flex items-center gap-3">
-									<div
-										className={cn("w-1.5 h-1.5 rounded-full", topic.color)}
-									/>
-									<div className="flex-1 flex justify-between items-center">
-										<span className="text-[10px] font-black uppercase tracking-tight">
-											{topic.label}
-										</span>
-										<span className="text-[10px] font-black">{topic.pct}%</span>
+						{topicDist ? (
+							<div className="flex flex-col gap-5">
+								{topicDist.map((topic, i) => (
+									<div key={topic.topic} className="flex items-center gap-3">
+										<div
+											className={cn("w-1.5 h-1.5 rounded-full", TOPIC_COLORS[i % TOPIC_COLORS.length])}
+										/>
+										<div className="flex-1 flex justify-between items-center">
+											<span className="text-[10px] font-black uppercase tracking-tight">
+												{topic.topic}
+											</span>
+											<span className="text-[10px] font-black">{topic.percentage}%</span>
+										</div>
 									</div>
-								</div>
-							))}
-						</div>
+								))}
+							</div>
+						) : (
+							<div className="flex items-center justify-center py-4 text-xs text-muted-foreground text-center">
+								{t("topic_pending")}
+							</div>
+						)}
 					</div>
 				</div>
 			</div>

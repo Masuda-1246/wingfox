@@ -21,6 +21,18 @@ ${conversationLog}
   "score": 85,
   "excitement_level": 0.8,
   "common_topics": ["旅行", "映画"],
-  "mutual_interest": 0.9
-}`;
+  "mutual_interest": 0.9,
+  "topic_distribution": [
+    {"topic": "エンタメ", "percentage": 40},
+    {"topic": "ライフスタイル", "percentage": 30},
+    {"topic": "価値観", "percentage": 20},
+    {"topic": "その他", "percentage": 10}
+  ]
+}
+
+topic_distributionについて:
+- 会話で話題になったトピックの割合を分析してください
+- 各トピックにはtopic（名前）とpercentage（割合%）を含めてください
+- percentageの合計が100になるようにしてください
+- トピック数は2〜6個程度にしてください`;
 }
