@@ -78,5 +78,11 @@
 	"direct_chat_request_error": "チャットリクエストに失敗しました",
 	"fox_retry_button": "再試行",
 	"fox_retry_started": "Fox会話を再開しました",
-	"fox_retry_error": "再試行に失敗しました"
+	"fox_retry_error": "再試行に失敗しました",
+	"daily_match_title": "本日のマッチ結果!",
+	"daily_match_in_progress": "Fox同士がお話中...",
+	"daily_match_progress": "{{completed}}/{{total}} 完了",
+	"daily_match_view_details": "詳細を見る",
+	"daily_match_dismiss": "閉じる",
+	"daily_match_no_results": "本日の新しいマッチはありませんでした"
 }

@@ -11,6 +11,7 @@ import {
 } from "@/lib/hooks/usePartnerFoxChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
 import { useStartFoxSearch, useRetryFoxConversation, useMultipleFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
+import { DailyMatchBanner } from "./DailyMatchBanner";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -545,6 +546,13 @@ export function Chat() {
 							{t("active")}
 						</div>
 					</div>
+					{/* Daily Match Banner */}
+					<DailyMatchBanner
+						onMatchSelect={(matchId) => {
+							setActiveSessionId(matchId);
+							if (isMobile) setMobileView('chat');
+						}}
+					/>
 					{/* Fox Search Button & Progress */}
 					<div className="mb-3 shrink-0">
 						<button

@@ -15,6 +15,7 @@ import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useDailyMatchResults } from "@/lib/hooks/useDailyMatchResults";
 
 const CURRENT_USER_PLACEHOLDER = {
 	name: "User",
@@ -67,6 +68,8 @@ export function UpperHeader() {
 	const navigate = useNavigate();
 	const { user, signOut } = useAuth();
 	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
+	const { data: dailyResults } = useDailyMatchResults({ enabled: Boolean(user) });
+	const hasNewDailyMatch = dailyResults?.is_new ?? false;
 	const isAuthenticated = Boolean(user);
 
 	useEffect(() => {
@@ -111,9 +114,11 @@ export function UpperHeader() {
 									className="relative text-muted-foreground hover:text-foreground"
 								>
 									<Bell className="w-5 h-5" />
-									<span className="absolute top-2.5 right-2.5 flex h-2 w-2">
-										<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
-									</span>
+									{hasNewDailyMatch && (
+										<span className="absolute top-2.5 right-2.5 flex h-2 w-2">
+											<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
+										</span>
+									)}
 								</Button>
 							</div>
 

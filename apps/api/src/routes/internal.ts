@@ -4,6 +4,7 @@ import { getSupabaseClient } from "../db/client";
 import { jsonData, jsonError } from "../lib/response";
 import { executeMatching } from "../services/matching";
 import { runFoxConversation } from "../services/fox-conversation";
+import { runDailyBatch } from "../services/daily-batch";
 
 const internal = new Hono<Env>();
 
@@ -165,6 +166,112 @@ internal.post("/data-integrity/check", async (c) => {
 	}
 
 	return jsonData(c, { message: "Integrity check completed", fixes_applied: fixes.length, fixes });
+});
+
+// ─── Daily Batch Endpoints ─────────────────────────────────────────────
+
+/** POST /api/internal/daily-batch/execute — 手動バッチ実行 */
+internal.post("/daily-batch/execute", async (c) => {
+	const supabase = getSupabaseClient(c.env);
+	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey) return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
+	const body = (await c.req.json().catch(() => ({}))) as { batch_date?: string };
+	try {
+		const result = await runDailyBatch(supabase, apiKey, body.batch_date);
+		return jsonData(c, {
+			message: "Daily batch executed",
+			batch_id: result.batchId,
+			total_matches: result.totalMatches,
+			conversations_completed: result.conversationsCompleted,
+			conversations_failed: result.conversationsFailed,
+		});
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : "Unknown error";
+		if (msg.includes("already exists")) {
+			return jsonError(c, "CONFLICT", msg);
+		}
+		return jsonError(c, "INTERNAL_ERROR", msg);
+	}
+});
+
+/** GET /api/internal/daily-batch/status — バッチ状態確認 */
+internal.get("/daily-batch/status", async (c) => {
+	const supabase = getSupabaseClient(c.env);
+	const date = c.req.query("date") ?? new Date().toISOString().split("T")[0];
+	const { data: batch } = await supabase
+		.from("daily_match_batches")
+		.select("*")
+		.eq("batch_date", date)
+		.maybeSingle();
+	if (!batch) return jsonError(c, "NOT_FOUND", `No batch found for date: ${date}`);
+	return jsonData(c, batch);
+});
+
+/** POST /api/internal/daily-batch/retry — 失敗会話のリトライ */
+internal.post("/daily-batch/retry", async (c) => {
+	const supabase = getSupabaseClient(c.env);
+	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey) return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
+	const body = (await c.req.json().catch(() => ({}))) as { batch_date?: string };
+	const date = body.batch_date ?? new Date().toISOString().split("T")[0];
+
+	const { data: batch } = await supabase
+		.from("daily_match_batches")
+		.select("id")
+		.eq("batch_date", date)
+		.maybeSingle();
+	if (!batch) return jsonError(c, "NOT_FOUND", `No batch found for date: ${date}`);
+
+	// バッチに属する失敗した fox_conversations を取得
+	const { data: failedMatches } = await supabase
+		.from("matches")
+		.select("id")
+		.eq("batch_id", batch.id)
+		.in("status", ["fox_conversation_failed"]);
+
+	if (!failedMatches?.length) {
+		return jsonData(c, { message: "No failed conversations to retry", count: 0 });
+	}
+
+	const matchIds = failedMatches.map((m) => m.id);
+	const { data: failedConvs } = await supabase
+		.from("fox_conversations")
+		.select("id, match_id")
+		.in("match_id", matchIds)
+		.eq("status", "failed");
+
+	let retryCount = 0;
+	for (const conv of failedConvs ?? []) {
+		await supabase.from("fox_conversation_messages").delete().eq("conversation_id", conv.id);
+		await supabase
+			.from("fox_conversations")
+			.update({ status: "pending", current_round: 0, started_at: null, completed_at: null, conversation_analysis: null })
+			.eq("id", conv.id);
+		await supabase
+			.from("matches")
+			.update({ status: "fox_conversation_in_progress", updated_at: new Date().toISOString() })
+			.eq("id", conv.match_id);
+		try {
+			await runFoxConversation(supabase, apiKey, conv.id);
+			retryCount++;
+		} catch (e) {
+			console.error(`[daily-batch/retry] Failed to retry conversation ${conv.id}:`, e);
+		}
+	}
+
+	// バッチ統計を更新
+	const { data: updatedMatches } = await supabase
+		.from("matches")
+		.select("status")
+		.eq("batch_id", batch.id);
+	const completed = (updatedMatches ?? []).filter((m) => m.status === "fox_conversation_completed").length;
+	const failed = (updatedMatches ?? []).filter((m) => m.status === "fox_conversation_failed").length;
+	await supabase
+		.from("daily_match_batches")
+		.update({ conversations_completed: completed, conversations_failed: failed })
+		.eq("id", batch.id);
+
+	return jsonData(c, { message: "Retry completed", retried: retryCount });
 });
 
 export default internal;
