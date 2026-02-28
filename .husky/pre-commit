@@ -1,8 +1,6 @@
 #!/bin/sh
-# コミット前に format と build を実行（マージブロックはCIで実施）
+# コミット前に format → ステージ → build & check（CI と揃える）
 
-pnpm format
-pnpm check
+pnpm exec turbo run format --no-daemon
 git add -u
-pnpm build
-pnpm exec turbo run format build check --no-daemon
+pnpm exec turbo run build check --no-daemon
