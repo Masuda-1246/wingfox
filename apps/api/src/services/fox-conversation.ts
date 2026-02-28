@@ -87,13 +87,17 @@ export async function runFoxConversation(
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
 	const scorePrompt = buildConversationScorePrompt(logText);
-	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], { maxTokens: 300 });
+	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
+		maxTokens: 300,
+		responseFormat: { type: "json_object" },
+	});
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
-	const jsonMatch = scoreRaw.match(/\{[\s\S]*\}/);
-	if (jsonMatch) {
+	// JSON mode により scoreRaw は有効な JSON オブジェクト文字列になっている
+	const trimmed = scoreRaw?.trim();
+	if (trimmed) {
 		try {
-			const parsed = JSON.parse(jsonMatch[0]) as {
+			const parsed = JSON.parse(trimmed) as {
 				score?: number;
 				excitement_level?: number;
 				common_topics?: string[];
@@ -108,7 +112,7 @@ export async function runFoxConversation(
 				topic_distribution: parsed.topic_distribution,
 			};
 		} catch (_) {
-			// ignore
+			// API が JSON を返すため通常は発生しないが、念のため
 		}
 	}
 	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
