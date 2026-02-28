@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface OnboardingErrorBoundaryProps {
   children: ReactNode;

@@ -20,7 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
 import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
 import type { InteractionStyleWithDna } from "@/lib/types";
-import { ChevronRight, Loader2, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronRight, Loader2, Pause, Play, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
