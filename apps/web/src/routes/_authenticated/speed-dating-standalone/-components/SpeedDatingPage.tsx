@@ -15,9 +15,9 @@ import { toast } from "sonner";
 function stripMarkdown(text: string): string {
 	return text
 		.replace(/\*{1,3}(.+?)\*{1,3}/g, "$1") // **bold**, *italic*, ***both***
-		.replace(/_{1,3}(.+?)_{1,3}/g, "$1")    // __bold__, _italic_
-		.replace(/^#{1,6}\s+/gm, "")             // ## headers
-		.replace(/`([^`]+)`/g, "$1");             // `code`
+		.replace(/_{1,3}(.+?)_{1,3}/g, "$1") // __bold__, _italic_
+		.replace(/^#{1,6}\s+/gm, "") // ## headers
+		.replace(/`([^`]+)`/g, "$1"); // `code`
 }
 
 function formatTime(ms: number): string {
@@ -383,7 +383,9 @@ export function SpeedDatingPage() {
 													: "bg-primary text-primary-foreground"
 											}`}
 										>
-											{entry.source === "ai" ? stripMarkdown(entry.message) : entry.message}
+											{entry.source === "ai"
+												? stripMarkdown(entry.message)
+												: entry.message}
 										</div>
 									</m.div>
 								))}
