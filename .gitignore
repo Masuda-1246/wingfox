@@ -152,3 +152,6 @@ dist
 
 # mise local (secrets)
 .mise.local.toml
+
+# devision app
+devision-app-*
