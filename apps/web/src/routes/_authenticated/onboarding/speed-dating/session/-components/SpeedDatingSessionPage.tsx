@@ -3,10 +3,20 @@ import {
 	useSpeedDatingSignedUrl,
 	useSpeedDatingSessions,
 } from "@/lib/hooks/useSpeedDating";
+import { useGenerateProfile } from "@/lib/hooks/useProfile";
+import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
+import { ApiError } from "@/lib/api";
 import { useSpeedDate, type TranscriptEntry } from "@/hooks/use-speed-date";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { CheckCircle2, Loader2, MicOff } from "lucide-react";
+import {
+	CheckCircle2,
+	Loader2,
+	MicOff,
+	RefreshCw,
+	Sparkles,
+	XCircle,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -16,6 +26,8 @@ import {
 	saveSpeedDatingSession,
 	type PersistedPersona,
 } from "@/lib/speed-dating-session-storage";
+
+type GenerationPhase = "profile" | "wingfox" | "complete" | "error";
 
 const DATE_BACKGROUNDS = [
 	"https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1920&q=80&auto=format",
@@ -35,6 +47,8 @@ export function SpeedDatingSessionPage() {
 	const navigate = useNavigate();
 	const createSession = useSpeedDatingSessions();
 	const getSignedUrl = useSpeedDatingSignedUrl();
+	const generateProfile = useGenerateProfile();
+	const generateWingfox = useGenerateWingfoxPersona();
 	const {
 		status: voiceStatus,
 		isSpeaking,
@@ -49,8 +63,10 @@ export function SpeedDatingSessionPage() {
 	const [personas, setPersonas] = useState<PersistedPersona[]>([]);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [personaIndex, setPersonaIndex] = useState(0);
-	const [phase, setPhase] = useState<"loading" | "connecting" | "chat" | "next">("loading");
+	const [phase, setPhase] = useState<"loading" | "connecting" | "chat" | "next" | "finalizing">("loading");
 	const [loadingMessage, setLoadingMessage] = useState("");
+	const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("profile");
+	const [generationError, setGenerationError] = useState<string | null>(null);
 	const completeSession = useCompleteSpeedDatingSession(sessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
 	const handledDoneRef = useRef(false);
@@ -110,7 +126,26 @@ export function SpeedDatingSessionPage() {
 		};
 	}, [phase, sessionId, personaIndex, personas]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// When voice ends: complete session, then next or go to complete page
+	const runGeneration = useCallback(async () => {
+		setGenerationPhase("profile");
+		setGenerationError(null);
+		try {
+			await generateProfile.mutateAsync();
+			setGenerationPhase("wingfox");
+			await generateWingfox.mutateAsync();
+			setGenerationPhase("complete");
+			// Brief "All done!" pause before navigating
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			navigate({ to: "/onboarding/review" });
+		} catch (e) {
+			console.error("[SpeedDatingSession] Generation failed:", e);
+			const err = e as ApiError;
+			setGenerationError(err?.message ?? t("speed_dating.generation_failed_desc"));
+			setGenerationPhase("error");
+		}
+	}, [generateProfile, generateWingfox, navigate, t]);
+
+	// When voice ends: complete session, then next or start generation
 	useEffect(() => {
 		if (voiceStatus !== "done") {
 			handledDoneRef.current = false;
@@ -153,9 +188,11 @@ export function SpeedDatingSessionPage() {
 						overrides: signedUrlData.overrides,
 					});
 				} else {
+					// Last date done — persist transcript, then start generation
 					await persistPromise;
 					clearSpeedDatingSession();
-					navigate({ to: "/onboarding/speed-dating-complete" });
+					setPhase("finalizing");
+					void runGeneration();
 				}
 			} catch (e) {
 				console.error(e);
@@ -172,8 +209,115 @@ export function SpeedDatingSessionPage() {
 	const isLowTime = remainingMs < 30_000;
 	const isVoiceActive = voiceStatus === "talking" || voiceStatus === "connecting";
 
+	const GENERATION_STEPS = [
+		{ key: "profile" as const, label: t("speed_dating.step_profile") },
+		{ key: "wingfox" as const, label: t("speed_dating.step_wingfox") },
+	];
+
 	if (personas.length === 0) {
 		return null; // redirecting
+	}
+
+	// Finalizing phase: generation progress
+	if (phase === "finalizing") {
+		return (
+			<div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-8">
+				{generationPhase !== "error" ? (
+					<>
+						<div className="relative w-24 h-24">
+							{generationPhase === "complete" ? (
+								<div className="absolute inset-0 flex items-center justify-center">
+									<CheckCircle2 className="w-16 h-16 text-green-500" />
+								</div>
+							) : (
+								<>
+									<div className="absolute inset-0 border-[6px] border-secondary/10 border-t-secondary rounded-full animate-spin" />
+									<div className="absolute inset-0 flex items-center justify-center">
+										<Sparkles className="w-10 h-10 text-secondary" />
+									</div>
+								</>
+							)}
+						</div>
+
+						<div className="text-center space-y-2">
+							<h3 className="text-xl font-bold">
+								{generationPhase === "profile" && t("speed_dating.generating_profile")}
+								{generationPhase === "wingfox" && t("speed_dating.generating_wingfox")}
+								{generationPhase === "complete" && t("speed_dating.generation_complete")}
+							</h3>
+						</div>
+
+						{/* 2-step progress indicator */}
+						<div className="flex items-center gap-3">
+							{GENERATION_STEPS.map((s, i) => {
+								const stepOrder = ["profile", "wingfox", "complete"] as const;
+								const currentIdx = stepOrder.indexOf(generationPhase);
+								const stepIdx = i;
+								const isDone = currentIdx > stepIdx;
+								const isActive = currentIdx === stepIdx;
+
+								return (
+									<div key={s.key} className="flex items-center gap-3">
+										{i > 0 && (
+											<div className={`w-8 h-0.5 ${isDone ? "bg-green-500" : "bg-muted"}`} />
+										)}
+										<div className="flex items-center gap-2">
+											<div
+												className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+													isDone
+														? "bg-green-500 text-white"
+														: isActive
+															? "bg-secondary text-white"
+															: "bg-muted text-muted-foreground"
+												}`}
+											>
+												{isDone ? (
+													<CheckCircle2 className="w-4 h-4" />
+												) : isActive ? (
+													<Loader2 className="w-4 h-4 animate-spin" />
+												) : (
+													i + 1
+												)}
+											</div>
+											<span className={`text-sm font-medium ${isDone ? "text-green-600" : isActive ? "text-foreground" : "text-muted-foreground"}`}>
+												{s.label}
+											</span>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</>
+				) : (
+					<>
+						<XCircle className="w-16 h-16 text-red-500" />
+						<div className="text-center space-y-2">
+							<h3 className="text-xl font-bold">{t("speed_dating.generation_failed_title")}</h3>
+							<p className="text-sm text-muted-foreground max-w-md">
+								{generationError ?? t("speed_dating.generation_failed_desc")}
+							</p>
+						</div>
+						<div className="flex gap-4">
+							<button
+								type="button"
+								onClick={() => void runGeneration()}
+								className="px-6 py-3 bg-foreground text-background rounded-full font-bold text-sm hover:scale-105 transition-all flex items-center gap-2"
+							>
+								<RefreshCw className="w-4 h-4" />
+								{t("speed_dating.retry_generation")}
+							</button>
+							<button
+								type="button"
+								onClick={() => navigate({ to: "/onboarding/review" })}
+								className="px-6 py-3 border border-border rounded-full font-bold text-sm hover:bg-muted transition-all"
+							>
+								{t("speed_dating.skip_to_review")}
+							</button>
+						</div>
+					</>
+				)}
+			</div>
+		);
 	}
 
 	// Full-screen overlay for connecting or "next" phase

@@ -3,7 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete } from "../services/mistral";
+import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildVirtualPersonaPrompt } from "../prompts/virtual-persona";
 import { buildSpeedDatingSystemPrompt } from "../prompts/speed-dating";
 import { z } from "zod";
@@ -164,7 +164,7 @@ speedDating.post("/personas", requireAuth, async (c) => {
 		const raw = await chatComplete(
 			apiKey,
 			[{ role: "user", content: prompt }],
-			{ maxTokens: 1500, temperature: 1.0 },
+			{ model: MISTRAL_LARGE, maxTokens: 1500, temperature: 1.0 },
 		);
 		const { name } = parsePersonaMarkdown(raw);
 		if (name) usedNames.push(name);
@@ -305,15 +305,27 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	if (!persona) return jsonError(c, "NOT_FOUND", "Persona not found");
 	const lang = detectLangFromDocument(persona.compiled_document);
 	const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document, lang);
-	const firstMessage = lang === "en"
-		? `Hi there! I'm ${persona.name}. Nice to meet you! Tell me a bit about yourself!`
-		: `はじめまして！${persona.name}です。今日はよろしくお願いします。あなたのことを教えてください！`;
 	const gender = detectGender(persona.compiled_document);
 	const voiceId = pickVoiceId(
 		gender,
 		persona.persona_type,
 		stableIndexFromString(persona.name || session.id),
 	);
+
+	// Generate first message + fetch signed URL in parallel
+	const firstMessagePromise = (async () => {
+		const apiKey = c.env.MISTRAL_API_KEY;
+		if (!apiKey) return null;
+		const fmPrompt = lang === "en"
+			? `You are ${persona.name}. You just sat down for a speed date. Based on this persona document, write a SHORT, fun, natural opening line (1-2 sentences max). Don't just say "nice to meet you" — reference something from your personality, mood, or a recent experience to make it interesting. Be casual and warm. Speak as if you're actually talking out loud.\n\nPersona:\n${persona.compiled_document}\n\nWrite ONLY the opening line, nothing else.`
+			: `あなたは${persona.name}です。スピードデートに来たばかりです。以下のペルソナ情報をもとに、短くて面白い第一声を書いてください（1〜2文）。ただの「はじめまして、よろしく」ではなく、自分の性格・今の気分・最近の出来事などに触れて個性的に。実際に声に出して話すようなカジュアルなトーンで。\n\nペルソナ:\n${persona.compiled_document}\n\n第一声だけを出力してください。`;
+		try {
+			return await chatComplete(apiKey, [{ role: "user", content: fmPrompt }], { maxTokens: 100 });
+		} catch {
+			return null;
+		}
+	})();
+
 	const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 8_000);
@@ -332,6 +344,12 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	} finally {
 		clearTimeout(timeout);
 	}
+
+	const generatedFirstMessage = await firstMessagePromise;
+	const fallback = lang === "en"
+		? `Hi! I'm ${persona.name}. Nice to meet you!`
+		: `はじめまして！${persona.name}です。よろしくね！`;
+	const firstMessage = generatedFirstMessage?.trim() || fallback;
 	const elMs = Date.now() - elStartedAt;
 	if (!elRes.ok) {
 		const errText = await elRes.text();

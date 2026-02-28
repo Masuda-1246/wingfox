@@ -3,7 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete } from "../services/mistral";
+import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingfox-generation";
 import { z } from "zod";
 
@@ -69,7 +69,7 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 	for (const sectionId of WINGFOX_EDITABLE_SECTIONS) {
 		const title = sectionId;
 		const prompt = buildWingfoxSectionPrompt(sectionId, title, profileJson, conversationExcerpts || "（なし）");
-		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { maxTokens: 500 });
+		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { model: MISTRAL_LARGE, maxTokens: 500 });
 		sections.push({ section_id: sectionId, content: content || `（${sectionId}）` });
 	}
 	sections.push({

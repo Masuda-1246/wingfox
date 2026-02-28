@@ -4,7 +4,7 @@ import type { Database } from "../db/types";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete } from "../services/mistral";
+import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildProfileGenerationPrompt } from "../prompts/profile-generation";
 import { executeMatching } from "../services/matching";
 import { z } from "zod";
@@ -61,6 +61,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 	const quizText = JSON.stringify(answers ?? [], null, 2);
 	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs, lang);
 	const raw = await chatComplete(apiKey, [{ role: "user", content: prompt }], {
+		model: MISTRAL_LARGE,
 		maxTokens: 1500,
 		responseFormat: { type: "json_object" },
 	});
