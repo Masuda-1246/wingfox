@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpeedDatingRouteRouteImport } from './routes/speed-dating/route'
 import { Route as IndexRouteRouteImport } from './routes/index/route'
 
+const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
+  id: '/speed-dating',
+  path: '/speed-dating',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRouteRoute = IndexRouteRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +25,39 @@ const IndexRouteRoute = IndexRouteRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
+  '/speed-dating': typeof SpeedDatingRouteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
+  '/speed-dating': typeof SpeedDatingRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRouteRoute
+  '/speed-dating': typeof SpeedDatingRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/speed-dating'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/speed-dating'
+  id: '__root__' | '/' | '/speed-dating'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRouteRoute: typeof IndexRouteRoute
+  SpeedDatingRouteRoute: typeof SpeedDatingRouteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/speed-dating': {
+      id: '/speed-dating'
+      path: '/speed-dating'
+      fullPath: '/speed-dating'
+      preLoaderRoute: typeof SpeedDatingRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRouteRoute: IndexRouteRoute,
+  SpeedDatingRouteRoute: SpeedDatingRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
