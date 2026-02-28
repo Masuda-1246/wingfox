@@ -1,20 +1,15 @@
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { OnboardingStepLabel } from "@/components/onboarding/OnboardingContainer";
 import {
 	useQuizQuestions,
+	useQuizAnswers,
 	useSubmitQuizAnswers,
 	type QuizQuestion,
 } from "@/lib/hooks/useQuiz";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -41,9 +36,11 @@ export function OnboardingQuiz() {
 	const { t } = useTranslation("onboarding");
 	const navigate = useNavigate();
 	const { data: questions, isLoading } = useQuizQuestions();
+	const { data: quizAnswersData } = useQuizAnswers();
 	const submit = useSubmitQuizAnswers();
 	const [step, setStep] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, string[]>>({});
+	const hasInitializedAnswers = useRef(false);
 
 	const sortedQuestions = useMemo(
 		() =>
@@ -52,6 +49,19 @@ export function OnboardingQuiz() {
 			),
 		[questions],
 	);
+
+	// DBに既存の回答がある場合やセクションに戻ったときに表示
+	useEffect(() => {
+		if (hasInitializedAnswers.current || !sortedQuestions.length) return;
+		if (quizAnswersData === undefined) return; // まだ取得中
+		const data = Array.isArray(quizAnswersData) ? quizAnswersData : [];
+		const initial: Record<string, string[]> = {};
+		for (const row of data) {
+			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+		}
+		setAnswers((prev) => (Object.keys(prev).length > 0 ? prev : initial));
+		hasInitializedAnswers.current = true;
+	}, [quizAnswersData, sortedQuestions.length]);
 
 	const current = sortedQuestions[step];
 	const options = current
@@ -62,6 +72,7 @@ export function OnboardingQuiz() {
 			)
 		: [];
 	const currentSelected = current ? answers[current.id] ?? [] : [];
+	const hasCurrentSelection = currentSelected.length > 0;
 	const progress = sortedQuestions.length > 0 ? (step + 1) / sortedQuestions.length : 0;
 
 	const handleSelect = useCallback(
@@ -115,27 +126,38 @@ export function OnboardingQuiz() {
 		);
 	}
 
-	return (
-		<div className="p-4 md:p-6 w-full max-w-2xl mx-auto space-y-6 pb-20">
+		return (
+		<div className="space-y-6">
 			<div className="w-full h-2 rounded-full bg-muted overflow-hidden">
 				<div
-					className="h-full bg-primary transition-all duration-300"
+					className="h-full bg-secondary transition-all duration-300"
 					style={{ width: `${progress * 100}%` }}
+					role="progressbar"
+					aria-valuenow={Math.round(progress * 100)}
+					aria-valuemin={0}
+					aria-valuemax={100}
 				/>
 			</div>
-			<Card>
-				<CardHeader>
-					<CardTitle>{t("quiz.title")}</CardTitle>
-					<CardDescription>{t("quiz.description")}</CardDescription>
-					<p className="text-muted-foreground text-sm pt-2">
-						{step + 1} / {sortedQuestions.length}
-					</p>
-				</CardHeader>
-				<CardContent className="space-y-6">
+
+			<div className="rounded-2xl border border-border bg-card p-8 md:p-10 shadow-sm">
+				<div className="space-y-6">
+					<div className="space-y-1">
+						<OnboardingStepLabel step={2} total={4} />
+						<p className="text-muted-foreground text-sm">
+							{step + 1} / {sortedQuestions.length}
+						</p>
+						<h2 className="text-2xl font-bold tracking-tight">
+							{t("quiz.title")}
+						</h2>
+						<p className="text-sm text-muted-foreground">
+							{t("quiz.description")}
+						</p>
+					</div>
+
 					{current && (
 						<>
 							<div>
-								<span className="text-xs font-medium text-muted-foreground">
+								<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
 									{t(`quiz.categories.${current.category}`)}
 								</span>
 								<h3 className="text-lg font-semibold mt-1">
@@ -158,15 +180,24 @@ export function OnboardingQuiz() {
 											type="button"
 											onClick={() => handleSelect(current, opt.value)}
 											className={cn(
-												"rounded-lg border-2 px-4 py-3 text-left text-sm font-medium transition-colors",
+												"rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-all flex items-center gap-3",
 												isSelected
-													? "border-primary bg-primary/10 text-primary"
-													: "border-border bg-card hover:bg-accent/50",
+													? "border-secondary bg-secondary/10 text-secondary"
+													: "border-border bg-background hover:bg-muted/50",
 											)}
 										>
 											{current.allow_multiple && (
-												<span className="mr-2">
-													{isSelected ? "☑" : "☐"}
+												<span
+													className={cn(
+														"flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2",
+														isSelected
+															? "border-secondary bg-secondary text-secondary-foreground"
+															: "border-muted-foreground/30",
+													)}
+												>
+													{isSelected ? (
+														<Check className="h-3 w-3" />
+													) : null}
 												</span>
 											)}
 											{opt.label}
@@ -177,18 +208,25 @@ export function OnboardingQuiz() {
 						</>
 					)}
 
-					<div className="flex items-center justify-between pt-4">
+					<div className="flex items-center justify-between pt-4 border-t border-border">
 						<Button
 							variant="outline"
 							size="sm"
 							onClick={handlePrev}
 							disabled={step === 0}
+							className="rounded-full gap-1"
 						>
 							<ChevronLeft className="size-4" />
 							{t("quiz.prev")}
 						</Button>
 						{step < sortedQuestions.length - 1 ? (
-							<Button size="sm" onClick={handleNext}>
+							<Button
+								size="sm"
+								onClick={handleNext}
+								disabled={!hasCurrentSelection}
+								variant="secondary"
+								className="rounded-full gap-1"
+							>
 								{t("quiz.next")}
 								<ChevronRight className="size-4" />
 							</Button>
@@ -196,7 +234,9 @@ export function OnboardingQuiz() {
 							<Button
 								size="sm"
 								onClick={handleSubmit}
-								disabled={submit.isPending}
+								disabled={submit.isPending || !hasCurrentSelection}
+								variant="secondary"
+								className="rounded-full gap-2"
 							>
 								{submit.isPending ? (
 									<Loader2 className="size-4 animate-spin" />
@@ -209,8 +249,8 @@ export function OnboardingQuiz() {
 							</Button>
 						)}
 					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -1,6 +1,12 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatDateTime } from "@/lib/date";
 import {
+	useQuizQuestions,
+	useQuizAnswers,
+	useSubmitQuizAnswers,
+	type QuizQuestion,
+} from "@/lib/hooks/useQuiz";
+import {
 	usePersonasList,
 	usePersonaSections,
 	useUpdatePersonaSection,
@@ -9,9 +15,8 @@ import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
-	ArrowRight,
+	ClipboardList,
 	Edit2,
-	Fingerprint,
 	Loader2,
 	MessageSquare,
 	RefreshCw,
@@ -21,9 +26,28 @@ import {
 	User,
 	Zap,
 } from "lucide-react";
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+
+type QuizOptionItem = { value: string; label: string };
+
+function normalizeQuizOptions(
+	options: string[] | Record<string, unknown>,
+): QuizOptionItem[] {
+	if (Array.isArray(options)) {
+		return options.map((o) =>
+			typeof o === "string"
+				? { value: o, label: o }
+				: {
+						value: (o as QuizOptionItem).value,
+						label: (o as QuizOptionItem).label,
+					},
+		);
+	}
+	const arr = options as unknown as QuizOptionItem[] | undefined;
+	return Array.isArray(arr) ? arr : [];
+}
 
 const Button = forwardRef<
 	HTMLButtonElement,
@@ -122,12 +146,37 @@ function Badge({
 }
 
 export function PersonasMe() {
-	const { t } = useTranslation("personas");
+	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
 	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
 	const { data: sections } = usePersonaSections(myPersona?.id);
 	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
+	const { data: quizQuestions } = useQuizQuestions();
+	const { data: quizAnswersData, isLoading: quizAnswersLoading } = useQuizAnswers();
+	const submitQuiz = useSubmitQuizAnswers();
+
+	const sortedQuestions = useMemo(
+		() =>
+			[...(quizQuestions ?? [])].sort(
+				(a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+			),
+		[quizQuestions],
+	);
+
+	const answersMap = useMemo(() => {
+		const arr = Array.isArray(quizAnswersData) ? quizAnswersData : [];
+		return arr.reduce<Record<string, string[]>>(
+			(acc, row) => {
+				acc[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+				return acc;
+			},
+			{},
+		);
+	}, [quizAnswersData]);
+
 	const [isEditing, setIsEditing] = useState(false);
+	const [quizEditMode, setQuizEditMode] = useState(false);
+	const [quizAnswers, setQuizAnswers] = useState<Record<string, string[]>>({});
 	const [formData, setFormData] = useState({
 		name: "",
 		profile_text: "",
@@ -142,6 +191,48 @@ export function PersonasMe() {
 			});
 		}
 	}, [myPersona, sections]);
+
+	useEffect(() => {
+		if (quizEditMode && sortedQuestions.length > 0) {
+			const initial: Record<string, string[]> = {};
+			for (const q of sortedQuestions) {
+				initial[q.id] = answersMap[q.id] ?? [];
+			}
+			setQuizAnswers(initial);
+		}
+	}, [quizEditMode, sortedQuestions, answersMap]);
+
+	const handleQuizSelect = useCallback((q: QuizQuestion, value: string) => {
+		setQuizAnswers((prev) => {
+			const next = { ...prev };
+			const arr = next[q.id] ?? [];
+			if (q.allow_multiple) {
+				if (arr.includes(value)) {
+					next[q.id] = arr.filter((v) => v !== value);
+				} else {
+					next[q.id] = [...arr, value];
+				}
+			} else {
+				next[q.id] = [value];
+			}
+			return next;
+		});
+	}, []);
+
+	const handleQuizSave = useCallback(async () => {
+		const payload = sortedQuestions.map((q) => ({
+			question_id: q.id,
+			selected: quizAnswers[q.id] ?? [],
+		}));
+		try {
+			await submitQuiz.mutateAsync(payload);
+			setQuizEditMode(false);
+			toast.success(t("me.quiz_results_updated_toast"));
+		} catch (e) {
+			console.error(e);
+			toast.error(t("me.quiz_results_update_error"));
+		}
+	}, [sortedQuestions, quizAnswers, submitQuiz, t]);
 
 	const handleSave = async () => {
 		if (!myPersona) return;
@@ -232,7 +323,7 @@ export function PersonasMe() {
 						transition={{ duration: 0.5 }}
 						className="relative"
 					>
-						<div className="w-40 h-40 rounded-full border-4 border-background overflow-hidden shadow-xl ring-1 ring-border">
+						<div className="w-40 h-40 overflow-hidden">
 							<FoxAvatar
 								seed={myPersona.id}
 								className="w-full h-full"
@@ -337,33 +428,142 @@ export function PersonasMe() {
 						</div>
 					</Card>
 
-					<Card className="col-span-1 p-6 flex flex-col justify-between">
-						<div className="flex items-center gap-2 mb-4">
-							<Fingerprint className="w-5 h-5 text-chart-1" />
-							<h3 className="font-bold text-lg">{t("me.status_title")}</h3>
+					<Card className="col-span-1 md:col-span-2 p-6">
+						<div className="flex items-center justify-between gap-2 mb-4">
+							<div className="flex items-center gap-2">
+								<ClipboardList className="w-5 h-5 text-secondary" />
+								<div>
+									<h3 className="font-bold text-lg">{t("me.quiz_results_title")}</h3>
+									<p className="text-xs text-muted-foreground mt-0.5">
+										{t("me.quiz_results_description")}
+									</p>
+								</div>
+							</div>
+							{!quizEditMode && Array.isArray(quizAnswersData) && quizAnswersData.length > 0 && (
+								<Button
+									variant="outline"
+									onClick={() => setQuizEditMode(true)}
+									className="text-xs h-9 px-3"
+								>
+									<Edit2 className="w-3 h-3 mr-1" />
+									{t("me.quiz_results_edit")}
+								</Button>
+							)}
 						</div>
 
-						<div className="space-y-4">
-							<div className="flex items-center justify-between p-3 rounded-lg bg-accent/20 border border-border">
-								<span className="text-sm font-medium">
-									{t("me.avg_compatibility")}
-								</span>
-								<span className="text-xl font-black text-secondary">84%</span>
+						{quizAnswersLoading ? (
+							<div className="flex items-center justify-center py-8 text-muted-foreground">
+								<Loader2 className="w-6 h-6 animate-spin" />
 							</div>
-
-							<div className="flex items-center justify-between p-3 rounded-lg bg-accent/20 border border-border">
-								<span className="text-sm font-medium">
-									{t("me.total_dialogues")}
-								</span>
-								<span className="text-xl font-black">128</span>
+						) : Array.isArray(quizAnswersData) && quizAnswersData.length === 0 ? (
+							<div className="space-y-3">
+								<p className="text-sm text-muted-foreground">
+									{t("me.quiz_results_empty")}
+								</p>
+								<Link to="/onboarding/quiz">
+									<Button variant="secondary" className="text-sm">
+										{t("me.quiz_button")}
+									</Button>
+								</Link>
 							</div>
-
-							<div className="pt-2">
-								<span className="text-sm text-muted-foreground flex items-center gap-1">
-									{t("me.view_analysis")} <ArrowRight className="w-3 h-3" />
-								</span>
+						) : quizEditMode ? (
+							<div className="space-y-6">
+								{sortedQuestions.map((q) => {
+									const options = normalizeQuizOptions(
+										t(`quiz.questions.${q.id}.options`, {
+											ns: "onboarding",
+											returnObjects: true,
+										}) as string[] | Record<string, unknown>,
+									);
+									const selected = quizAnswers[q.id] ?? [];
+									return (
+										<div key={q.id} className="space-y-2">
+											<span className="text-xs font-medium text-muted-foreground">
+												{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+											</span>
+											<p className="text-sm font-medium">
+												{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
+											</p>
+											<div
+												className={cn(
+													"grid gap-2",
+													q.allow_multiple ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
+												)}
+											>
+												{options.map((opt) => {
+													const isSelected = selected.includes(opt.value);
+													return (
+														<button
+															key={opt.value}
+															type="button"
+															onClick={() => handleQuizSelect(q, opt.value)}
+															className={cn(
+																"rounded-lg border-2 px-3 py-2 text-left text-sm font-medium transition-colors",
+																isSelected
+																	? "border-primary bg-primary/10 text-primary"
+																	: "border-border bg-card hover:bg-accent/50",
+															)}
+														>
+															{q.allow_multiple && (
+																<span className="mr-2">
+																	{isSelected ? "☑" : "☐"}
+																</span>
+															)}
+															{opt.label}
+														</button>
+													);
+												})}
+											</div>
+										</div>
+									);
+								})}
+								<div className="flex items-center gap-2 pt-2">
+									<Button variant="ghost" onClick={() => setQuizEditMode(false)}>
+										{t("me.quiz_results_cancel")}
+									</Button>
+									<Button
+										variant="primary"
+										onClick={handleQuizSave}
+										disabled={submitQuiz.isPending}
+									>
+										{submitQuiz.isPending ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<>
+												<Save className="w-4 h-4 mr-2" />
+												{t("me.quiz_results_save")}
+											</>
+										)}
+									</Button>
+								</div>
 							</div>
-						</div>
+						) : (
+							<div className="space-y-4">
+								{sortedQuestions.map((q) => {
+									const options = normalizeQuizOptions(
+										t(`quiz.questions.${q.id}.options`, {
+											ns: "onboarding",
+											returnObjects: true,
+										}) as string[] | Record<string, unknown>,
+									);
+									const selectedValues = answersMap[q.id] ?? [];
+									const labels = selectedValues
+										.map((v) => options.find((o) => o.value === v)?.label ?? v)
+										.filter(Boolean);
+									return (
+										<div key={q.id} className="border-b border-border pb-3 last:border-0 last:pb-0">
+											<p className="text-xs text-muted-foreground mb-0.5">
+												{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+											</p>
+											<p className="text-sm font-medium">{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}</p>
+											<p className="text-sm text-muted-foreground mt-1">
+												{labels.length > 0 ? labels.join(" / ") : "—"}
+											</p>
+										</div>
+									);
+								})}
+							</div>
+						)}
 					</Card>
 
 					<Card className="col-span-1 md:col-span-2 mt-4">

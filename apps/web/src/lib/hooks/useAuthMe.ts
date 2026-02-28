@@ -21,8 +21,11 @@ export function authMeQueryOptions() {
 	});
 }
 
-export function useAuthMe() {
-	return useQuery(authMeQueryOptions());
+export function useAuthMe(options?: { enabled?: boolean }) {
+	return useQuery({
+		...authMeQueryOptions(),
+		enabled: options?.enabled !== false,
+	});
 }
 
 export function useUpdateAuthMe() {

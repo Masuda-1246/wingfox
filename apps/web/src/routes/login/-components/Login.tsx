@@ -1,5 +1,6 @@
-import { UpperHeader } from "@/components/layouts/UpperHeader";
 import { useAuth } from "@/lib/auth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
@@ -55,7 +56,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 				ref={ref}
 				className={cn(
 					"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-					error && "border-red-500 focus-visible:ring-red-500",
+									error && "border-destructive focus-visible:ring-destructive",
 					className,
 				)}
 				{...props}
@@ -177,16 +178,21 @@ export function Login() {
 
 	return (
 		<>
-			<UpperHeader />
-			<div className="p-4 md:p-6 w-full h-full flex flex-col items-center justify-center">
-				<div className="w-full max-w-[480px] space-y-8 p-8 md:p-12 rounded-2xl border border-border bg-card">
-					<div className="space-y-2 text-center">
-						<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
-							{t("login.title")}
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							{t("login.subtitle")}
-						</p>
+			<div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6 relative">
+				<div className="absolute top-4 right-4 md:top-6 md:right-6">
+					<LanguageSwitcher />
+				</div>
+				<div className="w-full max-w-[480px] space-y-8 rounded-2xl border border-border bg-card p-8 md:p-10 shadow-sm">
+					<div className="flex flex-col items-center gap-6">
+						<WingfoxLogo className="w-16 h-16 md:w-20 md:h-20" />
+						<div className="space-y-2 text-center">
+							<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
+								{t("login.title")}
+							</h2>
+							<p className="text-sm text-muted-foreground">
+								{t("login.subtitle")}
+							</p>
+						</div>
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-6">
@@ -215,7 +221,7 @@ export function Login() {
 									error={!!errors.identifier}
 								/>
 								{errors.identifier && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.identifier}
 									</p>
 								)}
@@ -264,7 +270,7 @@ export function Login() {
 									</button>
 								</div>
 								{errors.password && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.password}
 									</p>
 								)}

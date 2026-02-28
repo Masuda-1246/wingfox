@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { FullPagePending } from "@/components/route-pending";
 import { UpperHeader } from "@/components/layouts/UpperHeader";
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
 import { queryClient } from "@/lib/query-client";
 import { authMeQueryOptions } from "@/lib/hooks/useAuthMe";
 
@@ -49,9 +49,7 @@ export const Route = createFileRoute("/_authenticated")({
 			}
 			return;
 		}
-		if (onOnboarding && pathname === "/onboarding/profile" && profileComplete) {
-			throw redirect({ to: "/onboarding/quiz" });
-		}
+		// オンボーディング中は各セクションに戻れるようにリダイレクトしない
 		if (!onOnboarding) {
 			if (isAllowedWithoutOnboarding(pathname)) {
 				return;
@@ -78,9 +76,17 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+	const location = useLocation();
+	const pathname = location.pathname;
+	// ヘッダーを非表示にするのはプロフィール〜クイズまで。クイズ完了後は表示する。
+	const hideHeader =
+		pathname === "/onboarding" ||
+		pathname === "/onboarding/profile" ||
+		pathname.startsWith("/onboarding/quiz");
+
 	return (
 		<>
-			<UpperHeader />
+			{!hideHeader && <UpperHeader />}
 			<Outlet />
 		</>
 	);

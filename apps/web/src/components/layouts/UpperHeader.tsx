@@ -66,7 +66,7 @@ export function UpperHeader() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { user, signOut } = useAuth();
-	const { data: authMe } = useAuthMe();
+	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
 	const isAuthenticated = Boolean(user);
 
 	useEffect(() => {
@@ -94,9 +94,7 @@ export function UpperHeader() {
 			<div className="flex h-16 items-center px-4 sm:px-8 gap-4 max-w-[1920px] mx-auto">
 				<div className="flex items-center gap-2 mr-4 shrink-0">
 					<Link to="/chat" className="flex items-center gap-2 group">
-						<div className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-							<WingfoxLogo className="w-8 h-8" />
-						</div>
+						<WingfoxLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-300" />
 						<span className="font-black text-lg tracking-tight hidden sm:inline-block">
 							Wing<span className="text-secondary">Fox</span>
 						</span>

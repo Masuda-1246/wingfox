@@ -27,6 +27,7 @@ export function useFoxConversation(id: string | undefined | null) {
 export function useFoxConversationMessages(
 	id: string | undefined | null,
 	params?: { limit?: number; cursor?: string },
+	options?: { refetchInterval?: number | false },
 ) {
 	return useQuery({
 		queryKey: ["fox-conversations", id, "messages", params],
@@ -45,5 +46,6 @@ export function useFoxConversationMessages(
 			};
 		},
 		enabled: Boolean(id),
+		refetchInterval: options?.refetchInterval,
 	});
 }

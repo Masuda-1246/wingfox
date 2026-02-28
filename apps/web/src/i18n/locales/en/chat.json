@@ -26,5 +26,22 @@
 	"entertainment": "Entertainment",
 	"lifestyle": "Lifestyle",
 	"ideology": "Ideology",
-	"other": "Other"
+	"other": "Other",
+	"unmatch": "Unmatch",
+	"unmatch_title": "Unmatch this person?",
+	"unmatch_description": "This action cannot be undone. You will lose access to the match and chat history with this person.",
+	"confirm_unmatch": "Confirm Unmatch",
+	"unmatch_success": "Successfully unmatched",
+	"unmatch_error": "Failed to unmatch",
+	"no_matches": "No matches found",
+	"fox_search_button": "Explore Foxes",
+	"fox_search_searching": "Searching...",
+	"fox_search_in_progress": "Fox conversation in progress",
+	"fox_search_progress": "Conversation Progress",
+	"fox_search_started": "Fox exploration started!",
+	"fox_search_completed": "Fox conversation completed! New match added.",
+	"fox_search_failed": "Fox conversation failed. Please try again.",
+	"fox_search_error": "Failed to start fox search.",
+	"no_trait_data": "No data",
+	"topic_pending": "Available after fox conversation completes"
 }
