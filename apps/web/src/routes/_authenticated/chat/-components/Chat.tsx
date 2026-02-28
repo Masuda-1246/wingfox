@@ -10,7 +10,7 @@ import {
 	useCreatePartnerFoxChat,
 } from "@/lib/hooks/usePartnerFoxChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
-import { useStartFoxSearch, useMultipleFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
+import { useStartFoxSearch, useMultipleFoxConversationStatus, useRetryFoxConversation } from "@/lib/hooks/useFoxSearch";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,6 +24,7 @@ import {
 	Mail,
 	MessageCircle,
 	PieChart,
+	RefreshCw,
 	Search,
 	Send,
 	ShieldAlert,
@@ -155,7 +156,22 @@ export function Chat() {
 	const anyFoxConvLive = activeFoxConvIds.length > 0;
 	const blockUser = useBlockUser();
 	const startFoxSearch = useStartFoxSearch();
+	const retryFoxConversation = useRetryFoxConversation();
 	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
+
+	// Restore activeFoxConvMap from server data on mount/reload
+	useEffect(() => {
+		if (Object.keys(activeFoxConvMap).length > 0) return;
+		const restoredMap: Record<string, string> = {};
+		for (const m of matches) {
+			if (m.status === "fox_conversation_in_progress" && m.fox_conversation_id) {
+				restoredMap[m.id] = m.fox_conversation_id;
+			}
+		}
+		if (Object.keys(restoredMap).length > 0) {
+			setActiveFoxConvMap(restoredMap);
+		}
+	}, [matches]);
 
 	// Refetch match list when fox conversations complete
 	const completedIdsRef = useRef<Set<string>>(new Set());
@@ -427,6 +443,21 @@ export function Chat() {
 		}
 	};
 
+	const handleRetryFoxConversation = async (matchId: string) => {
+		try {
+			const result = await retryFoxConversation.mutateAsync(matchId);
+			setActiveFoxConvMap((prev) => ({
+				...prev,
+				[result.match_id]: result.fox_conversation_id,
+			}));
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+			toast.success(t("fox_retry_started"));
+		} catch (e) {
+			console.error(e);
+			toast.error(t("fox_retry_error"));
+		}
+	};
+
 	const handleApproveSuggestion = () => {
 		toast.info("APIでは提案承認は未実装です");
 	};
@@ -620,9 +651,27 @@ export function Chat() {
 											if (!foxConvId) {
 												if (session.matchStatus === "fox_conversation_failed") {
 													return (
-														<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-															{t("match_status_fox_failed", "会話失敗")}
-														</span>
+														<div className="flex items-center gap-1">
+															<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+																{t("match_status_fox_failed", "会話失敗")}
+															</span>
+															<button
+																type="button"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleRetryFoxConversation(session.id);
+																}}
+																disabled={retryFoxConversation.isPending}
+																className="inline-flex items-center gap-0.5 text-[10px] font-bold text-blue-500 hover:text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50"
+															>
+																{retryFoxConversation.isPending ? (
+																	<Loader2 className="size-3 animate-spin" />
+																) : (
+																	<RefreshCw className="size-3" />
+																)}
+																{t("fox_retry_button")}
+															</button>
+														</div>
 													);
 												}
 												if (session.matchStatus === "chat_request_expired") {
@@ -705,17 +754,13 @@ export function Chat() {
 								<h3 className="font-black text-base uppercase tracking-tight">
 									{displaySession.partnerName}
 								</h3>
-								{isFoxConvLive ? (
+								{isFoxConvLive && (
 									<span className="text-[10px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
 										<span className="relative flex h-2 w-2">
 											<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75" />
 											<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
 										</span>
 										{t("fox_chat_active")}
-									</span>
-								) : (
-									<span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">
-										{t("persona_sync_active")}
 									</span>
 								)}
 							</div>

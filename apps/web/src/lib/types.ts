@@ -63,6 +63,7 @@ export interface MatchResultItem {
 	common_tags: string[];
 	status: string;
 	fox_conversation_status: string | null;
+	fox_conversation_id: string | null;
 	created_at: string;
 }
 

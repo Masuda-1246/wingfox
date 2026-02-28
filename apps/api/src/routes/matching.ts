@@ -49,8 +49,8 @@ matching.get("/results", requireAuth, async (c) => {
 	const { data: profiles } = await supabase.from("user_profiles").select("id, nickname, avatar_url").in("id", partnerIds);
 	const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 	const matchIds = list.map((x) => x.id);
-	const { data: foxConvs } = await supabase.from("fox_conversations").select("match_id, status").in("match_id", matchIds);
-	const fcMap = new Map((foxConvs ?? []).map((f) => [f.match_id, f.status]));
+	const { data: foxConvs } = await supabase.from("fox_conversations").select("id, match_id, status").in("match_id", matchIds);
+	const fcMap = new Map((foxConvs ?? []).map((f) => [f.match_id, { id: f.id, status: f.status }]));
 	const results = list.map((m) => {
 		const pid = partnerId(m as { user_a_id: string; user_b_id: string });
 		const partner = profileMap.get(pid);
@@ -63,7 +63,8 @@ matching.get("/results", requireAuth, async (c) => {
 			conversation_score: m.conversation_score,
 			common_tags: [] as string[],
 			status: m.status,
-			fox_conversation_status: fcMap.get(m.id) ?? null,
+			fox_conversation_status: fcMap.get(m.id)?.status ?? null,
+			fox_conversation_id: fcMap.get(m.id)?.id ?? null,
 			created_at: m.created_at,
 		};
 	});

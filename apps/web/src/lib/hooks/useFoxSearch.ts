@@ -11,6 +11,11 @@ const foxSearchApi = client.api["fox-search"] as {
 			$get: (opts: { param: { conversationId: string } }) => Promise<Response>;
 		};
 	};
+	retry: {
+		":matchId": {
+			$post: (opts: { param: { matchId: string } }) => Promise<Response>;
+		};
+	};
 };
 
 interface StartFoxSearchResult {
@@ -110,4 +115,24 @@ export function useMultipleFoxConversationStatus(conversationIds: string[]) {
 		currentRounds,
 		total: conversationIds.length,
 	};
+}
+
+interface RetryFoxConversationResult {
+	match_id: string;
+	fox_conversation_id: string;
+}
+
+export function useRetryFoxConversation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (matchId: string): Promise<RetryFoxConversationResult> => {
+			const res = await foxSearchApi.retry[":matchId"].$post({
+				param: { matchId },
+			});
+			return unwrapApiResponse<RetryFoxConversationResult>(res);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+		},
+	});
 }

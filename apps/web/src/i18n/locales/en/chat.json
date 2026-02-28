@@ -72,5 +72,8 @@
 	"direct_chat_decline": "Decline",
 	"direct_chat_accepted": "Chat request accepted",
 	"direct_chat_declined": "Chat request declined",
-	"direct_chat_request_error": "Failed to send chat request"
+	"direct_chat_request_error": "Failed to send chat request",
+	"fox_retry_button": "Retry",
+	"fox_retry_started": "Fox conversation restarted",
+	"fox_retry_error": "Retry failed"
 }

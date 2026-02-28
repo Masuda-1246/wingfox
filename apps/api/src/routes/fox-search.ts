@@ -138,4 +138,99 @@ foxSearch.get("/status/:conversationId", requireAuth, async (c) => {
 	});
 });
 
+/** POST /api/fox-search/retry/:matchId — retry a failed fox conversation */
+foxSearch.post("/retry/:matchId", requireAuth, async (c) => {
+	const userId = c.get("user_id");
+	const matchId = c.req.param("matchId");
+	const supabase = getSupabaseClient(c.env);
+	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey) return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
+
+	// 1. Verify match exists and user has access
+	const { data: match } = await supabase
+		.from("matches")
+		.select("id, user_a_id, user_b_id, status")
+		.eq("id", matchId)
+		.single();
+	if (!match || (match.user_a_id !== userId && match.user_b_id !== userId)) {
+		return jsonError(c, "NOT_FOUND", "Match not found");
+	}
+	if (match.status !== "fox_conversation_failed") {
+		return jsonError(c, "BAD_REQUEST", "Match is not in a failed state");
+	}
+
+	// 2. Get the fox conversation
+	const { data: foxConv } = await supabase
+		.from("fox_conversations")
+		.select("id, status")
+		.eq("match_id", matchId)
+		.single();
+	if (!foxConv) return jsonError(c, "NOT_FOUND", "Fox conversation not found");
+
+	// 3. Delete existing messages (clean start)
+	await supabase
+		.from("fox_conversation_messages")
+		.delete()
+		.eq("conversation_id", foxConv.id);
+
+	// 4. Reset fox_conversations status
+	await supabase
+		.from("fox_conversations")
+		.update({ status: "in_progress", current_round: 0, completed_at: null })
+		.eq("id", foxConv.id);
+
+	// 5. Reset match status
+	await supabase
+		.from("matches")
+		.update({ status: "fox_conversation_in_progress" })
+		.eq("id", matchId);
+
+	// 6. Re-run the fox conversation
+	if (c.env.FOX_CONVERSATION) {
+		try {
+			const doId = c.env.FOX_CONVERSATION.idFromName(foxConv.id);
+			const stub = c.env.FOX_CONVERSATION.get(doId);
+			await stub.fetch(
+				new Request("https://do/init", {
+					method: "POST",
+					body: JSON.stringify({
+						conversationId: foxConv.id,
+						matchId: matchId,
+						staggerDelayMs: 0,
+					}),
+				}),
+			);
+		} catch (err) {
+			console.error(`Failed to start DO for retry ${foxConv.id}:`, err);
+			return jsonError(c, "INTERNAL_ERROR", "Failed to restart conversation");
+		}
+	} else {
+		const bgTask = (async () => {
+			try {
+				await runFoxConversation(supabase, apiKey, foxConv.id);
+			} catch (err) {
+				console.error(`Fox conversation retry failed (${foxConv.id}):`, err);
+				await supabase
+					.from("fox_conversations")
+					.update({ status: "failed" })
+					.eq("id", foxConv.id);
+				await supabase
+					.from("matches")
+					.update({ status: "fox_conversation_failed" })
+					.eq("id", matchId);
+			}
+		})();
+		try {
+			c.executionCtx.waitUntil(bgTask);
+		} catch {
+			// Node.js dev server — promise runs detached
+		}
+	}
+
+	return jsonData(c, {
+		match_id: matchId,
+		fox_conversation_id: foxConv.id,
+	});
+});
+
 export default foxSearch;
