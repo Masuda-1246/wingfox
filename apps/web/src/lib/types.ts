@@ -74,6 +74,7 @@ export interface MatchResultDetail {
 	conversation_score: number | null;
 	final_score: number | null;
 	score_details: unknown;
+	layer_scores: unknown;
 	fox_summary: string;
 	status: string;
 	fox_conversation_id: string | null;

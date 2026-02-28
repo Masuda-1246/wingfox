@@ -3,6 +3,12 @@ import { formatTime } from "@/lib/date";
 import { useMatchingResults } from "@/lib/hooks/useMatchingResults";
 import { useMatchingResult } from "@/lib/hooks/useMatchingResults";
 import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
+import { useRequestDirectChat, usePendingChatRequests, useRespondChatRequest } from "@/lib/hooks/useChatRequests";
+import {
+	usePartnerFoxChatMessages,
+	useSendPartnerFoxMessage,
+	useCreatePartnerFoxChat,
+} from "@/lib/hooks/usePartnerFoxChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
 import { useStartFoxSearch, useMultipleFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
 import { useAuth } from "@/lib/auth";
@@ -13,7 +19,10 @@ import {
 	AlertTriangle,
 	ArrowLeft,
 	Bot,
+	Clock,
 	Loader2,
+	Mail,
+	MessageCircle,
 	PieChart,
 	Search,
 	Send,
@@ -45,30 +54,36 @@ interface ChatSession {
 	partnerFoxVariant: number;
 	partnerImage?: string;
 	lastMessage: string;
-	compatibilityScore: number;
+	compatibilityScore: number | null;
 	status: "active" | "archived";
 	matchStatus: string;
 	messages: Message[];
 	suggestion?: Message;
 }
 
+interface FoxFeatureScores {
+	reciprocity?: number;
+	humor_sharing?: number;
+	self_disclosure?: number;
+	emotional_responsiveness?: number;
+	self_esteem?: number;
+	conflict_resolution?: number;
+}
+
 interface ScoreDetails {
-	personality?: number;
-	interests?: number;
-	values?: number;
-	communication?: number;
-	lifestyle?: number;
+	fox_feature_scores?: FoxFeatureScores;
 	conversation_analysis?: {
 		topic_distribution?: { topic: string; percentage: number }[];
 	};
 }
 
 const TRAIT_AXES = [
-	{ key: "personality" as const, label: "Personality" },
-	{ key: "interests" as const, label: "Interests" },
-	{ key: "values" as const, label: "Values" },
-	{ key: "communication" as const, label: "Communication" },
-	{ key: "lifestyle" as const, label: "Lifestyle" },
+	{ key: "reciprocity" as const, label: "好意の返報性" },
+	{ key: "humor_sharing" as const, label: "ユーモア共有" },
+	{ key: "self_disclosure" as const, label: "自己開示" },
+	{ key: "emotional_responsiveness" as const, label: "感情的応答性" },
+	{ key: "self_esteem" as const, label: "自己肯定感" },
+	{ key: "conflict_resolution" as const, label: "葛藤解決" },
 ];
 
 const TOPIC_COLORS = [
@@ -82,9 +97,9 @@ const TOPIC_COLORS = [
 
 function getTraitScores(details: unknown): number[] | null {
 	const d = details as ScoreDetails | null;
-	if (!d) return null;
-	const keys = TRAIT_AXES.map((a) => a.key);
-	const scores = keys.map((k) => d[k]);
+	if (!d?.fox_feature_scores) return null;
+	const fs = d.fox_feature_scores;
+	const scores = TRAIT_AXES.map((a) => fs[a.key]);
 	if (scores.every((s) => s == null)) return null;
 	return scores.map((s) => s ?? 0);
 }
@@ -111,11 +126,21 @@ export function Chat() {
 		partnerFoxVariant: 0,
 		partnerImage: m.partner?.avatar_url ?? "https://picsum.photos/200/300?random=0",
 		lastMessage: "",
-		compatibilityScore: m.final_score ?? m.profile_score ?? 0,
+		compatibilityScore: m.conversation_score != null ? (m.final_score ?? 0) : null,
 		status: "active" as const,
 		matchStatus: m.status,
 		messages: [],
 	}));
+
+	const sortedSessions = useMemo(() => {
+		return [...sessions].sort((a, b) => {
+			const aIsMeasuring = a.matchStatus === "fox_conversation_in_progress";
+			const bIsMeasuring = b.matchStatus === "fox_conversation_in_progress";
+			if (aIsMeasuring && !bIsMeasuring) return -1;
+			if (!aIsMeasuring && bIsMeasuring) return 1;
+			return (b.compatibilityScore ?? 0) - (a.compatibilityScore ?? 0);
+		});
+	}, [sessions]);
 
 	const [activeSessionId, setActiveSessionId] = useState<string>(
 		sessions[0]?.id ?? "",
@@ -132,6 +157,27 @@ export function Chat() {
 	const startFoxSearch = useStartFoxSearch();
 	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
 
+	// Refetch match list when fox conversations complete
+	const completedIdsRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		let newlyCompleted = false;
+		for (const id of activeFoxConvIds) {
+			const s = multiStatus.statusMap.get(id);
+			if ((s?.status === "completed" || s?.status === "failed") && !completedIdsRef.current.has(id)) {
+				completedIdsRef.current.add(id);
+				newlyCompleted = true;
+			}
+		}
+		if (newlyCompleted) {
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+		}
+		const allDone = activeFoxConvIds.length > 0 && activeFoxConvIds.every(id => completedIdsRef.current.has(id));
+		if (allDone) {
+			setActiveFoxConvMap({});
+			completedIdsRef.current.clear();
+		}
+	}, [activeFoxConvIds, multiStatus.statusMap, queryClient]);
+
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
@@ -141,6 +187,16 @@ export function Chat() {
 	const partnerId = detail?.partner_id ?? null;
 	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
 
+	// Tab state
+	type ChatTab = "fox" | "partner_fox" | "direct";
+	const [activeTab, setActiveTab] = useState<ChatTab>("fox");
+
+	// Partner Fox Chat hooks
+	const partnerFoxChatId = detail?.partner_fox_chat_id ?? null;
+	const partnerFoxMessages = usePartnerFoxChatMessages(partnerFoxChatId);
+	const sendPartnerFox = useSendPartnerFoxMessage(partnerFoxChatId);
+	const createPartnerFoxChat = useCreatePartnerFoxChat();
+
 	const directMessages = useDirectChatMessages(directChatRoomId);
 	const sendDirect = useSendDirectChatMessage(directChatRoomId);
 	const foxMessages = useFoxConversationMessages(
@@ -149,10 +205,37 @@ export function Chat() {
 		{ refetchInterval: isFoxConvLive ? 3000 : false },
 	);
 
-	// Resolve messages for active session from the right source
+	// Chat request hooks
+	const requestDirectChat = useRequestDirectChat();
+	const pendingChatRequests = usePendingChatRequests();
+	const respondChatRequest = useRespondChatRequest();
+
+	// Find pending chat request for the currently selected match
+	const pendingRequestForMatch = useMemo(() => {
+		return pendingChatRequests.data?.find((r) => r.match_id === activeSessionId) ?? null;
+	}, [pendingChatRequests.data, activeSessionId]);
+
+	// Tab visibility conditions
+	const showFoxTab = Boolean(foxConversationId);
+	const showPartnerFoxTab = Boolean(partnerFoxChatId) || (detail?.status && ["fox_conversation_completed", "partner_chat_started", "direct_chat_requested", "direct_chat_active"].includes(detail.status));
+	const showDirectTab = Boolean(directChatRoomId) ||
+		(detail?.status && ["partner_chat_started", "direct_chat_requested", "direct_chat_active"].includes(detail.status)) ||
+		Boolean(pendingRequestForMatch);
+
+	// Auto-select appropriate tab when match status changes
+	useEffect(() => {
+		if (directChatRoomId) {
+			setActiveTab("direct");
+		} else if (partnerFoxChatId || (detail?.status && ["fox_conversation_completed", "partner_chat_started"].includes(detail.status))) {
+			setActiveTab("partner_fox");
+		} else {
+			setActiveTab("fox");
+		}
+	}, [directChatRoomId, partnerFoxChatId, detail?.status]);
+
+	// Resolve messages for active session based on active tab
 	const activeMessages: Message[] = useMemo(() => {
-		if (directChatRoomId && directMessages.data?.pages) {
-			// Pages are returned newest-first per page; reverse pages so oldest page comes first, then flatMap
+		if (activeTab === "direct" && directChatRoomId && directMessages.data?.pages) {
 			return [...directMessages.data.pages].reverse().flatMap((page) =>
 				page.data.map((m) => ({
 					id: m.id,
@@ -165,7 +248,18 @@ export function Chat() {
 				})),
 			);
 		}
-		if (foxConversationId && foxMessages.data?.data) {
+		if (activeTab === "partner_fox" && partnerFoxChatId && partnerFoxMessages.data?.data) {
+			return partnerFoxMessages.data.data.map((m) => ({
+				id: m.id,
+				senderId: m.role === "user" ? "me" : "partner_fox",
+				senderName: m.role === "user" ? "You" : `${partnerName} Fox`,
+				text: m.content,
+				type: "text" as const,
+				timestamp: new Date(m.created_at),
+				isAi: m.role !== "user",
+			}));
+		}
+		if (activeTab === "fox" && foxConversationId && foxMessages.data?.data) {
 			return foxMessages.data.data.map((m) => ({
 				id: m.id,
 				senderId: m.speaker === "my_fox" ? "my_fox" : "partner_fox",
@@ -177,7 +271,7 @@ export function Chat() {
 			}));
 		}
 		return [];
-	}, [directChatRoomId, directMessages.data?.pages, foxConversationId, foxMessages.data?.data, partnerName]);
+	}, [activeTab, directChatRoomId, directMessages.data?.pages, partnerFoxChatId, partnerFoxMessages.data?.data, foxConversationId, foxMessages.data?.data, partnerName]);
 
 	const activeSession: ChatSession | undefined = sessions.find(
 		(s) => s.id === activeSessionId,
@@ -190,7 +284,7 @@ export function Chat() {
 				partnerImage: "https://picsum.photos/200/300?random=0",
 				partnerFoxVariant: 0,
 				lastMessage: "",
-				compatibilityScore: detail?.final_score ?? detail?.profile_score ?? 0,
+				compatibilityScore: detail?.conversation_score != null ? (detail?.final_score ?? 0) : null,
 				status: "active",
 				matchStatus: detail?.status ?? "",
 				messages: activeMessages,
@@ -266,20 +360,42 @@ export function Chat() {
 		prevMessageCountRef.current = activeMessages.length;
 	}, [activeMessages.length, scrollToBottom]);
 
-	const canSendMessage = Boolean(directChatRoomId && sendDirect);
+	const canSendMessage =
+		(activeTab === "direct" && Boolean(directChatRoomId && sendDirect)) ||
+		(activeTab === "partner_fox" && Boolean(partnerFoxChatId && sendPartnerFox));
 
 	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
 		try {
-			if (directChatRoomId) {
+			if (activeTab === "direct" && directChatRoomId) {
 				await sendDirect.mutateAsync(text);
+			} else if (activeTab === "partner_fox" && partnerFoxChatId) {
+				await sendPartnerFox.mutateAsync(text);
 			} else {
 				return;
 			}
 			setInputValue("");
 		} catch (e) {
 			console.error(e);
-			toast.error("送信に失敗しました");
+			toast.error(t("send_failed"));
+		}
+	};
+
+	const handlePartnerFoxTabClick = async () => {
+		if (partnerFoxChatId) {
+			setActiveTab("partner_fox");
+			return;
+		}
+		if (!activeSessionId) return;
+		try {
+			toast.info(t("creating_partner_fox_chat"));
+			await createPartnerFoxChat.mutateAsync(activeSessionId);
+			queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
+			toast.success(t("partner_fox_chat_created"));
+			setActiveTab("partner_fox");
+		} catch (e) {
+			console.error(e);
+			toast.error(t("send_failed"));
 		}
 	};
 
@@ -434,12 +550,12 @@ export function Chat() {
 							<div className="flex items-center justify-center py-8">
 								<div className="animate-spin rounded-full h-8 w-8 border-2 border-secondary border-t-transparent" />
 							</div>
-						) : sessions.length === 0 ? (
+						) : sortedSessions.length === 0 ? (
 							<p className="text-sm text-muted-foreground p-4">
 								マッチング結果がありません
 							</p>
 						) : (
-						sessions.map((session) => (
+						sortedSessions.map((session) => (
 							<div
 								key={session.id}
 								onClick={() => {
@@ -489,11 +605,15 @@ export function Chat() {
 											<h3 className="font-bold text-sm truncate uppercase">
 												{session.partnerName}
 											</h3>
-											{session.compatibilityScore > 0 && (
+											{session.compatibilityScore != null ? (
 												<span className="ml-2 shrink-0 text-[10px] font-black text-secondary bg-secondary/10 px-2 py-0.5 rounded-full border border-secondary/20">
 													{session.compatibilityScore}%
 												</span>
-											)}
+											) : session.matchStatus === "fox_conversation_in_progress" ? (
+												<span className="ml-2 shrink-0 text-[10px] font-black text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">
+													{t("score_measuring")}
+												</span>
+											) : null}
 										</div>
 										{(() => {
 											const foxConvId = activeFoxConvMap[session.id];
@@ -629,6 +749,62 @@ export function Chat() {
 						</div>
 					</div>
 
+					{/* Tab Bar */}
+					{(showFoxTab || showPartnerFoxTab || showDirectTab) && (
+						<div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-background/30 shrink-0">
+							{showFoxTab && (
+								<button
+									type="button"
+									onClick={() => setActiveTab("fox")}
+									className={cn(
+										"px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1.5",
+										activeTab === "fox"
+											? "bg-secondary text-white"
+											: "text-muted-foreground hover:bg-accent",
+									)}
+								>
+									<Bot className="w-3.5 h-3.5" />
+									{t("tab_fox_conversation")}
+								</button>
+							)}
+							{showPartnerFoxTab && (
+								<button
+									type="button"
+									onClick={handlePartnerFoxTabClick}
+									disabled={createPartnerFoxChat.isPending}
+									className={cn(
+										"px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1.5",
+										activeTab === "partner_fox"
+											? "bg-secondary text-white"
+											: "text-muted-foreground hover:bg-accent",
+									)}
+								>
+									{createPartnerFoxChat.isPending ? (
+										<Loader2 className="w-3.5 h-3.5 animate-spin" />
+									) : (
+										<MessageCircle className="w-3.5 h-3.5" />
+									)}
+									{t("tab_partner_fox")}
+								</button>
+							)}
+							{showDirectTab && (
+								<button
+									type="button"
+									onClick={() => setActiveTab("direct")}
+									className={cn(
+										"px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1.5",
+										activeTab === "direct"
+											? "bg-secondary text-white"
+											: "text-muted-foreground hover:bg-accent",
+									)}
+								>
+									<User className="w-3.5 h-3.5" />
+									{t("tab_direct")}
+								</button>
+							)}
+						</div>
+					)}
+
 					<div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 min-h-0">
 						{/* Sentinel for loading older messages */}
 						<div ref={topSentinelRef} className="h-1" />
@@ -637,6 +813,101 @@ export function Chat() {
 								<Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
 							</div>
 						)}
+						{/* Direct Chat state UI (when no messages yet) */}
+						{activeTab === "direct" && !directChatRoomId && (() => {
+							// State B: Request already sent (requester side)
+							if (detail?.chat_request_status === "pending" || detail?.status === "direct_chat_requested") {
+								return (
+									<div className="flex flex-col items-center justify-center py-16 text-center">
+										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+											<Clock className="w-8 h-8 text-muted-foreground" />
+										</div>
+										<h3 className="text-lg font-black mb-2">{t("direct_chat_request_sent")}</h3>
+										<p className="text-sm text-muted-foreground">{t("direct_chat_request_pending")}</p>
+									</div>
+								);
+							}
+							// State: Received request (responder side)
+							if (pendingRequestForMatch) {
+								return (
+									<div className="flex flex-col items-center justify-center py-16 text-center">
+										<div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4">
+											<Mail className="w-8 h-8 text-secondary" />
+										</div>
+										<h3 className="text-lg font-black mb-2">{t("direct_chat_request_received_title")}</h3>
+										<p className="text-sm text-muted-foreground mb-6">
+											{t("direct_chat_request_received_description", { name: pendingRequestForMatch.requester.nickname })}
+										</p>
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={async () => {
+													try {
+														await respondChatRequest.mutateAsync({ id: pendingRequestForMatch.id, action: "accept" });
+														toast.success(t("direct_chat_accepted"));
+														queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
+													} catch {
+														toast.error(t("direct_chat_request_error"));
+													}
+												}}
+												disabled={respondChatRequest.isPending}
+												className="px-6 py-2.5 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50"
+											>
+												{respondChatRequest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("direct_chat_accept")}
+											</button>
+											<button
+												type="button"
+												onClick={async () => {
+													try {
+														await respondChatRequest.mutateAsync({ id: pendingRequestForMatch.id, action: "decline" });
+														toast.info(t("direct_chat_declined"));
+													} catch {
+														toast.error(t("direct_chat_request_error"));
+													}
+												}}
+												disabled={respondChatRequest.isPending}
+												className="px-6 py-2.5 border border-border text-[11px] font-black uppercase rounded-full hover:bg-muted disabled:opacity-50"
+											>
+												{t("direct_chat_decline")}
+											</button>
+										</div>
+									</div>
+								);
+							}
+							// State A: Can send request
+							return (
+								<div className="flex flex-col items-center justify-center py-16 text-center">
+									<div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4">
+										<MessageCircle className="w-8 h-8 text-secondary" />
+									</div>
+									<h3 className="text-lg font-black mb-2">{t("direct_chat_invite_title")}</h3>
+									<p className="text-sm text-muted-foreground mb-6">{t("direct_chat_invite_description")}</p>
+									<button
+										type="button"
+										onClick={async () => {
+											try {
+												await requestDirectChat.mutateAsync(activeSessionId);
+												toast.success(t("direct_chat_request_sent"));
+												queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
+											} catch {
+												toast.error(t("direct_chat_request_error"));
+											}
+										}}
+										disabled={requestDirectChat.isPending}
+										className="px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50 flex items-center gap-2"
+									>
+										{requestDirectChat.isPending ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<Send className="w-4 h-4" />
+										)}
+										{t("direct_chat_request_button")}
+									</button>
+								</div>
+							);
+						})()}
+
+						{/* Message list */}
 						{displaySession.messages.map((msg) => {
 							const isMe =
 								msg.senderId === "me" ||
@@ -729,28 +1000,39 @@ export function Chat() {
 						<div ref={messagesEndRef} />
 					</div>
 
-					<div className="p-6 bg-background/50 border-t border-border backdrop-blur-sm shrink-0">
-						<div className="flex items-center gap-2 bg-background border border-border rounded-2xl px-4 py-2 focus-within:border-secondary transition-all">
-							<input
-								type="text"
-								value={inputValue}
-								onChange={(e) => setInputValue(e.target.value)}
-								onKeyDown={(e) =>
-									e.key === "Enter" && handleSendMessage(inputValue)
-								}
-								placeholder={t("input_placeholder")}
-								className="flex-1 bg-transparent border-none outline-none text-sm h-10"
-							/>
-							<button
-								type="button"
-								onClick={() => handleSendMessage(inputValue)}
-								disabled={!inputValue.trim() || !canSendMessage}
-								className="p-2.5 bg-foreground text-background rounded-xl hover:bg-foreground/90 disabled:opacity-50 transition-all"
-							>
-								<Send className="w-4 h-4" />
-							</button>
+					{activeTab !== "fox" && canSendMessage && (
+						<div className="p-6 bg-background/50 border-t border-border backdrop-blur-sm shrink-0">
+							<div className="flex items-center gap-2 bg-background border border-border rounded-2xl px-4 py-2 focus-within:border-secondary transition-all">
+								<input
+									type="text"
+									value={inputValue}
+									onChange={(e) => setInputValue(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+											e.preventDefault();
+											handleSendMessage(inputValue);
+										}
+									}}
+									placeholder={
+										activeTab === "partner_fox"
+											? t("input_placeholder_partner_fox")
+											: activeTab === "direct"
+												? t("input_placeholder_direct")
+												: t("input_placeholder")
+									}
+									className="flex-1 bg-transparent border-none outline-none text-sm h-10"
+								/>
+								<button
+									type="button"
+									onClick={() => handleSendMessage(inputValue)}
+									disabled={!inputValue.trim() || !canSendMessage}
+									className="p-2.5 bg-foreground text-background rounded-xl hover:bg-foreground/90 disabled:opacity-50 transition-all"
+								>
+									<Send className="w-4 h-4" />
+								</button>
+							</div>
 						</div>
-					</div>
+					)}
 				</div>
 
 				{/* Right Info Panel */}
@@ -781,30 +1063,38 @@ export function Chat() {
 							</span>
 							<Target className="w-3.5 h-3.5 text-secondary/60" />
 						</div>
-						<div className="flex items-end gap-1.5 mb-2">
-							<span className="text-5xl font-black tracking-tighter">
-								{displaySession.compatibilityScore}
+						{displaySession.compatibilityScore != null ? (
+							<>
+								<div className="flex items-end gap-1.5 mb-2">
+									<span className="text-5xl font-black tracking-tighter">
+										{displaySession.compatibilityScore}
+									</span>
+									<span className="text-xs font-black text-secondary uppercase mb-2">
+										{t("sync")}
+									</span>
+								</div>
+								<div className="h-1 w-full bg-muted rounded-full overflow-hidden mb-4">
+									<motion.div
+										initial={{ width: 0 }}
+										animate={{
+											width: `${displaySession.compatibilityScore}%`,
+										}}
+										transition={{ duration: 1, ease: "easeOut" }}
+										className="h-full bg-secondary"
+									/>
+								</div>
+								<p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
+									{t("compatibility_description")}
+								</p>
+							</>
+						) : (
+							<span className="text-lg font-black text-blue-500 animate-pulse">
+								{t("score_measuring")}
 							</span>
-							<span className="text-xs font-black text-secondary uppercase mb-2">
-								{t("sync")}
-							</span>
-						</div>
-						<div className="h-1 w-full bg-muted rounded-full overflow-hidden mb-4">
-							<motion.div
-								initial={{ width: 0 }}
-								animate={{
-									width: `${displaySession.compatibilityScore}%`,
-								}}
-								transition={{ duration: 1, ease: "easeOut" }}
-								className="h-full bg-secondary"
-							/>
-						</div>
-						<p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
-							{t("compatibility_description")}
-						</p>
+						)}
 					</div>
 
-					{/* Trait Synergy - 5-axis radar chart from DB */}
+					{/* Trait Synergy - 6-axis radar chart from fox_feature_scores */}
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col shrink-0">
 						<div className="flex items-center justify-between mb-4">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
@@ -814,7 +1104,7 @@ export function Chat() {
 						{traitScores ? (() => {
 							const peakIdx = traitScores.indexOf(Math.max(...traitScores));
 							const avg = Math.round(traitScores.reduce((a, b) => a + b, 0) / traitScores.length);
-							const angles = TRAIT_AXES.map((_, i) => (360 / 5) * i - 90);
+							const angles = TRAIT_AXES.map((_, i) => (360 / TRAIT_AXES.length) * i - 90);
 							const labelPositions = angles.map((deg) => {
 								const rad = (Math.PI / 180) * deg;
 								return { x: 50 + 48 * Math.cos(rad), y: 50 + 48 * Math.sin(rad) };
@@ -854,7 +1144,7 @@ export function Chat() {
 												className="fill-secondary/20 stroke-secondary stroke-1"
 											/>
 											{labelPositions.map((pos, i) => (
-												<text key={TRAIT_AXES[i].key} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground font-black text-[4px] uppercase tracking-tighter">
+												<text key={TRAIT_AXES[i].key} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground font-bold text-[3.5px]">
 													{TRAIT_AXES[i].label}
 												</text>
 											))}
@@ -865,7 +1155,7 @@ export function Chat() {
 											<span className="text-[8px] font-black text-muted-foreground uppercase">
 												{t("peak")}
 											</span>
-											<span className="text-xs font-black truncate">{TRAIT_AXES[peakIdx].label.toUpperCase()}</span>
+											<span className="text-xs font-black truncate">{TRAIT_AXES[peakIdx].label}</span>
 										</div>
 										<div className="flex flex-col items-end">
 											<span className="text-[8px] font-black text-muted-foreground uppercase">
