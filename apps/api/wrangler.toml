@@ -14,4 +14,4 @@ class_name = "FoxConversationDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["FoxConversationDO"]
+new_sqlite_classes = ["FoxConversationDO"]
