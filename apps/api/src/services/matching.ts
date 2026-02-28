@@ -156,3 +156,34 @@ export function computeMatchScore(
 		},
 	};
 }
+
+const TRAIT_KEYS = ["personality", "interests", "values", "communication", "lifestyle"] as const;
+
+/** score_details に特性5軸が含まれているか */
+export function hasTraitScores(details: Record<string, unknown>): boolean {
+	return TRAIT_KEYS.every((k) => typeof details[k] === "number");
+}
+
+/** 2ユーザーの profiles から profile_score と score_details を計算。どちらかが無い場合は null */
+export async function getProfileScoreDetailsForUsers(
+	supabase: SupabaseClient<Database>,
+	userA: string,
+	userB: string,
+): Promise<{ profile_score: number; final_score: number; score_details: Record<string, number> } | null> {
+	const { data: profiles } = await supabase
+		.from("profiles")
+		.select("*")
+		.in("user_id", [userA, userB])
+		.eq("status", "confirmed");
+	if (!profiles || profiles.length !== 2) return null;
+	const byUserId = new Map(profiles.map((p) => [p.user_id, p as ProfileRow]));
+	const profileA = byUserId.get(userA);
+	const profileB = byUserId.get(userB);
+	if (!profileA || !profileB) return null;
+	const { score, details } = computeMatchScore(profileA, profileB);
+	return {
+		profile_score: score,
+		final_score: score,
+		score_details: details,
+	};
+}

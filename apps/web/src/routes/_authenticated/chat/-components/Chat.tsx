@@ -259,12 +259,13 @@ export function Chat() {
 		}
 	}, [activeFoxConvIds.length, multiStatus.allTerminal, multiStatus.completedCount, multiStatus.failedCount, queryClient, t]);
 
-	// Set first match as active when matches load or current session is removed
+	// Set first match as active when matches load or current session is removed (stable deps to avoid re-run every render)
 	useEffect(() => {
-		if (sessions.length > 0 && (!activeSessionId || !sessions.find((s) => s.id === activeSessionId))) {
-			setActiveSessionId(sessions[0].id);
+		const list = matchingData?.data ?? [];
+		if (list.length > 0 && (!activeSessionId || !list.some((m) => m.id === activeSessionId))) {
+			setActiveSessionId(list[0].id);
 		}
-	}, [sessions, activeSessionId]);
+	}, [matchingData?.data, activeSessionId]);
 
 	const handleReport = () => {
 		setShowReportModal(false);

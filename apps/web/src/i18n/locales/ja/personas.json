@@ -16,7 +16,7 @@
 		"traits_hint": "※カンマ区切りで複数の特徴を設定できます",
 		"no_traits": "特徴が設定されていません",
 		"status_title": "Status",
-		"avg_compatibility": "互換性スコア平均",
+		"avg_compatibility": "マッチ度平均",
 		"total_dialogues": "総対話数",
 		"view_analysis": "詳細な分析を見る",
 		"enter_talk_room": "トークルームへ入室",

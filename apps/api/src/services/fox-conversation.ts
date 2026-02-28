@@ -4,6 +4,10 @@ import { z } from "zod";
 import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
+import {
+	hasTraitScores,
+	getProfileScoreDetailsForUsers,
+} from "./matching";
 
 const ConversationScoreSchema = z.object({
 	score: z.number().min(0).max(100),
@@ -120,8 +124,16 @@ export async function runFoxConversation(
 		console.error("[runFoxConversation] Score parsing failed:", e);
 	}
 	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
-	const profileScore = (matchRow?.profile_score as number) ?? 50;
-	const existingDetails = (matchRow?.score_details as Record<string, unknown>) ?? {};
+	let profileScore = (matchRow?.profile_score as number) ?? 50;
+	let existingDetails = (matchRow?.score_details as Record<string, unknown>) ?? {};
+	// 特性シナジーが無い場合は会話完了時に profiles から計算してマージ（トピック分布と両方出るようにする）
+	if (!hasTraitScores(existingDetails)) {
+		const computed = await getProfileScoreDetailsForUsers(supabase, match.user_a_id, match.user_b_id);
+		if (computed) {
+			profileScore = computed.profile_score;
+			existingDetails = { ...computed.score_details, ...existingDetails };
+		}
+	}
 	const finalScore = profileScore * 0.4 + conversationScore * 0.6;
 	await supabase
 		.from("matches")

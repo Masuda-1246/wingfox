@@ -17,6 +17,14 @@ export const client = hc<AppType>(getBaseUrl(), {
 		if (data.session?.access_token) {
 			headers.set("Authorization", `Bearer ${data.session.access_token}`);
 		}
-		return fetch(input, { ...init, headers });
+		const res = await fetch(input, { ...init, headers });
+		if (
+			res.status === 401 &&
+			typeof window !== "undefined" &&
+			window.location.pathname !== "/login"
+		) {
+			window.location.href = "/login";
+		}
+		return res;
 	},
 }) as any;
