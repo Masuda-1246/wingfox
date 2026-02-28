@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	Bell,
 	ChevronDown,
-	Flame,
 	HelpCircle,
 	LogOut,
 	MessageSquare,
@@ -12,12 +11,13 @@ import {
 	Settings,
 	UserCircle2,
 } from "lucide-react";
+import { FoxAvatar } from "@/components/icons/FoxAvatar";
+import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const CURRENT_USER = {
 	name: "Alex Fox",
-	avatar: "https://picsum.photos/200/300",
 	email: "alex.fox@example.com",
 };
 
@@ -100,11 +100,11 @@ export function UpperHeader() {
 			<div className="flex h-16 items-center px-4 sm:px-8 gap-4 max-w-[1920px] mx-auto">
 				<div className="flex items-center gap-2 mr-4 shrink-0">
 					<Link to="/chat" className="flex items-center gap-2 group">
-						<div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-foreground text-background overflow-hidden group-hover:scale-105 transition-transform duration-300">
-							<Flame className="w-5 h-5 text-secondary fill-secondary" />
+						<div className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+							<WingfoxLogo className="w-8 h-8" />
 						</div>
 						<span className="font-black text-lg tracking-tight hidden sm:inline-block">
-							foxx<span className="text-secondary">match</span>
+							wing<span className="text-secondary">fox</span>
 						</span>
 					</Link>
 				</div>
@@ -157,13 +157,10 @@ export function UpperHeader() {
 									<span className="text-xs font-bold hidden md:block px-1 truncate">
 										{CURRENT_USER.name}
 									</span>
-									<div className="h-8 w-8 rounded-full overflow-hidden border border-border bg-muted">
-										<img
-											src={CURRENT_USER.avatar}
-											alt="User"
-											className="w-full h-full object-cover"
-										/>
-									</div>
+									<FoxAvatar
+										seed={CURRENT_USER.email}
+										className="h-8 w-8 rounded-full border border-border"
+									/>
 									<ChevronDown
 										className={cn(
 											"w-3 h-3 text-muted-foreground transition-transform",

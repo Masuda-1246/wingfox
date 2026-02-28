@@ -1,3 +1,4 @@
+import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -28,7 +29,7 @@ interface Message {
 interface ChatSession {
 	id: string;
 	partnerName: string;
-	partnerImage: string;
+	partnerFoxVariant: number;
 	lastMessage: string;
 	compatibilityScore: number;
 	status: "active" | "archived";
@@ -43,7 +44,7 @@ const INITIAL_SESSIONS: ChatSession[] = [
 	{
 		id: "session-1",
 		partnerName: "Emma AI",
-		partnerImage: "https://picsum.photos/200/300?random=1",
+		partnerFoxVariant: 0,
 		lastMessage: "趣味の映画についてもっと聞きたいな。",
 		compatibilityScore: 88,
 		status: "active",
@@ -89,7 +90,7 @@ const INITIAL_SESSIONS: ChatSession[] = [
 	{
 		id: "session-2",
 		partnerName: "Liam Bot",
-		partnerImage: "https://picsum.photos/200/300?random=2",
+		partnerFoxVariant: 1,
 		lastMessage: "週末はどこか出かける予定ですか？",
 		compatibilityScore: 72,
 		status: "active",
@@ -252,10 +253,9 @@ export function Chat() {
 								)}
 							>
 								<div className="flex items-start gap-3">
-									<img
-										src={session.partnerImage}
-										alt={session.partnerName}
-										className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border border-border"
+									<FoxAvatar
+										variant={session.partnerFoxVariant}
+										className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-border"
 									/>
 									<div className="flex-1 min-w-0">
 										<div className="flex justify-between items-center mb-1">
