@@ -20,7 +20,7 @@ function extractBio(compiledDocument: string): string {
 		/##\s*(?:コアアイデンティティ|Core Identity)\s*\n([\s\S]*?)(?=\n##\s|\n*$)/,
 	);
 	if (coreMatch?.[1]) {
-		const raw = coreMatch[1].trim().replace(/[#*_`]/g, "");
+		const raw = coreMatch[1].trim().replace(/[#*_`\[\]|]/g, "");
 		const firstSentences = raw.split(/[。.!！\n]/).filter(Boolean).slice(0, 2).join("。");
 		if (firstSentences.length > 120) return `${firstSentences.slice(0, 120)}...`;
 		return firstSentences;
