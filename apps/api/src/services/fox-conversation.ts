@@ -50,8 +50,6 @@ const CONVERSATION_FEATURE_MAP: Record<string, { id: number; nameJa: string }> =
 	conflict_resolution: { id: 14, nameJa: "葛藤解決スタイル" },
 };
 
-const TOTAL_ROUNDS = 15;
-
 export async function runFoxConversation(
 	supabase: SupabaseClient<Database>,
 	mistralApiKey: string,
