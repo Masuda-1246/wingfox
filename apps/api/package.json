@@ -18,6 +18,7 @@
     ".": "./src/types.ts"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "@mistralai/mistralai": "^1.0.0",
     "@hono/node-server": "^1.19.1",
     "@supabase/supabase-js": "^2.98.0",

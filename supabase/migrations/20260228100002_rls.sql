@@ -42,8 +42,10 @@ CREATE POLICY personas_select ON public.personas FOR SELECT USING (public.get_us
 CREATE POLICY persona_sections_select ON public.persona_sections FOR SELECT
   USING (public.get_user_profile_id() = (SELECT user_id FROM public.personas WHERE id = persona_id));
 CREATE POLICY persona_sections_update ON public.persona_sections FOR UPDATE
-  USING (public.get_user_profile_id() = (SELECT user_id FROM public.personas WHERE id = persona_id))
-  AND ((SELECT editable FROM public.persona_section_definitions WHERE id = section_id) = true);
+  USING (
+    public.get_user_profile_id() = (SELECT user_id FROM public.personas WHERE id = persona_id)
+    AND ((SELECT editable FROM public.persona_section_definitions WHERE id = section_id) = true)
+  );
 
 -- speed_dating_sessions
 CREATE POLICY speed_dating_sessions_select ON public.speed_dating_sessions FOR SELECT USING (public.get_user_profile_id() = user_id);
@@ -65,12 +67,18 @@ CREATE POLICY matches_select ON public.matches FOR SELECT
 
 -- fox_conversations
 CREATE POLICY fox_conversations_select ON public.fox_conversations FOR SELECT
-  USING (public.get_user_profile_id() IN (SELECT user_a_id, user_b_id FROM public.matches WHERE id = match_id));
+  USING (public.get_user_profile_id() IN (
+    SELECT user_a_id FROM public.matches WHERE id = match_id
+    UNION ALL
+    SELECT user_b_id FROM public.matches WHERE id = match_id
+  ));
 
 -- fox_conversation_messages
 CREATE POLICY fox_conversation_messages_select ON public.fox_conversation_messages FOR SELECT
   USING (public.get_user_profile_id() IN (
-    SELECT user_a_id, user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.fox_conversations WHERE id = conversation_id)
+    SELECT user_a_id FROM public.matches WHERE id = (SELECT match_id FROM public.fox_conversations WHERE id = conversation_id)
+    UNION ALL
+    SELECT user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.fox_conversations WHERE id = conversation_id)
   ));
 
 -- partner_fox_chats
@@ -92,13 +100,25 @@ CREATE POLICY chat_requests_update ON public.chat_requests FOR UPDATE
 
 -- direct_chat_rooms
 CREATE POLICY direct_chat_rooms_select ON public.direct_chat_rooms FOR SELECT
-  USING (public.get_user_profile_id() IN (SELECT user_a_id, user_b_id FROM public.matches WHERE id = match_id));
+  USING (public.get_user_profile_id() IN (
+    SELECT user_a_id FROM public.matches WHERE id = match_id
+    UNION ALL
+    SELECT user_b_id FROM public.matches WHERE id = match_id
+  ));
 
 -- direct_chat_messages
 CREATE POLICY direct_chat_messages_select ON public.direct_chat_messages FOR SELECT
-  USING (public.get_user_profile_id() IN (SELECT user_a_id, user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)));
+  USING (public.get_user_profile_id() IN (
+    SELECT user_a_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)
+    UNION ALL
+    SELECT user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)
+  ));
 CREATE POLICY direct_chat_messages_insert ON public.direct_chat_messages FOR INSERT
-  WITH CHECK (public.get_user_profile_id() IN (SELECT user_a_id, user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)));
+  WITH CHECK (public.get_user_profile_id() IN (
+    SELECT user_a_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)
+    UNION ALL
+    SELECT user_b_id FROM public.matches WHERE id = (SELECT match_id FROM public.direct_chat_rooms WHERE id = room_id)
+  ));
 
 -- blocks
 CREATE POLICY blocks_select ON public.blocks FOR SELECT USING (public.get_user_profile_id() = blocker_id);

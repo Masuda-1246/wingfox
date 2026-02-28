@@ -50,3 +50,67 @@ export interface Reports {
 	reason: string;
 	created_at: Date;
 }
+
+// --- API response types (aligned with apps/api) ---
+
+export interface MatchResultItem {
+	id: string;
+	partner: { nickname: string; avatar_url: string | null } | null;
+	final_score: number | null;
+	profile_score: number | null;
+	conversation_score: number | null;
+	common_tags: string[];
+	status: string;
+	fox_conversation_status: string | null;
+	created_at: string;
+}
+
+export interface MatchResultDetail {
+	id: string;
+	partner: { nickname: string; avatar_url: string | null } | null;
+	profile_score: number | null;
+	conversation_score: number | null;
+	final_score: number | null;
+	score_details: unknown;
+	fox_summary: string;
+	status: string;
+	fox_conversation_id: string | null;
+	partner_fox_chat_id: string | null;
+	chat_request_status: string | null;
+	direct_chat_room_id: string | null;
+}
+
+export interface ProfileMe {
+	id: string;
+	user_id: string;
+	basic_info?: Record<string, unknown>;
+	personality_tags?: string[];
+	personality_analysis?: Record<string, unknown>;
+	interests?: Array<{ category: string; items: string[] }>;
+	values?: Record<string, unknown>;
+	romance_style?: Record<string, unknown>;
+	communication_style?: Record<string, unknown>;
+	lifestyle?: Record<string, unknown>;
+	status: string;
+	version?: number;
+	updated_at?: string;
+}
+
+export interface PersonaListItem {
+	id: string;
+	persona_type: string;
+	name: string;
+	version?: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface PersonaSection {
+	id: string;
+	section_id: string;
+	content: string;
+	source?: string;
+	updated_at?: string;
+	title?: string;
+	editable?: boolean;
+}

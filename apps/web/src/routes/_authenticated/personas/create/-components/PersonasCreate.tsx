@@ -1,13 +1,44 @@
-import { FoxAvatar } from "@/components/icons/FoxAvatar";
-import { type TranscriptEntry, useSpeedDate } from "@/hooks/use-speed-date";
+import {
+	useSpeedDatingPersonas,
+	useSpeedDatingSessions,
+	useSendSpeedDatingMessage,
+	useCompleteSpeedDatingSession,
+} from "@/lib/hooks/useSpeedDating";
+import { useGenerateProfile, useConfirmProfile } from "@/lib/hooks/useProfile";
+import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ChevronRight, Mic, Sparkles, Users } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	ArrowRight,
+	ChevronRight,
+	Mic,
+	Sparkles,
+	User,
+	Users,
+	CheckCircle2,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-// ─── Types ───────────────────────────────────────────
+interface Message {
+	id: string;
+	role: string;
+	content: string;
+}
+
+interface Guest {
+	id: string;
+	name: string;
+	image: string;
+	messages: Message[];
+	vibe: number;
+	status: "waiting" | "active" | "finished";
+}
+
+function generateId(): string {
+	return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 interface PersonaDraft {
 	name: string;
@@ -35,11 +66,6 @@ interface ThemeConfig {
 		timerNormal: string;
 		timerLow: string;
 	};
-}
-
-interface CompletedDate {
-	theme: ThemeConfig;
-	transcript: TranscriptEntry[];
 }
 
 // ─── Constants ───────────────────────────────────────
@@ -1514,428 +1540,30 @@ function SpeakingIndicator({
 	);
 }
 
-function ThemedTranscriptBubble({
-	entry,
-	theme,
-}: { entry: TranscriptEntry; theme: ThemeConfig }) {
-	const isAI = entry.source === "ai";
-	return (
-		<motion.div
-			initial={{ opacity: 0, y: 8 }}
-			animate={{ opacity: 1, y: 0 }}
-			className={`flex ${isAI ? "justify-start" : "justify-end"}`}
-		>
-			<div
-				className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm font-medium backdrop-blur-sm"
-				style={{
-					background: isAI ? theme.colors.bubbleAi : theme.colors.bubbleUser,
-					color: "#fff",
-					border: `1px solid ${isAI ? `${theme.colors.accent}33` : `${theme.colors.accent}55`}`,
-				}}
-			>
-				{entry.message}
-			</div>
-		</motion.div>
-	);
-}
-
-function ProgressDots({
-	current,
-	total,
-	accentColor,
-}: { current: number; total: number; accentColor: string }) {
-	const dots = Array.from({ length: total }, (_, i) => `dot-${i}`);
-	return (
-		<div className="flex items-center gap-2">
-			{dots.map((id, i) => (
-				<div
-					key={id}
-					className="w-2 h-2 rounded-full transition-all"
-					style={{
-						background: i <= current ? accentColor : "rgba(255,255,255,0.2)",
-						boxShadow: i === current ? `0 0 8px ${accentColor}` : "none",
-					}}
-				/>
-			))}
-		</div>
-	);
-}
-
-function TransitionCard({
-	completedTheme,
-	nextTheme,
-	onContinue,
-}: {
-	completedTheme: ThemeConfig;
-	nextTheme: ThemeConfig | null;
-	onContinue: () => void;
-}) {
-	useEffect(() => {
-		const timer = setTimeout(onContinue, 3000);
-		return () => clearTimeout(timer);
-	}, [onContinue]);
-
-	return (
-		<motion.div
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
-			className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md"
-		>
-			<motion.div
-				initial={{ scale: 0.9, opacity: 0 }}
-				animate={{ scale: 1, opacity: 1 }}
-				className="text-center space-y-6 p-8"
-			>
-				{/* Completed character */}
-				<div className="flex flex-col items-center gap-3">
-					<FoxAvatar
-						variant={completedTheme.character.foxVariant}
-						className="w-20 h-20 rounded-full"
-					/>
-					<div className="text-4xl sm:text-5xl font-black italic tracking-tighter text-white">
-						Date with {completedTheme.character.name}
-					</div>
-					<div className="text-white/50 text-sm uppercase tracking-widest font-bold">
-						Complete
-					</div>
-				</div>
-
-				{nextTheme && (
-					<div className="space-y-3 pt-4">
-						<div className="text-white/40 text-xs uppercase tracking-widest">
-							Next date
-						</div>
-						<div className="flex items-center justify-center gap-3">
-							<FoxAvatar
-								variant={nextTheme.character.foxVariant}
-								className="w-12 h-12 rounded-full"
-							/>
-							<div className="text-left">
-								<div
-									className="text-xl font-black"
-									style={{ color: nextTheme.colors.accent }}
-								>
-									{nextTheme.character.name}
-								</div>
-								<div className="text-white/40 text-xs">{nextTheme.name}</div>
-							</div>
-						</div>
-					</div>
-				)}
-				<button
-					type="button"
-					onClick={onContinue}
-					className="mt-4 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all hover:scale-105"
-					style={{
-						background: (nextTheme || completedTheme).colors.accent,
-						color: "#000",
-					}}
-				>
-					Continue <ChevronRight className="w-3 h-3 inline" />
-				</button>
-			</motion.div>
-		</motion.div>
-	);
-}
-
-// ─── Speed Date Session (remounts per date via key) ──
-
-function SpeedDateSession({
-	theme,
-	dateIndex,
-	totalDates,
-	onDateComplete,
-}: {
-	theme: ThemeConfig;
-	dateIndex: number;
-	totalDates: number;
-	onDateComplete: (transcript: TranscriptEntry[]) => void;
-}) {
-	const {
-		status: dateStatus,
-		isSpeaking,
-		connectionStatus,
-		transcript,
-		remainingMs,
-		error: dateError,
-		startDate,
-		endDate,
-	} = useSpeedDate();
-
-	const scrollRef = useRef<HTMLDivElement>(null);
-	const completedRef = useRef(false);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: transcript triggers auto-scroll
-	useEffect(() => {
-		if (scrollRef.current) {
-			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-		}
-	}, [transcript]);
-
-	const transcriptRef = useRef<TranscriptEntry[]>([]);
-	transcriptRef.current = transcript;
-
-	useEffect(() => {
-		if (dateStatus === "done" && !completedRef.current) {
-			completedRef.current = true;
-			onDateComplete([...transcriptRef.current]);
-		}
-	}, [dateStatus, onDateComplete]);
-
-	const isLowTime = remainingMs < 30_000;
-	const { character } = theme;
-
-	return (
-		<div className="fixed inset-0 z-50 flex flex-col">
-			<ThemeBackground theme={theme} />
-
-			{/* Idle screen */}
-			{dateStatus === "idle" && (
-				<div className="relative z-10 flex-1 flex flex-col items-center justify-center space-y-8 p-6">
-					<motion.div
-						initial={{ scale: 0.9, opacity: 0 }}
-						animate={{ scale: 1, opacity: 1 }}
-						className="relative"
-					>
-						{/* Fox avatar with themed glow */}
-						<div
-							className="w-32 h-32 sm:w-40 sm:h-40 rounded-full flex items-center justify-center p-1"
-							style={{
-								boxShadow: `0 0 40px 8px ${theme.colors.accent}25`,
-								border: `2px solid ${theme.colors.accent}40`,
-							}}
-						>
-							<FoxAvatar
-								variant={character.foxVariant}
-								className="w-full h-full rounded-full"
-							/>
-						</div>
-						{connectionStatus === "connecting" && (
-							<div
-								className="absolute -inset-3 border-2 rounded-full animate-pulse"
-								style={{ borderColor: `${theme.colors.accent}60` }}
-							/>
-						)}
-						<div
-							className="absolute -inset-6 rounded-full blur-xl"
-							style={{ background: `${theme.colors.accent}10` }}
-						/>
-					</motion.div>
-
-					<div className="text-center space-y-2">
-						<div
-							className="text-xs font-black uppercase tracking-widest"
-							style={{ color: theme.colors.accent }}
-						>
-							Date {dateIndex + 1} of {totalDates}
-						</div>
-						<h2 className="text-3xl font-black tracking-tighter italic uppercase text-white">
-							{character.name}
-						</h2>
-						<p className="text-sm text-white/50 max-w-sm">
-							{character.subtitle}
-						</p>
-						<p className="text-xs text-white/30">
-							{theme.name} — {theme.subtitle}
-						</p>
-					</div>
-
-					{dateError && (
-						<p className="text-sm text-red-400 text-center max-w-sm">
-							{dateError}
-						</p>
-					)}
-
-					<button
-						type="button"
-						onClick={startDate}
-						disabled={connectionStatus === "connecting"}
-						className="px-10 py-4 rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all flex items-center gap-3 disabled:opacity-50 shadow-xl"
-						style={{
-							background: theme.colors.accent,
-							color: "#000",
-						}}
-					>
-						{connectionStatus === "connecting" ? (
-							<>
-								<div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-								CONNECTING...
-							</>
-						) : (
-							<>
-								<Mic className="w-4 h-4" />
-								START CONVERSATION
-							</>
-						)}
-					</button>
-				</div>
-			)}
-
-			{/* Talking screen */}
-			{dateStatus === "talking" && (
-				<div className="relative z-10 flex-1 flex flex-col">
-					{/* Top bar */}
-					<div className="h-16 px-6 flex items-center justify-between bg-black/30 backdrop-blur-md border-b border-white/5">
-						<div className="flex items-center gap-3">
-							<FoxAvatar
-								variant={character.foxVariant}
-								className="w-8 h-8 rounded-full"
-							/>
-							<span
-								className="text-xs font-black uppercase tracking-widest"
-								style={{ color: theme.colors.accent }}
-							>
-								{character.name}
-							</span>
-						</div>
-						<ProgressDots
-							current={dateIndex}
-							total={totalDates}
-							accentColor={theme.colors.accent}
-						/>
-						<div className="flex items-center gap-4">
-							<span
-								className="font-mono text-lg font-black px-3 py-1 rounded-full"
-								style={{
-									color: isLowTime
-										? theme.colors.timerLow
-										: theme.colors.timerNormal,
-									background: isLowTime
-										? "rgba(239,83,80,0.15)"
-										: `${theme.colors.accent}15`,
-								}}
-							>
-								{formatTime(remainingMs)}
-							</span>
-							<button
-								type="button"
-								onClick={endDate}
-								className="px-5 py-2 bg-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-sm"
-							>
-								End Date
-							</button>
-						</div>
-					</div>
-
-					{/* Center: agent avatar */}
-					<div className="flex-shrink-0 flex flex-col items-center justify-center py-6 sm:py-10">
-						<motion.div
-							animate={isSpeaking ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-							transition={
-								isSpeaking
-									? {
-											repeat: Number.POSITIVE_INFINITY,
-											duration: 1.5,
-										}
-									: {}
-							}
-							className="relative w-20 h-20 sm:w-28 sm:h-28"
-						>
-							<div
-								className="absolute -inset-3 rounded-full transition-all"
-								style={{
-									border: `2px solid ${isSpeaking ? `${theme.colors.accent}60` : `${theme.colors.accent}15`}`,
-									boxShadow: isSpeaking
-										? `0 0 30px ${theme.colors.accent}30`
-										: "none",
-								}}
-							/>
-							<FoxAvatar
-								variant={character.foxVariant}
-								className="w-full h-full rounded-full"
-							/>
-						</motion.div>
-						<div className="mt-3">
-							<SpeakingIndicator
-								isSpeaking={isSpeaking}
-								accentColor={theme.colors.accent}
-							/>
-						</div>
-					</div>
-
-					{/* Bottom: transcript overlay */}
-					<div
-						className="flex-1 overflow-hidden"
-						style={{
-							background:
-								"linear-gradient(to bottom, transparent, rgba(0,0,0,0.6) 20%)",
-						}}
-					>
-						<div
-							ref={scrollRef}
-							className="h-full w-full max-w-2xl mx-auto overflow-y-auto px-6 pb-6 pt-4 space-y-3"
-						>
-							{transcript.length === 0 && (
-								<p className="text-center text-sm text-white/40 pt-4">
-									会話が始まるのを待っています...
-								</p>
-							)}
-							{transcript.map((entry, i) => (
-								<ThemedTranscriptBubble
-									key={`${entry.timestamp}-${i}`}
-									entry={entry}
-									theme={theme}
-								/>
-							))}
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* Done state (brief, before transition card appears) */}
-			{dateStatus === "done" && (
-				<div className="relative z-10 flex-1 flex items-center justify-center">
-					<div className="text-center space-y-4">
-						<div
-							className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-							style={{ background: `${theme.colors.accent}20` }}
-						>
-							<Sparkles
-								className="w-8 h-8"
-								style={{ color: theme.colors.accent }}
-							/>
-						</div>
-						<div className="text-white/60 text-sm font-bold uppercase tracking-widest">
-							Wrapping up...
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
-// ─── Review Transcript Bubble ────────────────────────
-
-function ReviewTranscriptBubble({
-	entry,
-	accentColor,
-}: { entry: TranscriptEntry; accentColor: string }) {
-	const isAI = entry.source === "ai";
-	return (
-		<div className={`flex ${isAI ? "justify-start" : "justify-end"}`}>
-			<div
-				className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm font-medium"
-				style={{
-					background: isAI ? `${accentColor}15` : `${accentColor}25`,
-					border: `1px solid ${accentColor}22`,
-				}}
-			>
-				{entry.message}
-			</div>
-		</div>
-	);
-}
-
-// ─── Main Component ──────────────────────────────────
-
 export function PersonasCreate() {
 	const { t } = useTranslation("personas");
 	const navigate = useNavigate();
+	const generatePersonas = useSpeedDatingPersonas();
+	const createSession = useSpeedDatingSessions();
+	const generateProfile = useGenerateProfile();
+	const generateWingfox = useGenerateWingfoxPersona();
+	const confirmProfile = useConfirmProfile();
+
 	const [step, setStep] = useState<
 		"initial" | "speed-date" | "review" | "creating"
 	>("initial");
+	// API-backed state
+	const [virtualPersonas, setVirtualPersonas] = useState<
+		Array<{ id: string; name: string; persona_type: string }>
+	>([]);
+	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+	const [currentPersonaIndex, setCurrentPersonaIndex] = useState(0);
+	const [sessionIds, setSessionIds] = useState<string[]>([]);
+	// Local UI state for current guest messages (synced from API responses)
+	const [guestMessages, setGuestMessages] = useState<
+		Record<string, Message[]>
+	>({});
+
 	const [draft, setDraft] = useState<PersonaDraft>({
 		name: "",
 		gender: "",
@@ -1943,13 +1571,46 @@ export function PersonasCreate() {
 		interests: [],
 	});
 
-	// Multi-date state
-	const [currentDateIndex, setCurrentDateIndex] = useState(0);
-	const [completedDates, setCompletedDates] = useState<CompletedDate[]>([]);
-	const [sessionThemes] = useState<ThemeConfig[]>(() =>
-		pickRandomThemes(TOTAL_DATES),
-	);
-	const [showTransition, setShowTransition] = useState(false);
+	// Derived: guests for UI (from virtualPersonas + guestMessages)
+	const guests: Guest[] = virtualPersonas.map((p, i) => ({
+		id: p.id,
+		name: p.name,
+		image: `https://picsum.photos/200/300?random=${i + 1}`,
+		messages: guestMessages[p.id] ?? [
+			{
+				id: `welcome-${p.id}`,
+				role: "ai",
+				content:
+					i === 0
+						? "やあ、今日は来てくれてありがとう。まずはリラックスして、最近の調子はどうだい？"
+						: "初めまして！リラックスして、あなたのことを教えてください。",
+			},
+		],
+		vibe: 20 + (i < currentPersonaIndex ? 50 : i === currentPersonaIndex ? 30 : 0),
+		status:
+			i < currentPersonaIndex
+				? "finished"
+				: i === currentPersonaIndex
+					? "active"
+					: "waiting",
+	}));
+
+	const [activeGuestId, setActiveGuestId] = useState<string | null>(null);
+	const [inputValue, setInputValue] = useState("");
+	const [isTyping, setIsTyping] = useState(false);
+
+	const activeGuest =
+		guests.find((g) => g.id === activeGuestId) ?? guests[0];
+	const currentPersonaId = virtualPersonas[currentPersonaIndex]?.id ?? null;
+	const sendMessage = useSendSpeedDatingMessage(currentSessionId);
+	const completeSession = useCompleteSpeedDatingSession(currentSessionId);
+
+	// Keep activeGuestId in sync with current persona
+	useEffect(() => {
+		if (virtualPersonas.length > 0 && currentPersonaIndex < virtualPersonas.length) {
+			setActiveGuestId(virtualPersonas[currentPersonaIndex].id);
+		}
+	}, [virtualPersonas, currentPersonaIndex]);
 
 	const handleDraftChange = (
 		field: keyof PersonaDraft,
@@ -1971,36 +1632,132 @@ export function PersonasCreate() {
 		});
 	};
 
-	const startSpeedDate = () => {
+	const startSpeedDate = async () => {
 		if (!draft.name || !draft.gender) {
 			toast.error(t("create.error_basic_info"));
 			return;
 		}
-		setStep("speed-date");
+		try {
+			const personasResult = await generatePersonas.mutateAsync();
+			const personas = Array.isArray(personasResult) ? personasResult : [];
+			if (personas.length === 0) {
+				toast.error("仮想ペルソナの生成に失敗しました");
+				return;
+			}
+			setVirtualPersonas(
+				personas.map((p: { id: string; name: string; persona_type: string }) => ({
+					id: p.id,
+					name: p.name,
+					persona_type: p.persona_type,
+				})),
+			);
+			const firstSession = await createSession.mutateAsync(personas[0].id);
+			const sessionData = firstSession as {
+				session_id: string;
+				first_message?: { id: string; role: string; content: string; created_at: string };
+			};
+			setCurrentSessionId(sessionData.session_id);
+			setSessionIds([sessionData.session_id]);
+			setCurrentPersonaIndex(0);
+			if (sessionData.first_message) {
+				setGuestMessages((prev) => ({
+					...prev,
+					[personas[0].id]: [
+						{
+							id: sessionData.first_message!.id,
+							role: "ai",
+							content: sessionData.first_message!.content,
+						},
+					],
+				}));
+			}
+			setStep("speed-date");
+		} catch (e) {
+			console.error(e);
+			toast.error("Speed Dateの開始に失敗しました");
+		}
 	};
 
-	const handleDateComplete = useCallback(
-		(transcript: TranscriptEntry[]) => {
-			const completed: CompletedDate = {
-				theme: sessionThemes[currentDateIndex],
-				transcript,
+	const handleSendMessage = async () => {
+		if (!inputValue.trim() || isTyping || !currentSessionId || !currentPersonaId) return;
+
+		const userMessage: Message = {
+			id: generateId(),
+			role: "user",
+			content: inputValue,
+		};
+		setGuestMessages((prev) => ({
+			...prev,
+			[currentPersonaId]: [
+				...(prev[currentPersonaId] ?? []),
+				userMessage,
+			],
+		}));
+		setInputValue("");
+		setIsTyping(true);
+
+		try {
+			const res = await sendMessage.mutateAsync(inputValue) as {
+				persona_message?: { id: string; role: string; content: string; created_at: string };
 			};
-			setCompletedDates((prev) => [...prev, completed]);
-
-			if (currentDateIndex < TOTAL_DATES - 1) {
-				setShowTransition(true);
-			} else {
-				// Last date done → go to review
-				setTimeout(() => setStep("review"), 500);
+			const personaMsg = res?.persona_message;
+			if (personaMsg) {
+				setGuestMessages((prev) => ({
+					...prev,
+					[currentPersonaId]: [
+						...(prev[currentPersonaId] ?? []),
+						{
+							id: personaMsg.id,
+							role: "ai",
+							content: personaMsg.content,
+						},
+					],
+				}));
 			}
-		},
-		[currentDateIndex, sessionThemes],
-	);
+		} catch (e) {
+			console.error(e);
+			toast.error("メッセージの送信に失敗しました");
+		} finally {
+			setIsTyping(false);
+		}
+	};
 
-	const handleTransitionContinue = useCallback(() => {
-		setShowTransition(false);
-		setCurrentDateIndex((prev) => prev + 1);
-	}, []);
+	const wrapCurrentTable = async () => {
+		if (!currentSessionId || currentPersonaIndex >= virtualPersonas.length) return;
+		try {
+			await completeSession.mutateAsync();
+			if (currentPersonaIndex < virtualPersonas.length - 1) {
+				const nextIndex = currentPersonaIndex + 1;
+				const nextPersona = virtualPersonas[nextIndex];
+				const nextSession = await createSession.mutateAsync(nextPersona.id) as {
+					session_id: string;
+					first_message?: { id: string; role: string; content: string; created_at: string };
+				};
+				setCurrentSessionId(nextSession.session_id);
+				setSessionIds((prev) => [...prev, nextSession.session_id]);
+				setCurrentPersonaIndex(nextIndex);
+				if (nextSession.first_message) {
+					setGuestMessages((prev) => ({
+						...prev,
+						[nextPersona.id]: [
+							{
+								id: nextSession.first_message!.id,
+								role: "ai",
+								content: nextSession.first_message!.content,
+							},
+						],
+					}));
+				}
+				setActiveGuestId(nextPersona.id);
+				toast.info(`${nextPersona.name}との会話を始めます`);
+			} else {
+				setStep("review");
+			}
+		} catch (e) {
+			console.error(e);
+			toast.error("セッションの完了に失敗しました");
+		}
+	};
 
 	return (
 		<div className="p-4 md:p-6 min-h-full w-full max-w-7xl mx-auto">
@@ -2101,7 +1858,11 @@ export function PersonasCreate() {
 									<button
 										type="button"
 										onClick={startSpeedDate}
-										disabled={!draft.name || !draft.gender}
+										disabled={
+											!draft.name ||
+											!draft.gender ||
+											generatePersonas.isPending
+										}
 										className="px-10 py-4 bg-foreground text-background rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-30 shadow-xl shadow-black/10"
 									>
 										{t("create.enter_speed_date")}{" "}
@@ -2129,26 +1890,129 @@ export function PersonasCreate() {
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 					>
-						<SpeedDateSession
-							key={currentDateIndex}
-							theme={sessionThemes[currentDateIndex]}
-							dateIndex={currentDateIndex}
-							totalDates={TOTAL_DATES}
-							onDateComplete={handleDateComplete}
-						/>
-						<AnimatePresence>
-							{showTransition && (
-								<TransitionCard
-									completedTheme={sessionThemes[currentDateIndex]}
-									nextTheme={
-										currentDateIndex < TOTAL_DATES - 1
-											? sessionThemes[currentDateIndex + 1]
-											: null
-									}
-									onContinue={handleTransitionContinue}
-								/>
-							)}
-						</AnimatePresence>
+						<div className="relative h-24 border-b border-border bg-background/50 backdrop-blur-md px-6 flex items-center justify-between">
+							<div className="flex items-center gap-6">
+								<div className="flex flex-col">
+									<span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+										Tonight&apos;s Guests
+									</span>
+									<div className="flex gap-3 mt-2">
+										{guests.map((g) => (
+											<button
+												type="button"
+												key={g.id}
+												onClick={() =>
+													(g.status === "active" || g.status === "finished") &&
+													setActiveGuestId(g.id)
+												}
+												className={`relative group transition-all ${activeGuestId === g.id ? "scale-110" : "opacity-40 hover:opacity-100"}`}
+											>
+												<div
+													className={`w-10 h-10 rounded-full border-2 overflow-hidden ${activeGuestId === g.id ? "border-secondary" : "border-transparent"}`}
+												>
+													<img
+														src={g.image}
+														className="w-full h-full object-cover"
+														alt={g.name}
+													/>
+												</div>
+												{g.status === "finished" && (
+													<div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-full">
+														<CheckCircle2 className="w-4 h-4 text-green-500" />
+													</div>
+												)}
+												<span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase whitespace-nowrap">
+													{g.name}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div className="flex-1 flex flex-col min-h-0">
+							<div className="w-full max-w-xl min-h-[140px] flex flex-col items-center justify-center py-8">
+								<AnimatePresence mode="wait">
+									{isTyping ? (
+										<motion.div
+											key="typing"
+											initial={{ opacity: 0, y: 10 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0 }}
+											className="bg-white px-6 py-4 rounded-full border border-border shadow-md flex gap-1.5"
+										>
+											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce" />
+											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce [animation-delay:0.2s]" />
+											<span className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce [animation-delay:0.4s]" />
+										</motion.div>
+									) : (
+										<motion.div
+											key={
+												activeGuest.messages[activeGuest.messages.length - 1]?.id ?? "last"
+											}
+											initial={{ opacity: 0, y: 15 }}
+											animate={{ opacity: 1, y: 0 }}
+											className={`p-6 rounded-3xl shadow-xl border-2 text-center text-sm sm:text-base font-medium transition-all ${
+												activeGuest.messages[activeGuest.messages.length - 1]?.role === "ai"
+													? "bg-white border-secondary/20 text-foreground"
+													: "bg-zinc-900 border-zinc-800 text-white"
+											}`}
+										>
+											{
+												activeGuest.messages[activeGuest.messages.length - 1]?.content ?? ""
+											}
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</div>
+
+							<div className="w-full max-w-2xl mx-auto py-8 px-4">
+								<div className="relative">
+									<input
+										type="text"
+										value={inputValue}
+										onChange={(e) => setInputValue(e.target.value)}
+										onKeyDown={(e) =>
+											e.key === "Enter" && handleSendMessage()
+										}
+										placeholder="あなたの言葉を聴かせてください..."
+										className="w-full bg-white border border-border/80 rounded-full px-8 py-5 text-sm focus:outline-none focus:ring-4 focus:ring-secondary/5 transition-all shadow-inner"
+									/>
+									<button
+										type="button"
+										onClick={handleSendMessage}
+										disabled={
+											!inputValue.trim() ||
+											isTyping ||
+											activeGuestId !== currentPersonaId
+										}
+										className="absolute right-2 top-2 p-4 bg-zinc-900 text-white rounded-full hover:bg-zinc-800 transition-all"
+									>
+										<ChevronRight className="w-4 h-4" />
+									</button>
+								</div>
+								{currentPersonaIndex < virtualPersonas.length - 1 ? (
+									<button
+										type="button"
+										onClick={wrapCurrentTable}
+										disabled={completeSession.isPending}
+										className="mt-4 w-full py-3 rounded-full border-2 border-secondary/50 bg-secondary/5 text-sm font-bold hover:bg-secondary/10 transition-colors disabled:opacity-50"
+									>
+										{completeSession.isPending ? "完了中..." : "次のゲストへ"}
+									</button>
+								) : (
+									<button
+										type="button"
+										onClick={wrapCurrentTable}
+										disabled={completeSession.isPending}
+										className="mt-4 w-full py-3 rounded-full bg-secondary text-white text-sm font-bold hover:bg-secondary/90 transition-colors disabled:opacity-50"
+									>
+										{completeSession.isPending ? "完了中..." : "レビューへ"}
+									</button>
+								)}
+							</div>
+						</div>
 					</motion.div>
 				)}
 
@@ -2168,72 +2032,16 @@ export function PersonasCreate() {
 							</p>
 						</div>
 
-						{/* Date summary cards - character-focused */}
-						{completedDates.map((date, i) => (
-							<div
-								key={date.theme.id}
-								className="bg-card border border-border rounded-2xl overflow-hidden"
-								style={{
-									borderColor: `${date.theme.colors.accent}30`,
-								}}
-							>
-								{/* Character header */}
-								<div className="flex items-center gap-4 px-6 py-5">
-									<div
-										className="rounded-full p-0.5"
-										style={{
-											boxShadow: `0 0 20px 4px ${date.theme.colors.accent}15`,
-											border: `2px solid ${date.theme.colors.accent}30`,
-										}}
-									>
-										<FoxAvatar
-											variant={date.theme.character.foxVariant}
-											className="w-14 h-14 rounded-full"
-										/>
-									</div>
-									<div className="flex-1 min-w-0">
-										<div className="flex items-center gap-2">
-											<span className="text-lg font-black tracking-tight uppercase">
-												{date.theme.character.name}
-											</span>
-											<span
-												className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-												style={{
-													color: date.theme.colors.accent,
-													background: `${date.theme.colors.accent}15`,
-												}}
-											>
-												Date {i + 1}
-											</span>
-										</div>
-										<p className="text-xs text-muted-foreground truncate">
-											{date.transcript.length > 0
-												? date.transcript.find((t) => t.source === "ai")
-														?.message || date.theme.character.subtitle
-												: date.theme.character.subtitle}
-										</p>
-									</div>
-									<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-										{date.transcript.length} turns
-									</span>
-								</div>
-								{/* Transcript */}
-								<div className="max-h-[30vh] overflow-y-auto space-y-3 px-6 pb-5 border-t border-border/50">
-									{date.transcript.length === 0 && (
-										<p className="text-center text-sm text-muted-foreground py-4">
-											トランスクリプトはありません
-										</p>
-									)}
-									{date.transcript.map((entry, j) => (
-										<ReviewTranscriptBubble
-											key={`${entry.timestamp}-${j}`}
-											entry={entry}
-											accentColor={date.theme.colors.accent}
-										/>
-									))}
-								</div>
+						<div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+									{t("create.ready_to_materialize")}
+								</span>
 							</div>
-						))}
+							<p className="text-sm text-muted-foreground">
+								会話を完了しました。以下のボタンからペルソナを確定してください。
+							</p>
+						</div>
 
 						<div className="bg-zinc-900 text-white p-10 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
 							<div className="space-y-4 text-center md:text-left">
@@ -2252,15 +2060,19 @@ export function PersonasCreate() {
 							</div>
 							<button
 								type="button"
-								onClick={() => {
+								onClick={async () => {
 									setStep("creating");
-									setTimeout(
-										() =>
-											navigate({
-												to: "/personas/me",
-											}),
-										2500,
-									);
+									try {
+										await generateProfile.mutateAsync();
+										await generateWingfox.mutateAsync();
+										await confirmProfile.mutateAsync();
+										toast.success("ペルソナを確定しました");
+										navigate({ to: "/personas/me" });
+									} catch (e) {
+										console.error(e);
+										toast.error("ペルソナの確定に失敗しました");
+										setStep("review");
+									}
 								}}
 								className="px-12 py-5 bg-white text-zinc-900 rounded-full font-black text-xs tracking-widest uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
 							>

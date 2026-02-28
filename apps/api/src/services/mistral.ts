@@ -9,10 +9,13 @@ export function getMistralClient(apiKey: string) {
 export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
 export async function chatComplete(
-	apiKey: string,
+	apiKey: string | undefined,
 	messages: ChatMessage[],
 	options?: { model?: string; maxTokens?: number },
 ): Promise<string> {
+	if (!apiKey?.trim()) {
+		throw new Error("MISTRAL_API_KEY is not set or empty. Set it in .mise.local.toml or apps/api/.env");
+	}
 	const client = getMistralClient(apiKey);
 	const response = await client.chat.complete({
 		model: options?.model ?? DEFAULT_MODEL,

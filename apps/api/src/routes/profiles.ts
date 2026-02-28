@@ -86,8 +86,29 @@ profiles.post("/generate", requireAuth, async (c) => {
 profiles.get("/me", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const supabase = getSupabaseClient(c.env);
-	const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
-	if (error || !data) return jsonError(c, "NOT_FOUND", "Profile not found");
+	const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
+	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to fetch profile");
+	if (!data) {
+		const { data: inserted, error: insertError } = await supabase
+			.from("profiles")
+			.insert({
+				user_id: userId,
+				basic_info: {},
+				personality_tags: [],
+				personality_analysis: {},
+				interests: [],
+				values: {},
+				romance_style: {},
+				communication_style: {},
+				lifestyle: {},
+				status: "draft",
+				version: 1,
+			})
+			.select()
+			.single();
+		if (insertError) return jsonError(c, "INTERNAL_ERROR", "Failed to create profile");
+		return jsonData(c, inserted);
+	}
 	return jsonData(c, data);
 });
 
