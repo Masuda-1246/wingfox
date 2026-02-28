@@ -83,7 +83,7 @@ export function OnboardingReview() {
 				return;
 			}
 			console.error(e);
-			toast.error(t("review.confirm_error"));
+			toast.error(err?.message ? `確認に失敗しました: ${err.message}` : t("review.confirm_error"));
 		}
 	};
 
