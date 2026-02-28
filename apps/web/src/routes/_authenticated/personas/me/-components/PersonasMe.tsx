@@ -10,6 +10,7 @@ import {
 	usePersonasList,
 	usePersonaSections,
 	useUpdatePersonaSection,
+	useSetRandomPersonaIcon,
 } from "@/lib/hooks/usePersonasApi";
 import { useProfileMe } from "@/lib/hooks/useProfile";
 import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
@@ -31,8 +32,9 @@ import {
 	Tag,
 	User,
 	Zap,
+	ImageIcon,
 } from "lucide-react";
-import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -416,6 +418,10 @@ export function PersonasMe() {
 	const { data: sections } = usePersonaSections(myPersona?.id);
 	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
 	const { data: profileData } = useProfileMe();
+	const setRandomIcon = useSetRandomPersonaIcon(myPersona?.id ?? null);
+	const [isIconGenerating, setIsIconGenerating] = useState(false);
+	const iconGenerateStartRef = useRef<number>(0);
+	const MIN_ICON_GENERATING_MS = 7000;
 	const { data: quizQuestions } = useQuizQuestions();
 	const { data: quizAnswersData, isLoading: quizAnswersLoading } = useQuizAnswers();
 	const submitQuiz = useSubmitQuizAnswers();
@@ -582,15 +588,30 @@ export function PersonasMe() {
 
 					<motion.div
 						initial={{ scale: 0.9, opacity: 0 }}
-						animate={{ scale: 1, opacity: 1 }}
-						transition={{ duration: 0.5 }}
+						animate={{
+							scale: setRandomIcon.isPending || isIconGenerating ? [1, 1.02, 1] : 1,
+							opacity: 1,
+						}}
+						transition={
+							setRandomIcon.isPending || isIconGenerating
+								? { scale: { repeat: Number.POSITIVE_INFINITY, duration: 1.5 } }
+								: { duration: 0.5 }
+						}
 						className="relative"
 					>
-						<div className="w-40 h-40 overflow-hidden">
-							<FoxAvatar
-								seed={myPersona.id}
-								className="w-full h-full"
-							/>
+						<div className={cn("w-40 h-40 overflow-hidden rounded-lg", (setRandomIcon.isPending || isIconGenerating) && "animate-pulse bg-muted")}>
+							{(setRandomIcon.isPending || isIconGenerating) ? (
+								<div className="flex h-full w-full items-center justify-center bg-muted">
+									<Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+								</div>
+							) : (
+								<FoxAvatar
+									key={myPersona.icon_url ?? "default"}
+									seed={myPersona.id}
+									iconUrl={myPersona.icon_url}
+									className="w-full h-full"
+								/>
+							)}
 						</div>
 						<div className="absolute bottom-0 right-0 bg-secondary text-secondary-foreground p-2 rounded-full border-4 border-background">
 							<Zap className="w-5 h-5 fill-current" />
@@ -618,6 +639,44 @@ export function PersonasMe() {
 								{t("me.enter_talk_room")}
 							</Button>
 						</Link>
+						<p className="text-xs text-muted-foreground mt-2 mb-3">
+							{t("me.icon_random_notice")}
+						</p>
+						<Button
+							variant="outline"
+							className="w-full"
+							disabled={setRandomIcon.isPending || isIconGenerating}
+							onClick={() => {
+								iconGenerateStartRef.current = Date.now();
+								setIsIconGenerating(true);
+								setRandomIcon.mutate(undefined, {
+									onSuccess: () => {
+										const elapsed = Date.now() - iconGenerateStartRef.current;
+										const remain = Math.max(0, MIN_ICON_GENERATING_MS - elapsed);
+										setTimeout(() => {
+											setIsIconGenerating(false);
+											toast.success(t("me.icon_random_success"));
+										}, remain);
+									},
+									onError: () => {
+										setIsIconGenerating(false);
+										toast.error(t("me.icon_random_error"));
+									},
+								});
+							}}
+						>
+							{(setRandomIcon.isPending || isIconGenerating) ? (
+								<>
+									<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+									{t("me.icon_random_loading")}
+								</>
+							) : (
+								<>
+									<ImageIcon className="w-4 h-4 mr-2" />
+									{t("me.icon_random")}
+								</>
+							)}
+						</Button>
 					</div>
 				</Card>
 

@@ -127,6 +127,7 @@ export interface PersonaListItem {
 	persona_type: string;
 	name: string;
 	version?: number;
+	icon_url?: string | null;
 	created_at: string;
 	updated_at: string;
 }

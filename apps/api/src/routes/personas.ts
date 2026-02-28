@@ -7,6 +7,29 @@ import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingfox-generation";
 import { z } from "zod";
 
+/** Icon paths under /foxes (apps/web/public/foxes). Key = user gender. */
+const FOX_ICONS: Record<string, string[]> = {
+	male: [
+		"/foxes/male/normal.png",
+		"/foxes/male/balckfox.png",
+		"/foxes/male/glasses.png",
+		"/foxes/male/face.png",
+		"/foxes/male/sunglasses.png",
+		"/foxes/male/tie.png",
+		"/foxes/male/pias.png",
+	],
+	female: [
+		"/foxes/female/ribbon.png",
+		"/foxes/female/whitefox_glasses.png",
+		"/foxes/female/whitefox.png",
+		"/foxes/female/whtefox_hat.png",
+		"/foxes/female/pinkfox.png",
+		"/foxes/female/pinkfox_cap.png",
+		"/foxes/female/whitefox_blue_ribbon.png",
+	],
+};
+const FOX_ICONS_ALL = [...FOX_ICONS.male, ...FOX_ICONS.female];
+
 const personas = new Hono<Env>();
 const WINGFOX_MAX_SESSIONS = 3;
 const WINGFOX_MAX_MESSAGES_PER_SESSION = 24;
@@ -130,7 +153,7 @@ personas.get("/", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const typeFilter = c.req.query("persona_type");
 	const supabase = getSupabaseClient(c.env);
-	let q = supabase.from("personas").select("id, persona_type, name, version, created_at, updated_at").eq("user_id", userId);
+	let q = supabase.from("personas").select("id, persona_type, name, version, icon_url, created_at, updated_at").eq("user_id", userId);
 	if (typeFilter) q = q.eq("persona_type", typeFilter);
 	const { data, error } = await q;
 	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to fetch personas");
@@ -242,6 +265,26 @@ personas.put("/:personaId/sections/:sectionId", requireAuth, async (c) => {
 		.eq("section_id", sectionId)
 		.single();
 	return jsonData(c, updated ?? { section_id: sectionId, content: parsed.data.content, source: "manual", updated_at: new Date().toISOString() });
+});
+
+/** POST /api/personas/:personaId/icon - set random fox icon by user gender, save path to DB */
+personas.post("/:personaId/icon", requireAuth, async (c) => {
+	const userId = c.get("user_id");
+	const personaId = c.req.param("personaId");
+	const supabase = getSupabaseClient(c.env);
+	const { data: p } = await supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single();
+	if (!p) return jsonError(c, "NOT_FOUND", "Persona not found");
+	const { data: profile } = await supabase.from("user_profiles").select("gender").eq("id", userId).single();
+	const gender = (profile?.gender ?? "").toLowerCase();
+	const pool = gender === "male" ? FOX_ICONS.male : gender === "female" ? FOX_ICONS.female : FOX_ICONS_ALL;
+	const iconUrl = pool[Math.floor(Math.random() * pool.length)];
+	const { error: updateError } = await supabase
+		.from("personas")
+		.update({ icon_url: iconUrl, updated_at: new Date().toISOString() })
+		.eq("id", personaId)
+		.eq("user_id", userId);
+	if (updateError) return jsonError(c, "INTERNAL_ERROR", "Failed to update icon");
+	return jsonData(c, { icon_url: iconUrl });
 });
 
 export default personas;
