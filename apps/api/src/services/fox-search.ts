@@ -100,6 +100,8 @@ export async function searchAndStartFoxConversation(
 		.select("id")
 		.single();
 	if (fcError || !foxConv) {
+		// Compensate: delete the match we just created
+		await supabase.from("matches").delete().eq("id", match.id);
 		throw new Error("FOX_CONVERSATION_CREATE_FAILED");
 	}
 
@@ -214,7 +216,11 @@ export async function searchAndStartMultipleFoxConversations(
 				})
 				.select("id")
 				.single();
-			if (fcError || !foxConv) continue;
+			if (fcError || !foxConv) {
+				// Compensate: delete the match we just created
+				await supabase.from("matches").delete().eq("id", match.id);
+				continue;
+			}
 
 			results.push({
 				match_id: match.id,

@@ -5,7 +5,19 @@ export const MISTRAL_LARGE = "mistral-large-latest";
 export const MISTRAL_LIGHT = "ministral-8b-latest";
 
 export function getMistralClient(apiKey: string) {
-	return new Mistral({ apiKey });
+	return new Mistral({
+		apiKey,
+		retryConfig: {
+			strategy: "backoff",
+			backoff: {
+				initialInterval: 1000,
+				maxInterval: 15000,
+				exponent: 1.5,
+				maxElapsedTime: 20000,
+			},
+			retryConnectionErrors: true,
+		},
+	});
 }
 
 export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };

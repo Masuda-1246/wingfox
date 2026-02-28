@@ -35,8 +35,13 @@ chatRequests.post("/", requireAuth, async (c) => {
 		})
 		.select("id, match_id, status, expires_at")
 		.single();
-	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to create request");
-	await supabase.from("matches").update({ status: "direct_chat_requested", updated_at: new Date().toISOString() }).eq("id", parsed.data.match_id);
+	if (error || !req) return jsonError(c, "INTERNAL_ERROR", "Failed to create request");
+	const { error: matchUpdateError } = await supabase.from("matches").update({ status: "direct_chat_requested", updated_at: new Date().toISOString() }).eq("id", parsed.data.match_id);
+	if (matchUpdateError) {
+		// Compensate: delete the chat_request we just created
+		await supabase.from("chat_requests").delete().eq("id", req.id);
+		return jsonError(c, "INTERNAL_ERROR", "Failed to update match status");
+	}
 	return jsonData(c, req);
 });
 
@@ -79,16 +84,31 @@ chatRequests.put("/:id", requireAuth, async (c) => {
 	}
 	if (parsed.data.action === "decline") {
 		await supabase.from("chat_requests").update({ status: "declined", responded_at: new Date().toISOString() }).eq("id", id);
+		await supabase.from("matches").update({ status: "chat_request_declined", updated_at: new Date().toISOString() }).eq("id", req.match_id);
 		return jsonData(c, { request_id: id, status: "declined" });
 	}
+	// Step 1: Create room
 	const { data: room, error: roomErr } = await supabase
 		.from("direct_chat_rooms")
 		.insert({ match_id: req.match_id })
 		.select("id")
 		.single();
 	if (roomErr || !room) return jsonError(c, "INTERNAL_ERROR", "Failed to create room");
-	await supabase.from("chat_requests").update({ status: "accepted", responded_at: new Date().toISOString() }).eq("id", id);
-	await supabase.from("matches").update({ status: "direct_chat_active", updated_at: new Date().toISOString() }).eq("id", req.match_id);
+	// Step 2: Update chat_request status
+	const { error: crUpdateErr } = await supabase.from("chat_requests").update({ status: "accepted", responded_at: new Date().toISOString() }).eq("id", id);
+	if (crUpdateErr) {
+		// Compensate: delete the room
+		await supabase.from("direct_chat_rooms").delete().eq("id", room.id);
+		return jsonError(c, "INTERNAL_ERROR", "Failed to update chat request");
+	}
+	// Step 3: Update match status
+	const { error: matchUpdateErr } = await supabase.from("matches").update({ status: "direct_chat_active", updated_at: new Date().toISOString() }).eq("id", req.match_id);
+	if (matchUpdateErr) {
+		// Compensate: rollback chat_request and delete room
+		await supabase.from("chat_requests").update({ status: "pending", responded_at: null }).eq("id", id);
+		await supabase.from("direct_chat_rooms").delete().eq("id", room.id);
+		return jsonError(c, "INTERNAL_ERROR", "Failed to update match status");
+	}
 	return jsonData(c, { request_id: id, status: "accepted", direct_chat_room_id: room.id });
 });
 
