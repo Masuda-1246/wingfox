@@ -358,6 +358,12 @@
     "wingfox_gen_failed": "ウィングフォックスの生成に失敗しました",
     "profile_needs_generation": "先にプロフィールが生成されている必要があります。",
     "confirm_failed": "確認に失敗しました",
-    "wingfox_not_ready": "ウィングフォックスがまだ生成されていません。やり直すか、しばらく待ってから再度お試しください。"
+    "wingfox_not_ready": "ウィングフォックスがまだ生成されていません。やり直すか、しばらく待ってから再度お試しください。",
+    "interaction_dna": "インタラクションDNA",
+    "dna_layer1": "出会いの親和性",
+    "dna_layer2": "心理的シンクロ",
+    "dna_layer3": "将来の適合性",
+    "dna_confidence": "信頼度",
+    "dna_reasoning": "根拠"
   }
 }

@@ -82,13 +82,36 @@ export interface MatchResultDetail {
 	direct_chat_room_id: string | null;
 }
 
+export interface DnaScoreEntry {
+	score: number;
+	confidence: number;
+	evidence_turns: number[];
+	reasoning: string;
+}
+
+export interface InteractionStyleWithDna {
+	// Backward-compatible old fields
+	warmup_speed?: number;
+	humor_responsiveness?: number;
+	self_disclosure_depth?: number;
+	emotional_responsiveness?: number;
+	conflict_style?: string;
+	attachment_tendency?: string;
+	rhythm_preference?: string;
+	mirroring_tendency?: number;
+	// New DNA fields
+	dna_scores?: Record<string, DnaScoreEntry>;
+	overall_signature?: string;
+	preferred_persona_type?: string;
+}
+
 export interface ProfileMe {
 	id: string;
 	user_id: string;
 	basic_info?: Record<string, unknown>;
 	personality_tags?: string[];
 	personality_analysis?: Record<string, unknown>;
-	interaction_style?: Record<string, unknown>;
+	interaction_style?: InteractionStyleWithDna;
 	interests?: Array<{ category: string; items: string[] }>;
 	values?: Record<string, unknown>;
 	romance_style?: Record<string, unknown>;

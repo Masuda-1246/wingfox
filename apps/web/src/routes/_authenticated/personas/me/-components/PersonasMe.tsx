@@ -12,12 +12,18 @@ import {
 	useUpdatePersonaSection,
 	useSetRandomPersonaIcon,
 } from "@/lib/hooks/usePersonasApi";
+import { useProfileMe } from "@/lib/hooks/useProfile";
+import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
+import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
+import type { InteractionStyleWithDna } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
+	Brain,
 	ClipboardList,
 	Edit2,
+	Heart,
 	Loader2,
 	MessageSquare,
 	RefreshCw,
@@ -147,12 +153,271 @@ function Badge({
 	);
 }
 
+function AxisBar({ value, leftLabel, rightLabel }: { value: number; leftLabel: string; rightLabel: string }) {
+	const pct = Math.round(value * 100);
+	return (
+		<div className="space-y-1">
+			<div className="flex justify-between text-xs text-muted-foreground">
+				<span>{leftLabel}</span>
+				<span>{rightLabel}</span>
+			</div>
+			<div className="relative h-2 rounded-full bg-muted overflow-hidden">
+				<div
+					className="absolute top-0 left-0 h-full rounded-full bg-secondary/70 transition-all"
+					style={{ width: `${pct}%` }}
+				/>
+				<div className="absolute top-0 left-1/2 w-px h-full bg-muted-foreground/30" />
+			</div>
+		</div>
+	);
+}
+
+function ScoreBarSimple({ value, label }: { value: number; label: string }) {
+	const pct = Math.round(value * 100);
+	return (
+		<div className="space-y-1">
+			<div className="flex justify-between text-xs">
+				<span>{label}</span>
+				<span className="text-muted-foreground">{pct}%</span>
+			</div>
+			<div className="h-1.5 rounded-full bg-muted overflow-hidden">
+				<div
+					className="h-full rounded-full bg-secondary transition-all"
+					style={{ width: `${pct}%` }}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function PersonalityAnalysisCard({
+	profile,
+	t,
+}: {
+	profile: {
+		personality_tags?: string[];
+		personality_analysis?: Record<string, unknown>;
+		values?: Record<string, unknown>;
+		romance_style?: Record<string, unknown>;
+		communication_style?: Record<string, unknown>;
+		interests?: Array<{ category: string; items: string[] }>;
+		lifestyle?: Record<string, unknown>;
+	};
+	t: (key: string) => string;
+}) {
+	const analysis = profile.personality_analysis;
+	const values = profile.values;
+	const romance = profile.romance_style;
+	const comm = profile.communication_style;
+	const interests = profile.interests;
+	const lifestyle = profile.lifestyle;
+	const tags = profile.personality_tags;
+
+	const hasAnalysis = analysis && Object.keys(analysis).length > 0;
+	const hasValues = values && Object.keys(values).length > 0;
+	const hasRomance = romance && Object.keys(romance).length > 0;
+	const hasComm = comm && Object.keys(comm).length > 0;
+	const hasInterests = interests && interests.length > 0;
+	const hasLifestyle = lifestyle && Object.keys(lifestyle).length > 0;
+	const hasTags = tags && tags.length > 0;
+
+	if (!hasAnalysis && !hasValues && !hasRomance && !hasComm && !hasInterests && !hasTags) {
+		return null;
+	}
+
+	return (
+		<Card className="col-span-1 md:col-span-2 p-6">
+			<div className="flex items-center gap-2 mb-1">
+				<Brain className="w-5 h-5 text-secondary" />
+				<h3 className="font-bold text-lg">{t("me.personality_analysis_title")}</h3>
+			</div>
+			<p className="text-xs text-muted-foreground mb-4">{t("me.personality_analysis_desc")}</p>
+
+			<div className="space-y-5">
+				{/* Personality tags */}
+				{hasTags && (
+					<div className="flex flex-wrap gap-1.5">
+						{tags.map((tag) => (
+							<Badge
+								key={tag}
+								className="bg-secondary/10 text-secondary-foreground border-secondary/20 px-3 py-1 text-sm"
+							>
+								{tag}
+							</Badge>
+						))}
+					</div>
+				)}
+
+				{/* 3 personality axes */}
+				{hasAnalysis && (
+					<div className="space-y-3">
+						{typeof analysis.introvert_extrovert === "number" && (
+							<AxisBar
+								value={analysis.introvert_extrovert}
+								leftLabel={t("me.axis_introvert_extrovert").split(" / ")[0]}
+								rightLabel={t("me.axis_introvert_extrovert").split(" / ")[1]}
+							/>
+						)}
+						{typeof analysis.planned_spontaneous === "number" && (
+							<AxisBar
+								value={analysis.planned_spontaneous}
+								leftLabel={t("me.axis_planned_spontaneous").split(" / ")[0]}
+								rightLabel={t("me.axis_planned_spontaneous").split(" / ")[1]}
+							/>
+						)}
+						{typeof analysis.logical_emotional === "number" && (
+							<AxisBar
+								value={analysis.logical_emotional}
+								leftLabel={t("me.axis_logical_emotional").split(" / ")[0]}
+								rightLabel={t("me.axis_logical_emotional").split(" / ")[1]}
+							/>
+						)}
+					</div>
+				)}
+
+				{/* Values */}
+				{hasValues && (
+					<div className="space-y-2">
+						<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							{t("me.section_values")}
+						</span>
+						<div className="grid gap-2">
+							{typeof values.work_life_balance === "number" && (
+								<ScoreBarSimple value={values.work_life_balance} label={t("me.value_work_life_balance")} />
+							)}
+							{typeof values.family_oriented === "number" && (
+								<ScoreBarSimple value={values.family_oriented} label={t("me.value_family_oriented")} />
+							)}
+							{typeof values.experience_vs_material === "number" && (
+								<ScoreBarSimple value={values.experience_vs_material} label={t("me.value_experience_vs_material")} />
+							)}
+						</div>
+					</div>
+				)}
+
+				{/* Communication style */}
+				{hasComm && (
+					<div className="space-y-2">
+						<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							{t("me.section_communication")}
+						</span>
+						<div className="grid gap-2">
+							{typeof comm.humor_level === "number" && (
+								<ScoreBarSimple value={comm.humor_level} label={t("me.comm_humor_level")} />
+							)}
+							{typeof comm.empathy_level === "number" && (
+								<ScoreBarSimple value={comm.empathy_level} label={t("me.comm_empathy_level")} />
+							)}
+							{typeof comm.question_ratio === "number" && (
+								<ScoreBarSimple value={comm.question_ratio} label={t("me.comm_question_ratio")} />
+							)}
+							{typeof comm.message_length === "string" && (
+								<div className="flex gap-2 text-xs">
+									<span className="text-muted-foreground">{t("me.comm_message_length")}:</span>
+									<Badge className="bg-accent/50 text-foreground border-accent text-xs">{comm.message_length}</Badge>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
+
+				{/* Romance style */}
+				{hasRomance && (
+					<div className="space-y-2">
+						<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							<Heart className="w-3 h-3 inline mr-1" />
+							{t("me.section_romance")}
+						</span>
+						<div className="grid gap-1.5 text-sm">
+							{typeof romance.ideal_relationship === "string" && romance.ideal_relationship && (
+								<div className="flex gap-2 text-xs">
+									<span className="text-muted-foreground">{t("me.romance_ideal_relationship")}:</span>
+									<span>{romance.ideal_relationship as string}</span>
+								</div>
+							)}
+							{typeof romance.communication_frequency === "string" && romance.communication_frequency && (
+								<div className="flex gap-2 text-xs">
+									<span className="text-muted-foreground">{t("me.romance_communication_frequency")}:</span>
+									<span>{romance.communication_frequency as string}</span>
+								</div>
+							)}
+							{typeof romance.preferred_partner_type === "string" && romance.preferred_partner_type && (
+								<div className="flex gap-2 text-xs">
+									<span className="text-muted-foreground">{t("me.romance_preferred_partner")}:</span>
+									<span>{romance.preferred_partner_type as string}</span>
+								</div>
+							)}
+							{Array.isArray(romance.dealbreakers) && (romance.dealbreakers as string[]).length > 0 && (
+								<div className="flex gap-2 text-xs">
+									<span className="text-muted-foreground">{t("me.romance_dealbreakers")}:</span>
+									<span>{(romance.dealbreakers as string[]).join(", ")}</span>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
+
+				{/* Interests */}
+				{hasInterests && (
+					<div className="space-y-2">
+						<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							{t("me.section_interests")}
+						</span>
+						<div className="flex flex-wrap gap-1.5">
+							{interests.map((group) =>
+								group.items.map((item) => (
+									<Badge
+										key={`${group.category}-${item}`}
+										className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs"
+									>
+										{item}
+									</Badge>
+								)),
+							)}
+						</div>
+					</div>
+				)}
+
+				{/* Lifestyle */}
+				{hasLifestyle && (
+					<div className="space-y-2">
+						<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							{t("me.section_lifestyle")}
+						</span>
+						<div className="flex flex-wrap gap-1.5">
+							{Array.isArray(lifestyle.weekend_activities) && (lifestyle.weekend_activities as string[]).map((a) => (
+								<Badge
+									key={a}
+									className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs"
+								>
+									{a}
+								</Badge>
+							))}
+							{typeof lifestyle.diet === "string" && lifestyle.diet && (
+								<Badge className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs">
+									{lifestyle.diet}
+								</Badge>
+							)}
+							{typeof lifestyle.exercise === "string" && lifestyle.exercise && (
+								<Badge className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs">
+									{lifestyle.exercise}
+								</Badge>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
+		</Card>
+	);
+}
+
 export function PersonasMe() {
 	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
 	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
 	const { data: sections } = usePersonaSections(myPersona?.id);
 	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
+	const { data: profileData } = useProfileMe();
 	const setRandomIcon = useSetRandomPersonaIcon(myPersona?.id ?? null);
 	const [isIconGenerating, setIsIconGenerating] = useState(false);
 	const iconGenerateStartRef = useRef<number>(0);
@@ -184,14 +449,12 @@ export function PersonasMe() {
 	const [quizEditMode, setQuizEditMode] = useState(false);
 	const [quizAnswers, setQuizAnswers] = useState<Record<string, string[]>>({});
 	const [formData, setFormData] = useState({
-		name: "",
 		profile_text: "",
 	});
 
 	useEffect(() => {
 		if (myPersona) {
 			setFormData({
-				name: myPersona.name,
 				profile_text:
 					sections?.find((s) => s.section_id === "core_identity")?.content ?? "",
 			});
@@ -356,33 +619,14 @@ export function PersonasMe() {
 					</motion.div>
 
 					<div className="space-y-2 w-full">
-						{isEditing ? (
-							<div className="space-y-1">
-								<span className="text-xs text-muted-foreground font-medium text-left block w-full px-1">
-									{t("me.display_name")}
-								</span>
-								<Input
-									value={formData.name}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											name: e.target.value,
-										})
-									}
-									className="text-center font-bold text-lg"
-									placeholder={t("me.name_placeholder")}
-								/>
-							</div>
-						) : (
-							<div>
-								<h2 className="text-3xl font-black tracking-tight text-foreground">
-									{myPersona.name}
-								</h2>
-								<p className="text-sm text-muted-foreground">
-									AI Persona ID: {myPersona.id.slice(0, 8)}
-								</p>
-							</div>
-						)}
+						<div>
+							<h2 className="text-3xl font-black tracking-tight text-foreground">
+								{myPersona.name}
+							</h2>
+							<p className="text-sm text-muted-foreground">
+								AI Persona ID: {myPersona.id.slice(0, 8)}
+							</p>
+						</div>
 					</div>
 
 					<div className="w-full pt-4 border-t border-border">
@@ -464,27 +708,63 @@ export function PersonasMe() {
 						)}
 					</Card>
 
-					<Card className="col-span-1 p-6">
-						<div className="flex items-center gap-2 mb-4">
-							<Tag className="w-5 h-5 text-tertiary" />
-							<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
-						</div>
-						<div className="flex flex-wrap gap-2">
-							{sections && sections.length > 0 ? (
-								sections.slice(0, 5).map((s) => (
-									<Badge
-										key={s.section_id}
-										className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
-									>
-										#{s.section_id}
-									</Badge>
-								))
-							) : (
-								<p className="text-sm text-muted-foreground">
-									{t("me.no_traits")}
-								</p>
-							)}
-						</div>
+					{profileData && (
+						<PersonalityAnalysisCard profile={profileData} t={t} />
+					)}
+
+					<Card className="col-span-1 md:col-span-2 p-6">
+						{(() => {
+							const interactionStyle = profileData?.interaction_style as InteractionStyleWithDna | undefined;
+							const dnaScores = interactionStyle?.dna_scores;
+							const hasDna = dnaScores != null && Object.keys(dnaScores).length > 0;
+
+							if (hasDna && dnaScores) {
+								return (
+									<>
+										<div className="flex items-center gap-2 mb-4">
+											<Zap className="w-5 h-5 text-secondary" />
+											<h3 className="font-bold text-lg">{t("me.interaction_dna_title")}</h3>
+										</div>
+										{interactionStyle?.overall_signature && (
+											<p className="text-sm italic text-muted-foreground mb-4">
+												"{interactionStyle.overall_signature}"
+											</p>
+										)}
+										<div className="flex justify-center mb-4">
+											<InteractionDnaRadar scores={dnaScores} size={260} />
+										</div>
+										<InteractionDnaDetails scores={dnaScores} compact />
+									</>
+								);
+							}
+
+							// Fallback: show personality tags from profile
+							const tags = profileData?.personality_tags;
+							return (
+								<>
+									<div className="flex items-center gap-2 mb-4">
+										<Tag className="w-5 h-5 text-tertiary" />
+										<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
+									</div>
+									<div className="flex flex-wrap gap-2">
+										{tags && tags.length > 0 ? (
+											tags.map((tag) => (
+												<Badge
+													key={tag}
+													className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
+												>
+													{tag}
+												</Badge>
+											))
+										) : (
+											<p className="text-sm text-muted-foreground">
+												{t("me.no_interaction_data")}
+											</p>
+										)}
+									</div>
+								</>
+							);
+						})()}
 					</Card>
 
 					<Card className="col-span-1 md:col-span-2 p-6">

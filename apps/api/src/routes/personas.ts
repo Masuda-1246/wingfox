@@ -196,15 +196,15 @@ personas.get("/:personaId/sections", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const personaId = c.req.param("personaId");
 	const supabase = getSupabaseClient(c.env);
-	const { data: p } = await supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single();
-	if (!p) return jsonError(c, "NOT_FOUND", "Persona not found");
-	const { data: sections } = await supabase
-		.from("persona_sections")
-		.select("id, section_id, content, source, updated_at")
-		.eq("persona_id", personaId);
-	const { data: defs } = await supabase.from("persona_section_definitions").select("id, title, editable");
-	const defMap = new Map((defs ?? []).map((d) => [d.id, d]));
-	const list = (sections ?? []).map((s) => ({
+	// Run ownership check, sections fetch, and definitions fetch in parallel
+	const [ownerResult, sectionsResult, defsResult] = await Promise.all([
+		supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single(),
+		supabase.from("persona_sections").select("id, section_id, content, source, updated_at").eq("persona_id", personaId),
+		supabase.from("persona_section_definitions").select("id, title, editable"),
+	]);
+	if (!ownerResult.data) return jsonError(c, "NOT_FOUND", "Persona not found");
+	const defMap = new Map((defsResult.data ?? []).map((d) => [d.id, d]));
+	const list = (sectionsResult.data ?? []).map((s) => ({
 		...s,
 		title: defMap.get(s.section_id)?.title ?? s.section_id,
 		editable: defMap.get(s.section_id)?.editable ?? true,

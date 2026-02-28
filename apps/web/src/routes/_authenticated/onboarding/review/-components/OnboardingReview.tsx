@@ -17,6 +17,9 @@ import { useGenerateWingfoxPersona, usePersonasList } from "@/lib/hooks/usePerso
 import { ApiError } from "@/lib/api";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
+import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
+import type { InteractionStyleWithDna } from "@/lib/types";
 import { ChevronRight, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -62,13 +65,14 @@ export function OnboardingReview() {
 
 	const [generating, setGenerating] = useState(false);
 	const [generationDone, setGenerationDone] = useState(false);
+	const [generationFailed, setGenerationFailed] = useState(false);
 
 	const status = authMe?.onboarding_status ?? "not_started";
 	const needsGeneration =
 		status === "speed_dating_completed" && !generationDone && !generateProfile.isSuccess;
 
 	useEffect(() => {
-		if (status !== "speed_dating_completed" || generationDone || generating) return;
+		if (status !== "speed_dating_completed" || generationDone || generating || generationFailed) return;
 		let cancelled = false;
 		(async () => {
 			setGenerating(true);
@@ -79,6 +83,7 @@ export function OnboardingReview() {
 				if (cancelled) return;
 				setGenerationDone(true);
 			} catch (e) {
+				if (!cancelled) setGenerationFailed(true);
 				const err = e as ApiError;
 				const message =
 					err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
@@ -95,11 +100,14 @@ export function OnboardingReview() {
 		return () => {
 			cancelled = true;
 		};
-	}, [status, generationDone, generating]);
+	}, [status, generationDone, generating, generationFailed]);
 
 	const handleConfirm = async () => {
 		try {
 			await confirmProfile.mutateAsync();
+			// Wait for auth cache to reflect "confirmed" before navigating,
+			// otherwise the route guard may read stale status and bounce back.
+			await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
 			toast.success(t("review.confirm_success"));
 			navigate({ to: "/personas/me" });
 		} catch (e) {
@@ -151,7 +159,8 @@ export function OnboardingReview() {
 	const isReady =
 		reviewVisible && (wingfox != null || generateWingfox.isSuccess);
 
-	const interactionStyle = profile?.interaction_style as Record<string, unknown> | undefined;
+	const interactionStyle = profile?.interaction_style as InteractionStyleWithDna | undefined;
+	const hasDnaScores = interactionStyle?.dna_scores != null && Object.keys(interactionStyle.dna_scores).length > 0;
 	const basicInfoLabelMap: Record<string, string> = {
 		location: t("review.location"),
 		age_range: t("review.age_range"),
@@ -225,8 +234,23 @@ export function OnboardingReview() {
 										</div>
 									)}
 
-								{/* Interaction style (new psychological data) */}
-								{interactionStyle && Object.keys(interactionStyle).length > 0 && (
+								{/* Interaction style — DNA radar or fallback ScoreBar */}
+								{interactionStyle && hasDnaScores && interactionStyle.dna_scores ? (
+									<div className="space-y-3">
+										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											{t("review.interaction_dna")}
+										</span>
+										{interactionStyle.overall_signature && (
+											<p className="text-sm italic text-muted-foreground">
+												"{interactionStyle.overall_signature}"
+											</p>
+										)}
+										<div className="flex justify-center">
+											<InteractionDnaRadar scores={interactionStyle.dna_scores} size={280} />
+										</div>
+										<InteractionDnaDetails scores={interactionStyle.dna_scores} />
+									</div>
+								) : interactionStyle && Object.keys(interactionStyle).length > 0 ? (
 									<div className="space-y-3">
 										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 											{t("review.interaction_style")}
@@ -267,7 +291,7 @@ export function OnboardingReview() {
 											)}
 										</div>
 									</div>
-								)}
+								) : null}
 
 								{(!profile.personality_tags || profile.personality_tags.length === 0) &&
 									(!profile.basic_info ||
