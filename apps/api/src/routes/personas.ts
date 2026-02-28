@@ -79,15 +79,16 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 	});
 	sections.push({ section_id: "constraints", content: CONSTRAINTS_CONTENT });
 	const compiledDocument = sections.map((s) => `## ${s.section_id}\n\n${s.content}`).join("\n\n");
-	const { data: userProfile } = await supabase.from("user_profiles").select("gender").eq("id", userId).single();
+	const { data: userProfile } = await supabase.from("user_profiles").select("gender, nickname").eq("id", userId).single();
 	const iconUrl = getRandomIconUrlForGender(userProfile?.gender ?? "");
+	const displayName = `${(userProfile?.nickname ?? "User").toString().trim()}Fox`;
 	const { data: persona, error } = await supabase
 		.from("personas")
 		.upsert(
 			{
 				user_id: userId,
 				persona_type: "wingfox",
-				name: "ウィングフォックス",
+				name: displayName,
 				compiled_document: compiledDocument,
 				icon_url: iconUrl,
 				updated_at: new Date().toISOString(),

@@ -7,6 +7,7 @@ import {
 	buildFoxConversationSystemPrompt,
 	buildConversationScorePrompt,
 } from "../prompts/fox-conversation";
+import { truncateFoxMessage } from "../lib/truncate";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -103,13 +104,13 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		const [{ data: personaA }, { data: personaB }] = await Promise.all([
 			supabase
 				.from("personas")
-				.select("compiled_document")
+				.select("compiled_document, name")
 				.eq("user_id", match.user_a_id)
 				.eq("persona_type", "wingfox")
 				.single(),
 			supabase
 				.from("personas")
-				.select("compiled_document")
+				.select("compiled_document, name")
 				.eq("user_id", match.user_b_id)
 				.eq("persona_type", "wingfox")
 				.single(),
@@ -139,8 +140,8 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			matchId,
 			userA: match.user_a_id,
 			userB: match.user_b_id,
-			systemA: buildFoxConversationSystemPrompt(personaA.compiled_document),
-			systemB: buildFoxConversationSystemPrompt(personaB.compiled_document),
+			systemA: buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? ""),
+			systemB: buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? ""),
 			history: [],
 			currentRound: 0,
 			status: "in_progress",
@@ -194,21 +195,26 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			const speaker: "A" | "B" = nextRound % 2 === 1 ? "A" : "B";
 			const systemPrompt = speaker === "A" ? state.systemA : state.systemB;
 			const context = state.history.length
-				? state.history.map((m) => `相手: ${m.content}`).join("\n\n")
+				? state.history
+						.map((m) =>
+							m.speaker === speaker ? `自分: ${m.content}` : `相手: ${m.content}`,
+						)
+						.join("\n\n")
 				: "自己紹介と、相手に一言聞いてください。";
 
-			const content = await chatComplete(apiKey, [
+			const raw = await chatComplete(apiKey, [
 				{ role: "system", content: systemPrompt },
 				{ role: "user", content: context },
-			], { maxTokens: 300 });
+			], { maxTokens: 60 });
 
+			const content = (raw && truncateFoxMessage(raw)) || "（応答なし）";
 			const speakerUserId = speaker === "A" ? state.userA : state.userB;
 
 			// Insert message to DB
 			await supabase.from("fox_conversation_messages").insert({
 				conversation_id: state.conversationId,
 				speaker_user_id: speakerUserId,
-				content: content || "（応答なし）",
+				content,
 				round_number: nextRound,
 			});
 
@@ -223,12 +229,12 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				type: "round_message",
 				round_number: nextRound,
 				speaker,
-				content: content || "（応答なし）",
+				content,
 			};
 			this.broadcast(roundMsg);
 
 			// Update local state
-			state.history.push({ speaker, content: content || "" });
+			state.history.push({ speaker, content });
 			state.currentRound = nextRound;
 			state.retryCount = 0;
 			await this.ctx.storage.put("state", state);

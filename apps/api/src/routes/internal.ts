@@ -7,6 +7,9 @@ import { runFoxConversation } from "../services/fox-conversation";
 
 const internal = new Hono<Env>();
 
+/** Minutes after which an in_progress fox_conversation is considered stuck */
+const STUCK_IN_PROGRESS_MINUTES = 2;
+
 /** POST /api/internal/matching/execute - run matching and create matches + fox_conversations */
 internal.post("/matching/execute", async (c) => {
 	const supabase = getSupabaseClient(c.env);
@@ -140,6 +143,25 @@ internal.post("/data-integrity/check", async (c) => {
 			await supabase.from("matches").update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() }).eq("id", m.id);
 			fixes.push(`Match ${m.id}: pending with failed fox_conversation -> fox_conversation_failed`);
 		}
+	}
+
+	// 4. Fox conversations stuck in_progress (started_at older than threshold)
+	const stuckCutoff = new Date(Date.now() - STUCK_IN_PROGRESS_MINUTES * 60 * 1000).toISOString();
+	const { data: stuckConvs } = await supabase
+		.from("fox_conversations")
+		.select("id, match_id")
+		.eq("status", "in_progress")
+		.lt("started_at", stuckCutoff);
+	for (const conv of stuckConvs ?? []) {
+		await supabase
+			.from("fox_conversations")
+			.update({ status: "failed" })
+			.eq("id", conv.id);
+		await supabase
+			.from("matches")
+			.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
+			.eq("id", conv.match_id);
+		fixes.push(`Fox conversation ${conv.id} (match ${conv.match_id}): in_progress > ${STUCK_IN_PROGRESS_MINUTES}min -> failed`);
 	}
 
 	return jsonData(c, { message: "Integrity check completed", fixes_applied: fixes.length, fixes });

@@ -11,6 +11,11 @@ const foxSearchApi = client.api["fox-search"] as {
 			$get: (opts: { param: { conversationId: string } }) => Promise<Response>;
 		};
 	};
+	retry: {
+		":matchId": {
+			$post: (opts: { param: { matchId: string } }) => Promise<Response>;
+		};
+	};
 };
 
 interface StartFoxSearchResult {
@@ -37,6 +42,26 @@ export function useStartFoxSearch() {
 		onError: () => {
 			// Chat.tsx の handleStartFoxSearch で個別にハンドリングするため
 			// グローバル onError（query-client.ts）の toast.error を抑制
+		},
+	});
+}
+
+interface RetryFoxSearchResult {
+	match_id: string;
+	fox_conversation_id: string;
+}
+
+export function useRetryFoxConversation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (matchId: string): Promise<RetryFoxSearchResult> => {
+			const res = await foxSearchApi.retry[":matchId"].$post({
+				param: { matchId },
+			});
+			return unwrapApiResponse<RetryFoxSearchResult>(res);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 		},
 	});
 }

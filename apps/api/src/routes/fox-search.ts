@@ -49,30 +49,32 @@ foxSearch.post("/start", requireAuth, async (c) => {
 		return jsonError(c, "INTERNAL_ERROR", msg);
 	}
 
-	// Run fox conversations: prefer Durable Object (Cloudflare Workers),
-	// fall back to waitUntil / detached promise (Node.js dev server).
-	// DOs: stagger init with 3s delay between each to avoid Mistral rate limits.
-	// Non-DO: run sequentially in background to avoid rate limits.
-	if (c.env.FOX_CONVERSATION) {
-		const STAGGER_INTERVAL_MS = 3000;
-		for (let i = 0; i < results.length; i++) {
-			const result = results[i];
-			try {
-				const doId = c.env.FOX_CONVERSATION.idFromName(result.fox_conversation_id);
-				const stub = c.env.FOX_CONVERSATION.get(doId);
-				await stub.fetch(
-					new Request("https://do/init", {
-						method: "POST",
-						body: JSON.stringify({
-							conversationId: result.fox_conversation_id,
-							matchId: result.match_id,
-							staggerDelayMs: i * STAGGER_INTERVAL_MS,
-						}),
+	// Run fox conversations: when multiple matches, always run sequentially (runFoxConversation)
+	// to avoid Mistral rate limits. Use Durable Object only for a single match.
+	if (c.env.FOX_CONVERSATION && results.length === 1) {
+		const result = results[0];
+		try {
+			const doId = c.env.FOX_CONVERSATION.idFromName(result.fox_conversation_id);
+			const stub = c.env.FOX_CONVERSATION.get(doId);
+			await stub.fetch(
+				new Request("https://do/init", {
+					method: "POST",
+					body: JSON.stringify({
+						conversationId: result.fox_conversation_id,
+						matchId: result.match_id,
 					}),
-				);
-			} catch (err) {
-				console.error(`Failed to start DO for ${result.fox_conversation_id}:`, err);
-			}
+				}),
+			);
+		} catch (err) {
+			console.error(`Failed to start DO for ${result.fox_conversation_id}:`, err);
+			await supabase
+				.from("fox_conversations")
+				.update({ status: "failed" })
+				.eq("id", result.fox_conversation_id);
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed" })
+				.eq("id", result.match_id);
 		}
 	} else {
 		const bgTask = (async () => {
@@ -135,6 +137,103 @@ foxSearch.get("/status/:conversationId", requireAuth, async (c) => {
 		current_round: conv.current_round,
 		total_rounds: conv.total_rounds,
 		completed_at: conv.completed_at,
+	});
+});
+
+/** POST /api/fox-search/retry/:matchId — retry/re-run fox conversation (failed match: resume; completed match: re-run from round 1) */
+foxSearch.post("/retry/:matchId", requireAuth, async (c) => {
+	const userId = c.get("user_id");
+	const matchId = c.req.param("matchId");
+	const supabase = getSupabaseClient(c.env);
+	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey) return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
+
+	const { data: match } = await supabase
+		.from("matches")
+		.select("id, user_a_id, user_b_id, status")
+		.eq("id", matchId)
+		.single();
+	if (!match || (match.user_a_id !== userId && match.user_b_id !== userId)) {
+		return jsonError(c, "NOT_FOUND", "Match not found");
+	}
+	// Allow retry for both failed and completed (re-measure)
+	const allowedStatuses = ["fox_conversation_failed", "fox_conversation_completed"];
+	if (!allowedStatuses.includes(match.status)) {
+		return jsonError(c, "BAD_REQUEST", "Match is not in failed or completed state");
+	}
+
+	const { data: fc } = await supabase
+		.from("fox_conversations")
+		.select("id, status")
+		.eq("match_id", matchId)
+		.single();
+	if (!fc) return jsonError(c, "NOT_FOUND", "No fox conversation for this match");
+	// failed: expect fc.status === "failed"; completed: expect fc.status === "completed"
+	if (match.status === "fox_conversation_failed" && fc.status !== "failed") {
+		return jsonError(c, "NOT_FOUND", "No failed fox conversation for this match");
+	}
+	if (match.status === "fox_conversation_completed" && fc.status !== "completed") {
+		return jsonError(c, "BAD_REQUEST", "Fox conversation is not completed");
+	}
+
+	// Guard: no other in_progress fox conversation for this user
+	const { data: userMatches } = await supabase
+		.from("matches")
+		.select("id")
+		.or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+	const otherMatchIds = (userMatches ?? []).filter((m) => m.id !== matchId).map((m) => m.id);
+	if (otherMatchIds.length > 0) {
+		const { data: activeConvs } = await supabase
+			.from("fox_conversations")
+			.select("id")
+			.in("match_id", otherMatchIds)
+			.eq("status", "in_progress")
+			.limit(1);
+		if (activeConvs && activeConvs.length > 0) {
+			return jsonError(c, "CONFLICT", "A fox conversation is already in progress");
+		}
+	}
+
+	// Reset: keep existing messages for failed (resume); for completed, clear messages and re-run from round 1.
+	if (match.status === "fox_conversation_completed") {
+		await supabase.from("fox_conversation_messages").delete().eq("conversation_id", fc.id);
+	}
+	await supabase
+		.from("fox_conversations")
+		.update({
+			status: "pending",
+			started_at: null,
+			completed_at: null,
+			conversation_analysis: null,
+		})
+		.eq("id", fc.id);
+	await supabase
+		.from("matches")
+		.update({ status: "fox_conversation_in_progress", updated_at: new Date().toISOString() })
+		.eq("id", matchId);
+
+	// Run conversation in background (sequential style; no DO for single retry to keep logic simple)
+	const bgTask = (async () => {
+		try {
+			await runFoxConversation(supabase, apiKey, fc.id);
+		} catch (err) {
+			console.error(`Fox conversation retry failed (${fc.id}):`, err);
+			await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", fc.id);
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed" })
+				.eq("id", matchId);
+		}
+	})();
+	try {
+		c.executionCtx.waitUntil(bgTask);
+	} catch {
+		// Node.js dev server
+	}
+
+	return jsonData(c, {
+		match_id: matchId,
+		fox_conversation_id: fc.id,
 	});
 });
 
