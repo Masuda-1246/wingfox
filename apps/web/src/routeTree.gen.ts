@@ -9,38 +9,141 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteRouteImport } from './routes/login/route'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteRouteImport } from './routes/index/route'
+import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as AuthenticatedReportsRouteRouteImport } from './routes/_authenticated/reports/route'
+import { Route as AuthenticatedChatRouteRouteImport } from './routes/_authenticated/chat/route'
+import { Route as AuthenticatedPersonasMeRouteRouteImport } from './routes/_authenticated/personas/me/route'
+import { Route as AuthenticatedPersonasCreateRouteRouteImport } from './routes/_authenticated/personas/create/route'
 
+const LoginRouteRoute = LoginRouteRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRouteRoute = IndexRouteRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsRouteRoute =
+  AuthenticatedSettingsRouteRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsRouteRoute =
+  AuthenticatedReportsRouteRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChatRouteRoute = AuthenticatedChatRouteRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPersonasMeRouteRoute =
+  AuthenticatedPersonasMeRouteRouteImport.update({
+    id: '/personas/me',
+    path: '/personas/me',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPersonasCreateRouteRoute =
+  AuthenticatedPersonasCreateRouteRouteImport.update({
+    id: '/personas/create',
+    path: '/personas/create',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
+  '/login': typeof LoginRouteRoute
+  '/chat': typeof AuthenticatedChatRouteRoute
+  '/reports': typeof AuthenticatedReportsRouteRoute
+  '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
+  '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
+  '/login': typeof LoginRouteRoute
+  '/chat': typeof AuthenticatedChatRouteRoute
+  '/reports': typeof AuthenticatedReportsRouteRoute
+  '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
+  '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRouteRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/login': typeof LoginRouteRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRouteRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/_authenticated/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
+  '/_authenticated/personas/me': typeof AuthenticatedPersonasMeRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/chat'
+    | '/reports'
+    | '/settings'
+    | '/personas/create'
+    | '/personas/me'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/chat'
+    | '/reports'
+    | '/settings'
+    | '/personas/create'
+    | '/personas/me'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/chat'
+    | '/_authenticated/reports'
+    | '/_authenticated/settings'
+    | '/_authenticated/personas/create'
+    | '/_authenticated/personas/me'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRouteRoute: typeof IndexRouteRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  LoginRouteRoute: typeof LoginRouteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +151,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/chat': {
+      id: '/_authenticated/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthenticatedChatRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/personas/me': {
+      id: '/_authenticated/personas/me'
+      path: '/personas/me'
+      fullPath: '/personas/me'
+      preLoaderRoute: typeof AuthenticatedPersonasMeRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/personas/create': {
+      id: '/_authenticated/personas/create'
+      path: '/personas/create'
+      fullPath: '/personas/create'
+      preLoaderRoute: typeof AuthenticatedPersonasCreateRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedChatRouteRoute: typeof AuthenticatedChatRouteRoute
+  AuthenticatedReportsRouteRoute: typeof AuthenticatedReportsRouteRoute
+  AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
+  AuthenticatedPersonasCreateRouteRoute: typeof AuthenticatedPersonasCreateRouteRoute
+  AuthenticatedPersonasMeRouteRoute: typeof AuthenticatedPersonasMeRouteRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedChatRouteRoute: AuthenticatedChatRouteRoute,
+  AuthenticatedReportsRouteRoute: AuthenticatedReportsRouteRoute,
+  AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRoute,
+  AuthenticatedPersonasCreateRouteRoute: AuthenticatedPersonasCreateRouteRoute,
+  AuthenticatedPersonasMeRouteRoute: AuthenticatedPersonasMeRouteRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRouteRoute: IndexRouteRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  LoginRouteRoute: LoginRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
