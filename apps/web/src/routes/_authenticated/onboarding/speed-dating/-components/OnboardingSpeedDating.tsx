@@ -251,7 +251,7 @@ export function OnboardingSpeedDating() {
 						</div>
 
 						<div className="grid grid-cols-12 gap-6">
-							<div className="col-span-12 md:col-span-8 bg-card border border-border rounded-2xl p-8">
+							<div className="col-span-12 bg-card border border-border rounded-2xl p-8">
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 									<div className="space-y-6">
 										<div className="space-y-4">
@@ -293,15 +293,6 @@ export function OnboardingSpeedDating() {
 										</div>
 									</div>
 								</div>
-							</div>
-							<div className="col-span-12 md:col-span-4 bg-secondary/5 rounded-2xl p-6 border border-secondary/10 flex flex-col justify-center space-y-4">
-								<Users className="w-10 h-10 text-secondary" />
-								<h3 className="font-black text-xs uppercase tracking-tighter italic">
-									{t("speed_dating.title")}
-								</h3>
-								<p className="text-xs text-muted-foreground leading-relaxed">
-									{t("speed_dating.description")}
-								</p>
 							</div>
 						</div>
 					</motion.div>

@@ -254,8 +254,6 @@
     }
   },
   "speed_dating": {
-    "title": "Speed Dating",
-    "description": "Have a short conversation with virtual personas to share your communication style.",
     "lounge_title": "THE LOUNGE",
     "lounge_subtitle": "Preparing for the event. Enter your name, gender and birth year to start the speed date.",
     "display_name": "Nickname",

@@ -254,8 +254,6 @@
     }
   },
   "speed_dating": {
-    "title": "スピードデーティング",
-    "description": "仮想ペルソナと短い会話をして、あなたのコミュニケーションスタイルを伝えましょう。",
     "lounge_title": "THE LOUNGE",
     "lounge_subtitle": "交流イベントへの準備。名前・性別・誕生年を入力してスピードデートを開始しましょう。",
     "display_name": "ニックネーム",
