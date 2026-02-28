@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
+import type { Env } from './env'
 
-const app = new Hono()
+const app = new Hono<Env>()
 
 .get('/api/hello', (c) => {
   return c.json({ message: 'Hello Hono!' })
