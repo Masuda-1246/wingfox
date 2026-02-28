@@ -7,11 +7,3 @@ compatibility_flags = ["nodejs_compat"]
 directory = "../web/dist"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
-
-[[durable_objects.bindings]]
-name = "FOX_CONVERSATION"
-class_name = "FoxConversationDO"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["FoxConversationDO"]

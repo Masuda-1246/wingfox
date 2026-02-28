@@ -14,7 +14,6 @@ import chatRequests from "./routes/chat-requests";
 import directChats from "./routes/direct-chats";
 import moderation from "./routes/moderation";
 import foxSearch from "./routes/fox-search";
-import foxSearchWs from "./routes/fox-search-ws";
 
 const app = new Hono<Env>();
 
@@ -37,7 +36,6 @@ app.route("/api/chat-requests", chatRequests);
 app.route("/api/direct-chats", directChats);
 app.route("/api/moderation", moderation);
 app.route("/api/fox-search", foxSearch);
-app.route("/api/fox-search", foxSearchWs);
 
 export type AppType = typeof app;
 
