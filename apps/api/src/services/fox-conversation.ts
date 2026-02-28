@@ -101,11 +101,10 @@ export async function runFoxConversation(
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
 	const scorePrompt = buildConversationScorePrompt(logText);
-	const scoreRaw = await chatComplete(
-		mistralApiKey,
-		[{ role: "user", content: scorePrompt }],
-		{ maxTokens: 300, responseFormat: { type: "json_object" } },
-	);
+	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
+		maxTokens: 300,
+		responseFormat: { type: "json_object" },
+	});
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
 	try {

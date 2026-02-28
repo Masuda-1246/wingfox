@@ -1,27 +1,52 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export interface SpeedDatingPersona {
+	id: string;
+	persona_type: string;
+	name: string;
+	compiled_document: string;
+	sections: { section_id: string; title: string; content: string }[];
+}
 
 const speedDatingApi = client.api["speed-dating"] as {
-	personas: { $post: () => Promise<Response> };
+	personas: { $get: () => Promise<Response>; $post: () => Promise<Response> };
 	sessions: {
 		$post: (opts: { json: { persona_id: string } }) => Promise<Response>;
 		":id": {
 			$get: (opts: { param: { id: string } }) => Promise<Response>;
 			messages: { $post: (opts: { param: { id: string }; json: { content: string } }) => Promise<Response> };
-			complete: { $post: (opts: { param: { id: string } }) => Promise<Response> };
+			complete: { $post: (opts: { param: { id: string }; json?: { transcript?: { source: string; message: string }[] } }) => Promise<Response> };
+			"signed-url": { $get: (opts: { param: { id: string } }) => Promise<Response> };
 		};
 	};
 };
+
+export function cachedPersonasQueryOptions() {
+	return queryOptions({
+		queryKey: ["speed-dating", "personas"],
+		staleTime: 5 * 60 * 1000,
+		queryFn: async (): Promise<SpeedDatingPersona[]> => {
+			const res = await speedDatingApi.personas.$get();
+			return unwrapApiResponse<SpeedDatingPersona[]>(res);
+		},
+	});
+}
+
+export function useCachedPersonas() {
+	return useQuery(cachedPersonasQueryOptions());
+}
 
 export function useSpeedDatingPersonas() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async () => {
 			const res = await speedDatingApi.personas.$post();
-			return unwrapApiResponse(res);
+			return unwrapApiResponse<SpeedDatingPersona[]>(res);
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			queryClient.setQueryData(["speed-dating", "personas"], data);
 			queryClient.invalidateQueries({ queryKey: ["personas"] });
 		},
 	});
@@ -73,17 +98,44 @@ export function useSendSpeedDatingMessage(sessionId: string | undefined | null) 
 	});
 }
 
-export function useCompleteSpeedDatingSession(sessionId: string | undefined | null) {
+export function useSpeedDatingSignedUrl() {
+	return useMutation({
+		mutationFn: async (sessionId: string) => {
+			const res = await speedDatingApi.sessions[":id"]["signed-url"].$get({
+				param: { id: sessionId },
+			});
+			return unwrapApiResponse<{
+				signed_url: string;
+				overrides: {
+					agent: { prompt: { prompt: string }; firstMessage?: string };
+					tts?: { voiceId?: string };
+				};
+				persona: { name: string };
+			}>(res);
+		},
+	});
+}
+
+type SpeedDatingTranscript = { source: string; message: string }[];
+
+export function useCompleteSpeedDatingSession(defaultSessionId: string | undefined | null) {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async () => {
+		mutationFn: async (
+			payload?:
+				| SpeedDatingTranscript
+				| { sessionId?: string | null; transcript?: SpeedDatingTranscript },
+		) => {
+			const transcript = Array.isArray(payload) ? payload : payload?.transcript;
+			const sessionId = (Array.isArray(payload) ? undefined : payload?.sessionId) ?? defaultSessionId;
 			if (!sessionId) throw new Error("Session id required");
 			const res = await speedDatingApi.sessions[":id"].complete.$post({
 				param: { id: sessionId },
+				json: transcript ? { transcript } : undefined,
 			});
-			return unwrapApiResponse(res);
+			return { sessionId, data: await unwrapApiResponse(res) };
 		},
-		onSuccess: () => {
+		onSuccess: ({ sessionId }) => {
 			queryClient.invalidateQueries({ queryKey: ["speed-dating", "sessions", sessionId] });
 		},
 	});

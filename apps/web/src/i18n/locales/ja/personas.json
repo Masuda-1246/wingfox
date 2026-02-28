@@ -1,6 +1,6 @@
 {
 	"me": {
-		"title": "My Persona",
+		"title": "自分のペルソナ",
 		"last_updated": "最終更新: {{date}}",
 		"cancel": "キャンセル",
 		"save": "保存する",
@@ -27,17 +27,28 @@
 		"retrain_description": "Speed Date形式でペルソナを再トレーニング・調整することができます。",
 		"retrain_button": "Speed Dateで再調整",
 		"no_persona_title": "まだペルソナがいません",
-		"no_persona_description": "あなた自身の分身となるAIペルソナを作成して、foxx matchの世界に参加しましょう。",
+		"no_persona_description": "あなた自身の分身となるAIペルソナを作成して、WingFoxの世界に参加しましょう。",
 		"start_speed_date": "Speed Dateを開始して作成",
 		"create_demo": "デモデータを作成",
 		"updated_toast": "ペルソナ情報を更新しました",
 		"update_error": "更新に失敗しました",
+		"quiz_results_title": "クイズの回答",
+		"quiz_results_description": "ペルソナに反映されている質問への回答です。編集して保存できます。",
+		"quiz_results_edit": "回答を編集",
+		"quiz_results_save": "回答を保存",
+		"quiz_results_cancel": "キャンセル",
+		"quiz_results_empty": "まだクイズに回答していません。",
+		"quiz_results_updated_toast": "クイズの回答を更新しました",
+		"quiz_results_update_error": "保存に失敗しました",
 		"demo_created": "デモ用ペルソナを作成しました",
 		"demo_error": "作成に失敗しました"
 	},
 	"quiz": {
 		"title": "質問クイズ",
 		"description": "あなたの好みや性格の傾向を教えてください。ペルソナ生成に利用されます。",
+		"prev": "前へ",
+		"next": "次へ",
+		"submit": "送信する",
 		"submit_success": "回答を保存しました",
 		"submit_error": "保存に失敗しました"
 	},

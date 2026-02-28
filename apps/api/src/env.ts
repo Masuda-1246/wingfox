@@ -10,6 +10,8 @@ export type Env = {
 		SUPABASE_SERVICE_ROLE_KEY: string;
 		SUPABASE_ANON_KEY?: string;
 		MISTRAL_API_KEY?: string;
+		ELEVENLABS_API_KEY?: string;
+		ELEVENLABS_AGENT_ID?: string;
 		FOX_CONVERSATION?: DONamespace;
 	};
 	Variables: {

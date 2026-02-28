@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalPassThroughEnv": ["SUPABASE_*", "VITE_*", "MISTRAL_API_KEY", "CLOUDFLARE_*"],
+  "globalPassThroughEnv": ["SUPABASE_*", "VITE_*", "MISTRAL_API_KEY", "CLOUDFLARE_*", "ELEVENLABS_*"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -21,7 +21,7 @@ quiz.get("/questions", requireAuth, async (c) => {
 	const supabase = getSupabaseClient(c.env);
 	const { data, error } = await supabase
 		.from("quiz_questions")
-		.select("id, category, question_text, options, allow_multiple, sort_order")
+		.select("id, category, allow_multiple, sort_order")
 		.order("sort_order", { ascending: true });
 	if (error) {
 		console.error("quiz questions error:", error);

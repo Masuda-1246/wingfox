@@ -8,13 +8,14 @@ import {
 } from "@/components/ui/card";
 import {
 	useQuizQuestions,
+	useQuizAnswers,
 	useSubmitQuizAnswers,
 	type QuizQuestion,
 } from "@/lib/hooks/useQuiz";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
 
 type OptionItem = { value: string; label: string };
@@ -37,11 +38,13 @@ function normalizeOptions(
 }
 
 export function Quiz() {
-	const { t } = useTranslation("personas");
+	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: questions, isLoading } = useQuizQuestions();
+	const { data: quizAnswersData } = useQuizAnswers();
 	const submit = useSubmitQuizAnswers();
 	const [step, setStep] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, string[]>>({});
+	const hasInitializedAnswers = useRef(false);
 
 	const sortedQuestions = useMemo(
 		() =>
@@ -51,9 +54,30 @@ export function Quiz() {
 		[questions],
 	);
 
+	// DBに既存の回答がある場合やセクションに戻ったときに表示
+	useEffect(() => {
+		if (hasInitializedAnswers.current || !sortedQuestions.length) return;
+		if (quizAnswersData === undefined) return; // まだ取得中
+		const data = Array.isArray(quizAnswersData) ? quizAnswersData : [];
+		const initial: Record<string, string[]> = {};
+		for (const row of data) {
+			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+		}
+		setAnswers((prev) => (Object.keys(prev).length > 0 ? prev : initial));
+		hasInitializedAnswers.current = true;
+	}, [quizAnswersData, sortedQuestions.length]);
+
 	const current = sortedQuestions[step];
-	const options = current ? normalizeOptions(current.options) : [];
+	const options = current
+		? normalizeOptions(
+				t(`quiz.questions.${current.id}.options`, {
+					ns: "onboarding",
+					returnObjects: true,
+				}) as string[] | Record<string, unknown>,
+			)
+		: [];
 	const currentSelected = current ? answers[current.id] ?? [] : [];
+	const hasCurrentSelection = currentSelected.length > 0;
 
 	const handleSelect = useCallback(
 		(q: QuizQuestion, value: string) => {
@@ -119,10 +143,14 @@ export function Quiz() {
 					<>
 						<div>
 							<span className="text-xs font-medium text-muted-foreground">
-								{current.category}
+								{t(`quiz.categories.${current.category}`, {
+									ns: "onboarding",
+								})}
 							</span>
 							<h3 className="text-lg font-semibold mt-1">
-								{current.question_text}
+								{t(`quiz.questions.${current.id}.text`, {
+									ns: "onboarding",
+								})}
 							</h3>
 						</div>
 						<div
@@ -168,25 +196,25 @@ export function Quiz() {
 						disabled={step === 0}
 					>
 						<ChevronLeft className="size-4" />
-						前へ
+						{t("quiz.prev")}
 					</Button>
 					{step < sortedQuestions.length - 1 ? (
-						<Button size="sm" onClick={handleNext}>
-							次へ
+						<Button size="sm" onClick={handleNext} disabled={!hasCurrentSelection}>
+							{t("quiz.next")}
 							<ChevronRight className="size-4" />
 						</Button>
 					) : (
 						<Button
 							size="sm"
 							onClick={handleSubmit}
-							disabled={submit.isPending}
+							disabled={submit.isPending || !hasCurrentSelection}
 						>
 							{submit.isPending ? (
 								<Loader2 className="size-4 animate-spin" />
 							) : (
 								<>
 									<Send className="size-4" />
-									送信する
+									{t("quiz.submit")}
 								</>
 							)}
 						</Button>

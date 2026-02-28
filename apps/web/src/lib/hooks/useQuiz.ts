@@ -5,8 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export interface QuizQuestion {
 	id: string;
 	category: string;
-	question_text: string;
-	options: string[] | Record<string, unknown>;
 	allow_multiple?: boolean;
 	sort_order?: number;
 }

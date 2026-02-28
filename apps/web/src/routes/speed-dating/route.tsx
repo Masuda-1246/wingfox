@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,11 @@ export const Route = createFileRoute("/speed-dating")({
 	component: SpeedDatingPage,
 });
 
+/**
+ * Dev/test page — uses a hardcoded public agent ID directly (no backend session).
+ * For actual onboarding, use the OnboardingSpeedDating component which goes
+ * through the signed-url flow.
+ */
 const testPersona = {
 	name: "さくら",
 	age: 27,
@@ -45,13 +50,45 @@ function SpeedDatingPage() {
 		reset,
 	} = useSpeedDate();
 
+	const [devSignedUrl, setDevSignedUrl] = useState("");
+
+	const handleDevStart = async () => {
+		// In dev mode, use agentId directly by constructing a simple WebSocket URL
+		// This bypasses the signed-url flow — for testing only
+		if (devSignedUrl) {
+			await startDate({ signedUrl: devSignedUrl });
+		} else {
+			// Fallback: prompt user to enter a signed URL or use the onboarding flow
+			alert(
+				"Enter a signed URL in the input field, or use the onboarding flow at /onboarding/speed-dating for the full experience.",
+			);
+		}
+	};
+
 	if (status === "idle") {
 		return (
 			<IdleView
-				onStart={startDate}
+				onStart={handleDevStart}
 				error={error}
 				isConnecting={connectionStatus === "connecting"}
+				devSignedUrl={devSignedUrl}
+				onDevSignedUrlChange={setDevSignedUrl}
 			/>
+		);
+	}
+
+	if (status === "connecting") {
+		return (
+			<div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+				<Card className="w-full max-w-md">
+					<CardContent className="flex flex-col items-center gap-4 py-8">
+						<div className="text-lg font-semibold animate-pulse">接続中...</div>
+						<p className="text-sm text-muted-foreground">
+							{testPersona.name}との通話を準備しています
+						</p>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
@@ -73,10 +110,14 @@ function IdleView({
 	onStart,
 	error,
 	isConnecting,
+	devSignedUrl,
+	onDevSignedUrlChange,
 }: {
 	onStart: () => void;
 	error: string | null;
 	isConnecting: boolean;
+	devSignedUrl: string;
+	onDevSignedUrlChange: (v: string) => void;
 }) {
 	return (
 		<div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -98,6 +139,18 @@ function IdleView({
 							</Badge>
 						))}
 					</div>
+					<div className="space-y-2">
+						<label className="text-xs font-medium text-muted-foreground">
+							Signed URL (dev testing)
+						</label>
+						<input
+							type="text"
+							value={devSignedUrl}
+							onChange={(e) => onDevSignedUrlChange(e.target.value)}
+							placeholder="wss://..."
+							className="w-full px-3 py-2 text-sm border rounded-md"
+						/>
+					</div>
 					{error && (
 						<p className="text-sm text-destructive">{error}</p>
 					)}
@@ -105,7 +158,7 @@ function IdleView({
 						size="lg"
 						className="mt-4 w-full"
 						onClick={onStart}
-						disabled={isConnecting}
+						disabled={isConnecting || !devSignedUrl}
 					>
 						{isConnecting ? "接続中..." : "Start Date"}
 					</Button>

@@ -24,6 +24,7 @@ import { Route as AuthenticatedPersonasCreateRouteRouteImport } from './routes/_
 import { Route as AuthenticatedOnboardingSpeedDatingRouteRouteImport } from './routes/_authenticated/onboarding/speed-dating/route'
 import { Route as AuthenticatedOnboardingReviewRouteRouteImport } from './routes/_authenticated/onboarding/review/route'
 import { Route as AuthenticatedOnboardingQuizRouteRouteImport } from './routes/_authenticated/onboarding/quiz/route'
+import { Route as AuthenticatedOnboardingProfileRouteRouteImport } from './routes/_authenticated/onboarding/profile/route'
 
 const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
   id: '/speed-dating',
@@ -107,6 +108,12 @@ const AuthenticatedOnboardingQuizRouteRoute =
     path: '/quiz',
     getParentRoute: () => AuthenticatedOnboardingRouteRoute,
   } as any)
+const AuthenticatedOnboardingProfileRouteRoute =
+  AuthenticatedOnboardingProfileRouteRouteImport.update({
+    id: '/profile',
+    path: '/profile',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
@@ -151,6 +160,7 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/_authenticated/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/_authenticated/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/_authenticated/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/_authenticated/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/onboarding'
     | '/settings'
+    | '/onboarding/profile'
     | '/onboarding/quiz'
     | '/onboarding/review'
     | '/onboarding/speed-dating'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/onboarding'
     | '/settings'
+    | '/onboarding/profile'
     | '/onboarding/quiz'
     | '/onboarding/review'
     | '/onboarding/speed-dating'
@@ -202,6 +214,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
+    | '/_authenticated/onboarding/profile'
     | '/_authenticated/onboarding/quiz'
     | '/_authenticated/onboarding/review'
     | '/_authenticated/onboarding/speed-dating'
@@ -326,10 +339,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingQuizRouteRouteImport
       parentRoute: typeof AuthenticatedOnboardingRouteRoute
     }
+    '/_authenticated/onboarding/profile': {
+      id: '/_authenticated/onboarding/profile'
+      path: '/profile'
+      fullPath: '/onboarding/profile'
+      preLoaderRoute: typeof AuthenticatedOnboardingProfileRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
   }
 }
 
 interface AuthenticatedOnboardingRouteRouteChildren {
+  AuthenticatedOnboardingProfileRouteRoute: typeof AuthenticatedOnboardingProfileRouteRoute
   AuthenticatedOnboardingQuizRouteRoute: typeof AuthenticatedOnboardingQuizRouteRoute
   AuthenticatedOnboardingReviewRouteRoute: typeof AuthenticatedOnboardingReviewRouteRoute
   AuthenticatedOnboardingSpeedDatingRouteRoute: typeof AuthenticatedOnboardingSpeedDatingRouteRoute
@@ -337,6 +358,8 @@ interface AuthenticatedOnboardingRouteRouteChildren {
 
 const AuthenticatedOnboardingRouteRouteChildren: AuthenticatedOnboardingRouteRouteChildren =
   {
+    AuthenticatedOnboardingProfileRouteRoute:
+      AuthenticatedOnboardingProfileRouteRoute,
     AuthenticatedOnboardingQuizRouteRoute:
       AuthenticatedOnboardingQuizRouteRoute,
     AuthenticatedOnboardingReviewRouteRoute:

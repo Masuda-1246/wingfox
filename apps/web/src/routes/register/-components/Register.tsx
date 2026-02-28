@@ -1,9 +1,11 @@
-import { UpperHeader } from "@/components/layouts/UpperHeader";
 import { useAuth } from "@/lib/auth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -54,7 +56,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 				ref={ref}
 				className={cn(
 					"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-					error && "border-red-500 focus-visible:ring-red-500",
+									error && "border-destructive focus-visible:ring-destructive",
 					className,
 				)}
 				{...props}
@@ -82,6 +84,7 @@ Label.displayName = "Label";
 
 export function Register() {
 	const navigate = useNavigate();
+	const { t } = useTranslation("auth");
 	const { user, signUp } = useAuth();
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
@@ -108,18 +111,18 @@ export function Register() {
 		const email = formData.identifier.trim();
 
 		if (!email) {
-			newErrors.identifier = "Email is required";
+			newErrors.identifier = t("signup.error_email_required");
 			isValid = false;
 		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			newErrors.identifier = "Please enter a valid email address";
+			newErrors.identifier = t("signup.error_email_invalid");
 			isValid = false;
 		}
 
 		if (!formData.password) {
-			newErrors.password = "Password is required";
+			newErrors.password = t("signup.error_password_required");
 			isValid = false;
 		} else if (formData.password.length < 8) {
-			newErrors.password = "Password must be at least 8 characters";
+			newErrors.password = t("signup.error_password_min_length");
 			isValid = false;
 		}
 
@@ -144,14 +147,14 @@ export function Register() {
 				const hint =
 					error.message.includes("401") ||
 					error.message.toLowerCase().includes("unauthorized")
-						? "Supabase の設定を確認してください: .env に「Anon (public)」キーを使っていますか？ダッシュボードの Authentication > Providers > Email でサインアップは有効ですか？"
+						? t("signup.supabase_error_hint")
 						: null;
 				toast.error(hint ?? error.message);
 				setLoading(false);
 				return;
 			}
-			toast.success("Account created", {
-				description: "Check your email to confirm your account.",
+			toast.success(t("signup.toast_success_title"), {
+				description: t("signup.toast_success_description"),
 			});
 			navigate({ to: "/login" });
 		} finally {
@@ -161,25 +164,30 @@ export function Register() {
 
 	return (
 		<>
-			<UpperHeader />
-			<div className="p-4 md:p-6 w-full h-full flex flex-col items-center justify-center">
-				<div className="w-full max-w-[480px] space-y-8 p-8 md:p-12 rounded-2xl border border-border bg-card">
-					<div className="space-y-2 text-center">
-						<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
-							Create account
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							Enter your email and password to sign up.
-						</p>
+			<div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6 relative">
+				<div className="absolute top-4 right-4 md:top-6 md:right-6">
+					<LanguageSwitcher />
+				</div>
+				<div className="w-full max-w-[480px] space-y-8 rounded-2xl border border-border bg-card p-8 md:p-10 shadow-sm">
+					<div className="flex flex-col items-center gap-6">
+						<WingfoxLogo className="w-16 h-16 md:w-20 md:h-20" />
+						<div className="space-y-2 text-center">
+							<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
+								{t("signup.title")}
+							</h2>
+							<p className="text-sm text-muted-foreground">
+								{t("signup.subtitle")}
+							</p>
+						</div>
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-6">
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<Label htmlFor="identifier">Email</Label>
+								<Label htmlFor="identifier">{t("signup.email_label")}</Label>
 								<Input
 									id="identifier"
-									placeholder="name@example.com"
+									placeholder={t("signup.email_placeholder")}
 									type="text"
 									autoCapitalize="none"
 									autoComplete="email"
@@ -197,14 +205,14 @@ export function Register() {
 									error={!!errors.identifier}
 								/>
 								{errors.identifier && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.identifier}
 									</p>
 								)}
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="password">Password</Label>
+								<Label htmlFor="password">{t("signup.password_label")}</Label>
 								<div className="relative">
 									<Input
 										id="password"
@@ -238,10 +246,10 @@ export function Register() {
 									</button>
 								</div>
 								<p className="text-xs text-muted-foreground">
-									At least 8 characters
+									{t("signup.password_hint")}
 								</p>
 								{errors.password && (
-									<p className="text-xs text-red-500 font-medium">
+									<p className="text-xs text-destructive font-medium">
 										{errors.password}
 									</p>
 								)}
@@ -257,11 +265,11 @@ export function Register() {
 							{loading ? (
 								<span className="flex items-center gap-2">
 									<span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-									Creating account...
+									{t("signup.creating_account")}
 								</span>
 							) : (
 								<span className="flex items-center gap-2">
-									Sign up <ArrowRight className="w-4 h-4" />
+									{t("signup.submit")} <ArrowRight className="w-4 h-4" />
 								</span>
 							)}
 						</Button>
@@ -273,7 +281,7 @@ export function Register() {
 						</div>
 						<div className="relative flex justify-center text-xs uppercase">
 							<span className="bg-card px-2 text-muted-foreground">
-								Already have an account?
+								{t("signup.already_have_account")}
 							</span>
 						</div>
 					</div>
@@ -283,7 +291,7 @@ export function Register() {
 							to="/login"
 							className="text-sm font-medium hover:text-secondary transition-colors underline-offset-4 hover:underline"
 						>
-							Log in instead
+							{t("signup.log_in")}
 						</Link>
 					</div>
 				</div>

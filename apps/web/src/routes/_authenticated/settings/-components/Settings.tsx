@@ -1,7 +1,6 @@
 import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { useProfileMe, useUpdateProfileMe } from "@/lib/hooks/useProfile";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
 import {
 	Globe,
 	Languages,
@@ -165,8 +164,6 @@ export function Settings() {
 		birthYear: "",
 	});
 
-	const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
-
 	useEffect(() => {
 		if (authMe) {
 			const genderMap: Record<string, string> = {
@@ -260,239 +257,182 @@ export function Settings() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-				<Card className="col-span-1 md:col-span-3 h-fit p-2 sticky top-6">
-					<nav className="flex flex-col gap-1">
-						<button
-							type="button"
-							onClick={() => setActiveTab("profile")}
-							className={cn(
-								"flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all",
-								activeTab === "profile"
-									? "bg-primary text-primary-foreground"
-									: "hover:bg-accent text-muted-foreground hover:text-foreground",
-							)}
-						>
-							<User className="w-4 h-4" />
-							{t("tab_profile")}
-						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab("account")}
-							className={cn(
-								"flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all",
-								activeTab === "account"
-									? "bg-primary text-primary-foreground"
-									: "hover:bg-accent text-muted-foreground hover:text-foreground",
-							)}
-						>
-							<SettingsIcon className="w-4 h-4" />
-							{t("tab_account")}
-						</button>
-					</nav>
+			<div className="max-w-3xl space-y-6">
+				<Card className="p-6">
+					<SectionHeader
+						icon={User}
+						title={t("basic_info_title")}
+						description={t("basic_info_description")}
+					/>
+					<div className="grid gap-6 md:grid-cols-3">
+						<div className="space-y-2">
+							<Label htmlFor="nickname">{t("nickname")}</Label>
+							<Input
+								id="nickname"
+								value={basicInfo.nickname}
+								onChange={(e) =>
+									setBasicInfo({ ...basicInfo, nickname: e.target.value })
+								}
+								placeholder={t("nickname_placeholder")}
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="gender">{t("gender")}</Label>
+							<select
+								id="gender"
+								value={basicInfo.gender}
+								onChange={(e) =>
+									setBasicInfo({ ...basicInfo, gender: e.target.value })
+								}
+								className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+							>
+								<option value="">{t("gender_select")}</option>
+								<option value="男性">{t("gender_male")}</option>
+								<option value="女性">{t("gender_female")}</option>
+								<option value="その他">{t("gender_other")}</option>
+								<option value="未回答">未回答</option>
+							</select>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="birth_year">{t("birth_year")}</Label>
+							<Input
+								id="birth_year"
+								type="number"
+								min={1900}
+								max={2100}
+								value={basicInfo.birthYear}
+								onChange={(e) =>
+									setBasicInfo({ ...basicInfo, birthYear: e.target.value })
+								}
+								placeholder={t("birth_year_placeholder")}
+							/>
+						</div>
+					</div>
+					<Button
+						onClick={handleSaveBasicInfo}
+						disabled={updateAuthMe.isPending}
+						className="mt-4 gap-2"
+					>
+						<Save className="w-4 h-4" />
+						{t("save")}
+					</Button>
 				</Card>
 
-				<div className="col-span-1 md:col-span-9 space-y-6">
-					<AnimatePresence mode="wait">
-						{activeTab === "profile" && (
-							<motion.div
-								key="profile"
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -10 }}
-								transition={{ duration: 0.2 }}
-								className="space-y-6"
+				<Card className="p-6">
+					<SectionHeader
+						icon={SettingsIcon}
+						title={t("account_title")}
+						description={t("account_description")}
+					/>
+					<div className="grid gap-6 md:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor="email">{t("email_label")}</Label>
+							<Input
+								id="email"
+								type="email"
+								value={formData.email}
+								onChange={(e) =>
+									setFormData({
+										...formData,
+										email: e.target.value,
+									})
+								}
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="password">{t("password_label")}</Label>
+							<Input
+								id="password"
+								type="password"
+								value="********"
+								disabled
+								className="bg-accent/50"
+							/>
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full mt-2"
 							>
-								<Card className="p-6">
-									<SectionHeader
-										icon={User}
-										title={t("basic_info_title")}
-										description={t("basic_info_description")}
-									/>
-									<div className="grid gap-6 md:grid-cols-3">
-										<div className="space-y-2">
-											<Label htmlFor="nickname">{t("nickname")}</Label>
-											<Input
-												id="nickname"
-												value={basicInfo.nickname}
-												onChange={(e) =>
-													setBasicInfo({ ...basicInfo, nickname: e.target.value })
-												}
-												placeholder={t("nickname_placeholder")}
-											/>
-										</div>
-										<div className="space-y-2">
-											<Label htmlFor="gender">{t("gender")}</Label>
-											<select
-												id="gender"
-												value={basicInfo.gender}
-												onChange={(e) =>
-													setBasicInfo({ ...basicInfo, gender: e.target.value })
-												}
-												className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-											>
-												<option value="">{t("gender_select")}</option>
-												<option value="男性">{t("gender_male")}</option>
-												<option value="女性">{t("gender_female")}</option>
-												<option value="その他">{t("gender_other")}</option>
-												<option value="未回答">未回答</option>
-											</select>
-										</div>
-										<div className="space-y-2">
-											<Label htmlFor="birth_year">{t("birth_year")}</Label>
-											<Input
-												id="birth_year"
-												type="number"
-												min={1900}
-												max={2100}
-												value={basicInfo.birthYear}
-												onChange={(e) =>
-													setBasicInfo({ ...basicInfo, birthYear: e.target.value })
-												}
-												placeholder={t("birth_year_placeholder")}
-											/>
-										</div>
-									</div>
-									<Button
-										onClick={handleSaveBasicInfo}
-										disabled={updateAuthMe.isPending}
-										className="mt-4 gap-2"
-									>
-										<Save className="w-4 h-4" />
-										{t("save")}
-									</Button>
-								</Card>
-							</motion.div>
-						)}
+								{t("change_password")}
+							</Button>
+						</div>
+					</div>
+				</Card>
 
-						{activeTab === "account" && (
-							<motion.div
-								key="account"
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -10 }}
-								transition={{ duration: 0.2 }}
-								className="space-y-6"
+				<Card className="p-6">
+					<SectionHeader
+						icon={Languages}
+						title={t("language_title")}
+						description={t("language_description")}
+					/>
+					<div className="space-y-4 mt-4">
+						{[
+							{
+								id: "ja",
+								label: t("language_ja"),
+							},
+							{
+								id: "en",
+								label: t("language_en"),
+							},
+						].map((option) => (
+							<div
+								key={option.id}
+								onClick={() => i18n.changeLanguage(option.id)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") i18n.changeLanguage(option.id);
+								}}
+								className={cn(
+									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
+									i18n.language === option.id
+										? "bg-primary/10 border-primary shadow-sm"
+										: "bg-transparent border-transparent hover:bg-accent",
+								)}
 							>
-								<Card className="p-6">
-									<SectionHeader
-										icon={SettingsIcon}
-										title={t("account_title")}
-										description={t("account_description")}
-									/>
-									<div className="grid gap-6 md:grid-cols-2">
-										<div className="space-y-2">
-											<Label htmlFor="email">{t("email_label")}</Label>
-											<Input
-												id="email"
-												type="email"
-												value={formData.email}
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														email: e.target.value,
-													})
-												}
-											/>
-										</div>
-										<div className="space-y-2">
-											<Label htmlFor="password">{t("password_label")}</Label>
-											<Input
-												id="password"
-												type="password"
-												value="********"
-												disabled
-												className="bg-accent/50"
-											/>
-											<Button
-												variant="outline"
-												size="sm"
-												className="w-full mt-2"
-											>
-												{t("change_password")}
-											</Button>
-										</div>
-									</div>
-								</Card>
+								<Globe
+									className={cn(
+										"w-5 h-5",
+										i18n.language === option.id
+											? "text-primary"
+											: "text-muted-foreground",
+									)}
+								/>
+								<p className="text-sm font-medium">{option.label}</p>
+							</div>
+						))}
+					</div>
+				</Card>
 
-								<Card className="p-6">
-									<SectionHeader
-										icon={Languages}
-										title={t("language_title")}
-										description={t("language_description")}
-									/>
-									<div className="space-y-4 mt-4">
-										{[
-											{
-												id: "ja",
-												label: t("language_ja"),
-											},
-											{
-												id: "en",
-												label: t("language_en"),
-											},
-										].map((option) => (
-											<div
-												key={option.id}
-												onClick={() => i18n.changeLanguage(option.id)}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") i18n.changeLanguage(option.id);
-												}}
-												className={cn(
-													"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
-													i18n.language === option.id
-														? "bg-primary/10 border-primary shadow-sm"
-														: "bg-transparent border-transparent hover:bg-accent",
-												)}
-											>
-												<Globe
-													className={cn(
-														"w-5 h-5",
-														i18n.language === option.id
-															? "text-primary"
-															: "text-muted-foreground",
-													)}
-												/>
-												<p className="text-sm font-medium">{option.label}</p>
-											</div>
-										))}
-									</div>
-								</Card>
-
-								<Card className="p-6 border-red-200 bg-red-50/50">
-									<div className="flex items-start gap-4">
-										<div className="p-2 rounded-xl bg-red-100 text-red-600">
-											<Trash2 className="w-5 h-5" />
-										</div>
-										<div className="flex-1">
-											<h3 className="text-lg font-semibold tracking-tight text-red-600">
-												{t("danger_zone")}
-											</h3>
-											<p className="text-sm text-muted-foreground mt-1">
-												{t("danger_description")}
-											</p>
-											<div className="mt-6 flex flex-wrap gap-4">
-												<Button
-													variant="destructive"
-													onClick={handleDeleteAccount}
-												>
-													{t("delete_account")}
-												</Button>
-												<Button
-													variant="ghost"
-													className="text-muted-foreground"
-												>
-													<LogOut className="w-4 h-4 mr-2" />
-													{t("logout")}
-												</Button>
-											</div>
-										</div>
-									</div>
-								</Card>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</div>
+				<Card className="p-6 border-red-200 bg-red-50/50">
+					<div className="flex items-start gap-4">
+						<div className="p-2 rounded-xl bg-red-100 text-red-600">
+							<Trash2 className="w-5 h-5" />
+						</div>
+						<div className="flex-1">
+							<h3 className="text-lg font-semibold tracking-tight text-red-600">
+								{t("danger_zone")}
+							</h3>
+							<p className="text-sm text-muted-foreground mt-1">
+								{t("danger_description")}
+							</p>
+							<div className="mt-6 flex flex-wrap gap-4">
+								<Button
+									variant="destructive"
+									onClick={handleDeleteAccount}
+								>
+									{t("delete_account")}
+								</Button>
+								<Button
+									variant="ghost"
+									className="text-muted-foreground"
+								>
+									<LogOut className="w-4 h-4 mr-2" />
+									{t("logout")}
+								</Button>
+							</div>
+						</div>
+					</div>
+				</Card>
 			</div>
 		</div>
 	);
