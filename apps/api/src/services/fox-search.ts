@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
+import { getProfileScoreDetailsForUsers } from "./matching";
 
 export async function searchAndStartFoxConversation(
 	supabase: SupabaseClient<Database>,
@@ -59,13 +60,28 @@ export async function searchAndStartFoxConversation(
 	const [userA, userB] =
 		userId < partnerUserId ? [userId, partnerUserId] : [partnerUserId, userId];
 
+	const scoreDetails = await getProfileScoreDetailsForUsers(supabase, userA, userB);
+	const matchPayload: {
+		user_a_id: string;
+		user_b_id: string;
+		status: string;
+		profile_score?: number;
+		final_score?: number;
+		score_details?: Record<string, number>;
+	} = {
+		user_a_id: userA,
+		user_b_id: userB,
+		status: "fox_conversation_in_progress",
+	};
+	if (scoreDetails) {
+		matchPayload.profile_score = scoreDetails.profile_score;
+		matchPayload.final_score = scoreDetails.final_score;
+		matchPayload.score_details = scoreDetails.score_details;
+	}
+
 	const { data: match, error: matchError } = await supabase
 		.from("matches")
-		.insert({
-			user_a_id: userA,
-			user_b_id: userB,
-			status: "fox_conversation_in_progress",
-		})
+		.insert(matchPayload)
 		.select("id")
 		.single();
 	if (matchError || !match) {
@@ -162,13 +178,28 @@ export async function searchAndStartMultipleFoxConversations(
 			const [userA, userB] =
 				userId < partnerUserId ? [userId, partnerUserId] : [partnerUserId, userId];
 
+			const scoreDetails = await getProfileScoreDetailsForUsers(supabase, userA, userB);
+			const matchPayload: {
+				user_a_id: string;
+				user_b_id: string;
+				status: string;
+				profile_score?: number;
+				final_score?: number;
+				score_details?: Record<string, number>;
+			} = {
+				user_a_id: userA,
+				user_b_id: userB,
+				status: "fox_conversation_in_progress",
+			};
+			if (scoreDetails) {
+				matchPayload.profile_score = scoreDetails.profile_score;
+				matchPayload.final_score = scoreDetails.final_score;
+				matchPayload.score_details = scoreDetails.score_details;
+			}
+
 			const { data: match, error: matchError } = await supabase
 				.from("matches")
-				.insert({
-					user_a_id: userA,
-					user_b_id: userB,
-					status: "fox_conversation_in_progress",
-				})
+				.insert(matchPayload)
 				.select("id")
 				.single();
 			if (matchError || !match) continue;

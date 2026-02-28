@@ -88,6 +88,7 @@ export interface ProfileMe {
 	basic_info?: Record<string, unknown>;
 	personality_tags?: string[];
 	personality_analysis?: Record<string, unknown>;
+	interaction_style?: Record<string, unknown>;
 	interests?: Array<{ category: string; items: string[] }>;
 	values?: Record<string, unknown>;
 	romance_style?: Record<string, unknown>;

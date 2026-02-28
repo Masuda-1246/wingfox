@@ -22,6 +22,32 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+function ScoreBar({ value, label }: { value: number; label: string }) {
+	const pct = Math.round(value * 100);
+	return (
+		<div className="space-y-1">
+			<div className="flex justify-between text-xs">
+				<span>{label}</span>
+				<span className="text-muted-foreground">{pct}%</span>
+			</div>
+			<div className="h-1.5 rounded-full bg-muted overflow-hidden">
+				<div
+					className="h-full rounded-full bg-secondary transition-all"
+					style={{ width: `${pct}%` }}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function TagBadge({ label }: { label: string }) {
+	return (
+		<span className="inline-block rounded-full border border-border px-2.5 py-0.5 text-xs font-medium">
+			{label}
+		</span>
+	);
+}
+
 export function OnboardingReview() {
 	const { t } = useTranslation("onboarding");
 	const navigate = useNavigate();
@@ -56,9 +82,9 @@ export function OnboardingReview() {
 				const err = e as ApiError;
 				const message =
 					err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
-						? "プロフィールがまだ生成されていません。"
+						? t("review.profile_not_generated")
 						: err?.message
-							? `生成エラー: ${err.message}`
+							? `${t("review.confirm_error")}: ${err.message}`
 							: t("review.confirm_error");
 				console.error(e);
 				toast.error(message);
@@ -79,25 +105,25 @@ export function OnboardingReview() {
 		} catch (e) {
 			const err = e as ApiError;
 			if (err?.code === "CONFLICT" && err?.message?.includes("Wingfox persona not generated")) {
-				toast.error("ウィングフォックスがまだ生成されていません。Start over でオンボーディングをやり直すか、しばらく待ってから再度お試しください。");
+				toast.error(t("review.wingfox_not_ready"));
 				return;
 			}
 			console.error(e);
-			toast.error(t("review.confirm_error"));
+			toast.error(err?.message ? `${t("review.confirm_failed")}: ${err.message}` : t("review.confirm_error"));
 		}
 	};
 
 	const handleRetryWingfox = async () => {
 		try {
 			await generateWingfox.mutateAsync();
-			toast.success("ウィングフォックスを生成しました");
+			toast.success(t("review.wingfox_generated"));
 			await queryClient.invalidateQueries({ queryKey: ["personas"] });
 		} catch (e) {
 			const err = e as ApiError;
 			const msg =
 				err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
-					? "先にプロフィールが生成されている必要があります。"
-					: err?.message ?? "ウィングフォックスの生成に失敗しました";
+					? t("review.profile_needs_generation")
+					: err?.message ?? t("review.wingfox_gen_failed");
 			console.error(e);
 			toast.error(msg);
 		}
@@ -122,9 +148,16 @@ export function OnboardingReview() {
 		(needsGeneration && generateProfile.isPending);
 	const reviewVisible =
 		!isLoading && !(needsGeneration && !generationDone);
-	// ウィングフォックスが存在する場合のみ Confirm 可能（未生成だと API が CONFLICT を返す）
 	const isReady =
 		reviewVisible && (wingfox != null || generateWingfox.isSuccess);
+
+	const interactionStyle = profile?.interaction_style as Record<string, unknown> | undefined;
+	const basicInfoLabelMap: Record<string, string> = {
+		location: t("review.location"),
+		age_range: t("review.age_range"),
+		occupation: t("review.occupation"),
+		display_name: t("review.display_name"),
+	};
 
 	if (isLoading || (needsGeneration && !generationDone)) {
 		return (
@@ -152,48 +185,96 @@ export function OnboardingReview() {
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{profile && (
-						<div className="space-y-2">
-							<h4 className="text-sm font-semibold">プロフィール概要</h4>
-							<div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-2">
+						<div className="space-y-4">
+							<h4 className="text-sm font-semibold">{t("review.profile_summary")}</h4>
+							<div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-4">
+								{/* Personality traits */}
 								{profile.personality_tags && profile.personality_tags.length > 0 && (
-									<p>
-										<span className="text-muted-foreground">性格タグ: </span>
-										{profile.personality_tags.join(", ")}
-									</p>
+									<div className="space-y-2">
+										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											{t("review.personality_traits")}
+										</span>
+										<div className="flex flex-wrap gap-1.5">
+											{profile.personality_tags.map((tag: string) => (
+												<TagBadge key={tag} label={tag} />
+											))}
+										</div>
+									</div>
 								)}
+
+								{/* Basic info */}
 								{profile.basic_info &&
 									typeof profile.basic_info === "object" &&
 									Object.keys(profile.basic_info).length > 0 && (
-										<div>
-											<span className="text-muted-foreground">基本情報: </span>
-											<ul className="mt-1 list-disc list-inside space-y-0.5">
+										<div className="space-y-2">
+											<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+												{t("review.basic_info")}
+											</span>
+											<ul className="space-y-0.5 text-sm">
 												{Object.entries(profile.basic_info).map(([key, value]) => {
 													if (value == null || value === "") return null;
-													const label =
-														key === "location"
-															? "居住地"
-															: key === "age_range"
-																? "年齢層"
-																: key === "occupation"
-																	? "職業"
-																	: key === "display_name"
-																		? "表示名"
-																		: key;
+													const label = basicInfoLabelMap[key] ?? key;
 													return (
-														<li key={key}>
-															{label}: {String(value)}
+														<li key={key} className="flex gap-2">
+															<span className="text-muted-foreground">{label}:</span>
+															<span>{String(value)}</span>
 														</li>
 													);
 												})}
 											</ul>
 										</div>
 									)}
+
+								{/* Interaction style (new psychological data) */}
+								{interactionStyle && Object.keys(interactionStyle).length > 0 && (
+									<div className="space-y-3">
+										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											{t("review.interaction_style")}
+										</span>
+										<div className="grid gap-2">
+											{typeof interactionStyle.warmup_speed === "number" && (
+												<ScoreBar value={interactionStyle.warmup_speed} label={t("review.warmup_speed")} />
+											)}
+											{typeof interactionStyle.humor_responsiveness === "number" && (
+												<ScoreBar value={interactionStyle.humor_responsiveness} label={t("review.humor_responsiveness")} />
+											)}
+											{typeof interactionStyle.self_disclosure_depth === "number" && (
+												<ScoreBar value={interactionStyle.self_disclosure_depth} label={t("review.self_disclosure_depth")} />
+											)}
+											{typeof interactionStyle.emotional_responsiveness === "number" && (
+												<ScoreBar value={interactionStyle.emotional_responsiveness} label={t("review.emotional_responsiveness")} />
+											)}
+											{typeof interactionStyle.mirroring_tendency === "number" && (
+												<ScoreBar value={interactionStyle.mirroring_tendency} label={t("review.mirroring_tendency")} />
+											)}
+											{typeof interactionStyle.conflict_style === "string" && (
+												<div className="flex gap-2 text-xs">
+													<span className="text-muted-foreground">{t("review.conflict_style")}:</span>
+													<TagBadge label={interactionStyle.conflict_style} />
+												</div>
+											)}
+											{typeof interactionStyle.attachment_tendency === "string" && (
+												<div className="flex gap-2 text-xs">
+													<span className="text-muted-foreground">{t("review.attachment_tendency")}:</span>
+													<TagBadge label={interactionStyle.attachment_tendency} />
+												</div>
+											)}
+											{typeof interactionStyle.rhythm_preference === "string" && (
+												<div className="flex gap-2 text-xs">
+													<span className="text-muted-foreground">{t("review.rhythm_preference")}:</span>
+													<TagBadge label={interactionStyle.rhythm_preference} />
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+
 								{(!profile.personality_tags || profile.personality_tags.length === 0) &&
 									(!profile.basic_info ||
 										typeof profile.basic_info !== "object" ||
 										Object.keys(profile.basic_info).length === 0) && (
 										<p className="text-muted-foreground">
-											プロフィールが生成されました。確定してマッチングを開始しましょう。
+											{t("review.profile_ready")}
 										</p>
 									)}
 							</div>
@@ -202,7 +283,7 @@ export function OnboardingReview() {
 
 					{wingfox && (
 						<div className="space-y-2">
-							<h4 className="text-sm font-semibold">ウィングフォックス</h4>
+							<h4 className="text-sm font-semibold">{t("review.wingfox")}</h4>
 							<p className="text-sm text-muted-foreground">
 								{wingfox.name} (v{wingfox.version ?? 1})
 							</p>
@@ -212,10 +293,10 @@ export function OnboardingReview() {
 					{reviewVisible && profile && !wingfox && (
 						<div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30 p-4 text-sm space-y-2">
 							<h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-								ウィングフォックスがまだ生成されていません
+								{t("review.wingfox_not_generated")}
 							</h4>
 							<p className="text-muted-foreground">
-								プロフィールはありますが、AIペルソナの生成に失敗したか、まだ完了していない可能性があります。下のボタンで再生成を試すか、Start over でオンボーディングを最初からやり直してください。
+								{t("review.wingfox_not_generated_desc")}
 							</p>
 							<Button
 								variant="outline"
@@ -229,7 +310,7 @@ export function OnboardingReview() {
 								) : (
 									<Sparkles className="size-4 mr-2" />
 								)}
-								ウィングフォックスを再生成
+								{t("review.wingfox_regenerate")}
 							</Button>
 						</div>
 					)}

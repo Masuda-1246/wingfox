@@ -341,12 +341,13 @@ export function Chat() {
 		if (!isMobile) setMobileView('list');
 	}, [isMobile]);
 
-	// Set first match as active when matches load or current session is removed
+	// Set first match as active when matches load or current session is removed (stable deps to avoid re-run every render)
 	useEffect(() => {
-		if (sessions.length > 0 && (!activeSessionId || !sessions.find((s) => s.id === activeSessionId)) && !activeFoxConvMap[activeSessionId]) {
-			setActiveSessionId(sessions[0].id);
+		const list = matchingData?.data ?? [];
+		if (list.length > 0 && (!activeSessionId || !list.some((m) => m.id === activeSessionId)) && !activeFoxConvMap[activeSessionId]) {
+			setActiveSessionId(list[0].id);
 		}
-	}, [sessions, activeSessionId, activeFoxConvMap]);
+	}, [matchingData?.data, activeSessionId, activeFoxConvMap]);
 
 	const handleReport = () => {
 		setShowReportModal(false);

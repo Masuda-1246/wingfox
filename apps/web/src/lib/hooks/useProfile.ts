@@ -56,6 +56,7 @@ export function useConfirmProfile() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["profiles", "me"] });
+			queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
 		},
 	});
 }

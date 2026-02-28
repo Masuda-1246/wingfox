@@ -253,8 +253,8 @@ Cloudflare Workers では `waitUntil()` を使い、レスポンス返却後に�
 | 項目 | 値 |
 | --- | --- |
 | Workers 名 | `wingfox` |
-| 互換性日付 | 2024-12-30 |
-| 互換性フラグ | `nodejs_compat` |
+| マッチング開始日 | 2026-03-01 |
+| マッチングフラグ | `nodejs_compat` |
 | アセットディレクトリ | `../web/dist` |
 
 - Hono API がリクエストを処理

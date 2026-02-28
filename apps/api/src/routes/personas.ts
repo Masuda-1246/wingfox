@@ -8,6 +8,11 @@ import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingf
 import { z } from "zod";
 
 const personas = new Hono<Env>();
+const WINGFOX_MAX_SESSIONS = 3;
+const WINGFOX_MAX_MESSAGES_PER_SESSION = 24;
+const WINGFOX_MAX_MESSAGE_CHARS = 400;
+const WINGFOX_MIN_MESSAGES = 12;
+const WINGFOX_MAX_EXCERPT_CHARS = 12_000;
 
 const WINGFOX_EDITABLE_SECTIONS = [
 	"core_identity",
@@ -22,38 +27,55 @@ const WINGFOX_EDITABLE_SECTIONS = [
 personas.post("/wingfox/generate", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey?.trim()) return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
 	const supabase = getSupabaseClient(c.env);
 	const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", userId).single();
 	if (!profile) return jsonError(c, "CONFLICT", "Profile not generated");
 	const { data: sessions } = await supabase
 		.from("speed_dating_sessions")
-		.select("id")
-		.eq("user_id", userId);
+		.select("id, completed_at")
+		.eq("user_id", userId)
+		.eq("status", "completed")
+		.order("completed_at", { ascending: true, nullsFirst: false })
+		.limit(WINGFOX_MAX_SESSIONS);
 	const sessionIds = (sessions ?? []).map((s) => s.id);
+	if (sessionIds.length < WINGFOX_MAX_SESSIONS) {
+		return jsonError(c, "CONFLICT", "Not enough completed speed-dating sessions");
+	}
 	let conversationExcerpts = "";
-	for (const sid of sessionIds.slice(0, 3)) {
+	let totalMessages = 0;
+	for (let i = 0; i < sessionIds.length; i += 1) {
+		const sid = sessionIds[i];
+		conversationExcerpts += `--- Session ${i + 1} (${sid}) ---\n`;
 		const { data: msgs } = await supabase
 			.from("speed_dating_messages")
 			.select("role, content")
 			.eq("session_id", sid)
 			.order("created_at", { ascending: true })
-			.limit(10);
+			.limit(WINGFOX_MAX_MESSAGES_PER_SESSION);
 		for (const m of msgs ?? []) {
-			conversationExcerpts += `${m.role}: ${m.content.slice(0, 200)}\n`;
+			conversationExcerpts += `${m.role}: ${m.content.slice(0, WINGFOX_MAX_MESSAGE_CHARS)}\n`;
+			totalMessages += 1;
 		}
+	}
+	if (totalMessages < WINGFOX_MIN_MESSAGES) {
+		return jsonError(c, "CONFLICT", "Not enough conversation data to generate wingfox persona");
+	}
+	if (conversationExcerpts.length > WINGFOX_MAX_EXCERPT_CHARS) {
+		conversationExcerpts = conversationExcerpts.slice(0, WINGFOX_MAX_EXCERPT_CHARS);
 	}
 	const profileJson = JSON.stringify(profile, null, 2);
 	const sections: { section_id: string; content: string }[] = [];
 	for (const sectionId of WINGFOX_EDITABLE_SECTIONS) {
 		const title = sectionId;
 		const prompt = buildWingfoxSectionPrompt(sectionId, title, profileJson, conversationExcerpts || "（なし）");
-		let content = "";
-		if (apiKey) {
-			content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { maxTokens: 500 });
-		}
+		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { maxTokens: 500 });
 		sections.push({ section_id: sectionId, content: content || `（${sectionId}）` });
 	}
-	sections.push({ section_id: "conversation_references", content: "会話サンプルから自動抽出（編集不可）" });
+	sections.push({
+		section_id: "conversation_references",
+		content: `以下はスピードデーティング会話から抽出した参照ログ（編集不可）:\n\n${conversationExcerpts}`,
+	});
 	sections.push({ section_id: "constraints", content: CONSTRAINTS_CONTENT });
 	const compiledDocument = sections.map((s) => `## ${s.section_id}\n\n${s.content}`).join("\n\n");
 	const { data: persona, error } = await supabase

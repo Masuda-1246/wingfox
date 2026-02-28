@@ -10,11 +10,22 @@ import { executeMatching } from "../services/matching";
 import { z } from "zod";
 
 const profiles = new Hono<Env>();
+const MIN_COMPLETED_SESSIONS = 3;
+const MIN_CONVERSATION_MESSAGES = 12;
+
+function detectLangFromHeader(c: { req: { header: (name: string) => string | undefined } }): "ja" | "en" {
+	const accept = c.req.header("accept-language") ?? "";
+	return accept.startsWith("en") ? "en" : "ja";
+}
 
 /** POST /api/profiles/generate */
 profiles.post("/generate", requireAuth, async (c) => {
 	const userId = c.get("user_id");
+	const lang = detectLangFromHeader(c);
 	const apiKey = c.env.MISTRAL_API_KEY;
+	if (!apiKey?.trim()) {
+		return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
+	}
 	const supabase = getSupabaseClient(c.env);
 	const { data: answers } = await supabase
 		.from("quiz_answers")
@@ -22,11 +33,16 @@ profiles.post("/generate", requireAuth, async (c) => {
 		.eq("user_id", userId);
 	const { data: sessions } = await supabase
 		.from("speed_dating_sessions")
-		.select("id")
+		.select("id, completed_at")
 		.eq("user_id", userId)
-		.eq("status", "completed");
+		.eq("status", "completed")
+		.order("completed_at", { ascending: true, nullsFirst: false });
+	if ((sessions ?? []).length < MIN_COMPLETED_SESSIONS) {
+		return jsonError(c, "CONFLICT", "Not enough completed speed-dating sessions");
+	}
 	const sessionIds = (sessions ?? []).map((s) => s.id);
 	let conversationLogs = "";
+	let totalMessages = 0;
 	for (const sid of sessionIds) {
 		const { data: msgs } = await supabase
 			.from("speed_dating_messages")
@@ -36,21 +52,26 @@ profiles.post("/generate", requireAuth, async (c) => {
 		conversationLogs += `--- Session ${sid} ---\n`;
 		for (const m of msgs ?? []) {
 			conversationLogs += `${m.role}: ${m.content}\n`;
+			totalMessages += 1;
 		}
 	}
+	if (totalMessages < MIN_CONVERSATION_MESSAGES) {
+		return jsonError(c, "CONFLICT", "Not enough conversation data to generate profile");
+	}
 	const quizText = JSON.stringify(answers ?? [], null, 2);
-	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs || "（会話なし）");
+	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs, lang);
+	const raw = await chatComplete(apiKey, [{ role: "user", content: prompt }], {
+		maxTokens: 1500,
+		responseFormat: { type: "json_object" },
+	});
 	let profileData: Record<string, unknown> = {};
-	if (apiKey) {
-		const raw = await chatComplete(apiKey, [{ role: "user", content: prompt }], { maxTokens: 1500 });
-		const jsonMatch = raw.match(/\{[\s\S]*\}/);
-		if (jsonMatch) {
-			try {
-				profileData = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-			} catch (_) {
-				profileData = {};
-			}
-		}
+	try {
+		profileData = JSON.parse(raw.trim()) as Record<string, unknown>;
+	} catch (_) {
+		return jsonError(c, "INTERNAL_ERROR", "Failed to parse generated profile JSON");
+	}
+	if (Object.keys(profileData).length === 0) {
+		return jsonError(c, "INTERNAL_ERROR", "Generated profile is empty");
 	}
 	const { data: existing } = await supabase.from("profiles").select("id, version").eq("user_id", userId).single();
 	const version = (existing?.version ?? 0) + 1;
@@ -62,6 +83,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 				basic_info: profileData.basic_info ?? {},
 				personality_tags: profileData.personality_tags ?? [],
 				personality_analysis: profileData.personality_analysis ?? {},
+				interaction_style: profileData.interaction_style ?? {},
 				interests: profileData.interests ?? [],
 				values: profileData.values ?? {},
 				romance_style: profileData.romance_style ?? {},
@@ -161,11 +183,20 @@ profiles.post("/me/confirm", requireAuth, async (c) => {
 		})
 		.eq("user_id", userId);
 	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to confirm");
-	await supabase
+	const { error: onboardingError } = await supabase
 		.from("user_profiles")
 		.update({ onboarding_status: "confirmed", updated_at: new Date().toISOString() })
 		.eq("id", userId);
-	await executeMatching(supabase, 10);
+	if (onboardingError) return jsonError(c, "INTERNAL_ERROR", "Failed to update onboarding status");
+
+	// Do not block confirm response on matching; run it in background.
+	void executeMatching(supabase, 10)
+		.then((count) => {
+			console.log(`[matching] created ${count} matches after profile confirm`);
+		})
+		.catch((err) => {
+			console.error("[matching] executeMatching failed after profile confirm:", err);
+		});
 	return jsonData(c, { status: "confirmed", confirmed_at: new Date().toISOString() });
 });
 
