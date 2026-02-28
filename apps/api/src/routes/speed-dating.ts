@@ -13,15 +13,32 @@ const speedDating = new Hono<Env>();
 const FEMALE_VOICE_IDS = [
 	"9BWtsMINqrJLrRacOk9x", // Aria
 	"EXAVITQu4vr4xnSDxMaL", // Sarah
+	"AZnzlk1XvdvUeBnXmlld", // Domi
+	"MF3mGyEYCl7XYWbV9V6O", // Elli
+	"ThT5KcBeYPX3keUQqHPh", // Dorothy
 ];
 const MALE_VOICE_IDS = [
 	"CwhRBWXzGAHq8TQ4Fs17", // Roger
 	"JBFqnCBsd6RMkjVDRZzb", // George
+	"ErXwobaYiN019PkySvjV", // Antoni
+	"TxGEqnHWrfWFTfGW9XjX", // Josh
+	"VR6AewLTigWG4xSOukaG", // Arnold
 ];
 
-function pickVoiceId(gender: "male" | "female", index: number): string {
+const PERSONA_TYPE_OFFSETS: Record<string, number> = {
+	virtual_similar: 0,
+	virtual_complementary: 1,
+	virtual_discovery: 2,
+};
+
+function pickVoiceId(
+	gender: "male" | "female",
+	personaType: string | undefined,
+	indexSeed: number,
+): string {
 	const voices = gender === "male" ? MALE_VOICE_IDS : FEMALE_VOICE_IDS;
-	return voices[index % voices.length];
+	const baseOffset = PERSONA_TYPE_OFFSETS[personaType ?? ""] ?? 0;
+	return voices[(baseOffset + indexSeed) % voices.length];
 }
 
 function stableIndexFromString(input: string): number {
@@ -253,7 +270,7 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	const sessionQueryStartedAt = Date.now();
 	const { data: session } = await supabase
 		.from("speed_dating_sessions")
-		.select("id, status, personas(compiled_document, name)")
+		.select("id, status, personas(compiled_document, name, persona_type)")
 		.eq("id", id)
 		.eq("user_id", userId)
 		.single();
@@ -265,7 +282,11 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document);
 	const firstMessage = `はじめまして！${persona.name}です。今日はよろしくお願いします。あなたのことを教えてください！`;
 	const gender = detectGender(persona.compiled_document);
-	const voiceId = pickVoiceId(gender, stableIndexFromString(session.id));
+	const voiceId = pickVoiceId(
+		gender,
+		persona.persona_type,
+		stableIndexFromString(persona.name || session.id),
+	);
 	const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 8_000);
