@@ -100,7 +100,7 @@ export async function executeMatching(supabase: SupabaseClient<Database>, topN: 
 	}
 	scored.sort((a, b) => b.score - a.score);
 	const perUser = new Map<string, number>();
-	const toInsert: { user_a_id: string; user_b_id: string; profile_score: number; score_details: Record<string, number> }[] = [];
+	const toInsert: { user_a_id: string; user_b_id: string; profile_score: number; final_score: number; score_details: Record<string, number> }[] = [];
 	for (const s of scored) {
 		const countA = perUser.get(s.userA) ?? 0;
 		const countB = perUser.get(s.userB) ?? 0;
@@ -109,6 +109,7 @@ export async function executeMatching(supabase: SupabaseClient<Database>, topN: 
 			user_a_id: s.userA < s.userB ? s.userA : s.userB,
 			user_b_id: s.userA < s.userB ? s.userB : s.userA,
 			profile_score: s.score,
+			final_score: s.score,
 			score_details: s.details,
 		});
 		perUser.set(s.userA, countA + 1);
