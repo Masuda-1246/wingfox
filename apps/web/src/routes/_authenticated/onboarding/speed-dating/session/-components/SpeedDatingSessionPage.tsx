@@ -29,6 +29,15 @@ import { toast } from "sonner";
 
 type GenerationPhase = "profile" | "wingfox" | "complete" | "error";
 
+/** Strip markdown formatting (bold, italic, headers) from AI transcript text */
+function stripMarkdown(text: string): string {
+	return text
+		.replace(/\*{1,3}(.+?)\*{1,3}/g, "$1") // **bold**, *italic*, ***both***
+		.replace(/_{1,3}(.+?)_{1,3}/g, "$1")    // __bold__, _italic_
+		.replace(/^#{1,6}\s+/gm, "")             // ## headers
+		.replace(/`([^`]+)`/g, "$1");             // `code`
+}
+
 const DATE_BACKGROUNDS = [
 	"https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1920&q=80&auto=format",
 	"https://images.unsplash.com/photo-1476231682828-37e571bc172f?w=1920&q=80&auto=format",
@@ -517,7 +526,7 @@ export function SpeedDatingSessionPage() {
 											: "bg-secondary text-white"
 									}`}
 								>
-									{entry.message}
+									{entry.source === "ai" ? stripMarkdown(entry.message) : entry.message}
 								</div>
 							</m.div>
 						))}
