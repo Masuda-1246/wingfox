@@ -7,6 +7,10 @@ import {
 	buildFoxConversationSystemPrompt,
 	buildConversationScorePrompt,
 } from "../prompts/fox-conversation";
+import {
+	hasTraitScores,
+	getProfileScoreDetailsForUsers,
+} from "../services/matching";
 import type {
 	ServerMessage,
 	ClientMessage,
@@ -290,9 +294,21 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.eq("id", state.matchId)
 				.single();
 
-			const profileScore = (matchRow?.profile_score as number) ?? 50;
-			const existingDetails =
+			let profileScore = (matchRow?.profile_score as number) ?? 50;
+			let existingDetails =
 				(matchRow?.score_details as Record<string, unknown>) ?? {};
+			// 特性シナジーが無い場合は会話完了時に profiles から計算してマージ（トピック分布と両方出るようにする）
+			if (!hasTraitScores(existingDetails)) {
+				const computed = await getProfileScoreDetailsForUsers(
+					supabase,
+					state.userA,
+					state.userB,
+				);
+				if (computed) {
+					profileScore = computed.profile_score;
+					existingDetails = { ...computed.score_details, ...existingDetails };
+				}
+			}
 			const finalScore = profileScore * 0.4 + conversationScore * 0.6;
 
 			await supabase

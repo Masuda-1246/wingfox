@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { useAuthMe } from "@/lib/hooks/useAuthMe";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { cn } from "@/lib/utils";
@@ -104,6 +105,7 @@ export function Login() {
 	const { t } = useTranslation("auth");
 	const navigate = useNavigate();
 	const { user, signIn } = useAuth();
+	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 
@@ -119,10 +121,10 @@ export function Login() {
 	});
 
 	useEffect(() => {
-		if (user) {
+		if (user && authMe) {
 			navigate({ to: "/" });
 		}
-	}, [user, navigate]);
+	}, [user, authMe, navigate]);
 
 	const validateForm = () => {
 		let isValid = true;
