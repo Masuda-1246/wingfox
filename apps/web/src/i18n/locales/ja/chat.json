@@ -26,5 +26,22 @@
 	"entertainment": "エンタメ",
 	"lifestyle": "ライフスタイル",
 	"ideology": "思想",
-	"other": "その他"
+	"other": "その他",
+	"unmatch": "マッチ解消",
+	"unmatch_title": "マッチを解消しますか？",
+	"unmatch_description": "この操作は取り消せません。相手とのマッチングが解消され、チャット履歴にアクセスできなくなります。",
+	"confirm_unmatch": "マッチ解消を確認",
+	"unmatch_success": "マッチを解消しました",
+	"unmatch_error": "マッチ解消に失敗しました",
+	"no_matches": "マッチング結果がありません",
+	"fox_search_button": "フォックスを探索する",
+	"fox_search_searching": "検索中...",
+	"fox_search_in_progress": "フォックス会話が進行中です",
+	"fox_search_progress": "会話の進捗",
+	"fox_search_started": "フォックス探索を開始しました！",
+	"fox_search_completed": "フォックス会話が完了しました！新しいマッチが追加されました。",
+	"fox_search_failed": "フォックス会話に失敗しました。もう一度お試しください。",
+	"fox_search_error": "フォックス検索の開始に失敗しました。",
+	"no_trait_data": "データなし",
+	"topic_pending": "フォックス会話完了後に表示されます"
 }

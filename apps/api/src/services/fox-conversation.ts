@@ -16,9 +16,15 @@ export async function runFoxConversation(
 		.select("id, match_id, total_rounds")
 		.eq("id", conversationId)
 		.single();
-	if (!conv || conv.total_rounds === 0) return;
+	if (!conv || conv.total_rounds === 0) {
+		console.error(`[runFoxConversation] Conversation not found or total_rounds=0: ${conversationId}`);
+		return;
+	}
 	const { data: match } = await supabase.from("matches").select("user_a_id, user_b_id").eq("id", conv.match_id).single();
-	if (!match) return;
+	if (!match) {
+		console.error(`[runFoxConversation] Match not found for conversation ${conversationId}, match_id=${conv.match_id}`);
+		return;
+	}
 	const [userA, userB] = [match.user_a_id, match.user_b_id];
 	const { data: personaA } = await supabase
 		.from("personas")
@@ -33,6 +39,7 @@ export async function runFoxConversation(
 		.eq("persona_type", "wingfox")
 		.single();
 	if (!personaA?.compiled_document || !personaB?.compiled_document) {
+		console.error(`[runFoxConversation] Persona missing for conversation ${conversationId}: personaA=${!!personaA?.compiled_document}, personaB=${!!personaB?.compiled_document}`);
 		await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", conversationId);
 		return;
 	}
@@ -64,6 +71,10 @@ export async function runFoxConversation(
 			content: content || "（応答なし）",
 			round_number: round,
 		});
+		await supabase
+			.from("fox_conversations")
+			.update({ current_round: round })
+			.eq("id", conversationId);
 		history.push({ speaker: currentSpeaker, content: content || "" });
 		currentSpeaker = currentSpeaker === "A" ? "B" : "A";
 	}
@@ -76,32 +87,40 @@ export async function runFoxConversation(
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
 	const scorePrompt = buildConversationScorePrompt(logText);
-	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], { maxTokens: 200 });
+	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], { maxTokens: 300 });
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
 	const jsonMatch = scoreRaw.match(/\{[\s\S]*\}/);
 	if (jsonMatch) {
 		try {
-			const parsed = JSON.parse(jsonMatch[0]) as { score?: number; excitement_level?: number; common_topics?: string[]; mutual_interest?: number };
+			const parsed = JSON.parse(jsonMatch[0]) as {
+				score?: number;
+				excitement_level?: number;
+				common_topics?: string[];
+				mutual_interest?: number;
+				topic_distribution?: { topic: string; percentage: number }[];
+			};
 			conversationScore = Math.min(100, Math.max(0, parsed.score ?? 50));
 			analysis = {
 				excitement_level: parsed.excitement_level,
 				common_topics: parsed.common_topics,
 				mutual_interest: parsed.mutual_interest,
+				topic_distribution: parsed.topic_distribution,
 			};
 		} catch (_) {
 			// ignore
 		}
 	}
-	const { data: matchRow } = await supabase.from("matches").select("profile_score").eq("id", conv.match_id).single();
+	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
 	const profileScore = (matchRow?.profile_score as number) ?? 50;
+	const existingDetails = (matchRow?.score_details as Record<string, unknown>) ?? {};
 	const finalScore = profileScore * 0.4 + conversationScore * 0.6;
 	await supabase
 		.from("matches")
 		.update({
 			conversation_score: conversationScore,
 			final_score: finalScore,
-			score_details: { conversation_analysis: analysis } as Json,
+			score_details: { ...existingDetails, conversation_analysis: analysis } as Json,
 			status: "fox_conversation_completed",
 			updated_at: new Date().toISOString(),
 		})
