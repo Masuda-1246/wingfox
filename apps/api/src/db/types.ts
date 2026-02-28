@@ -196,6 +196,7 @@ export type Database = {
 					basic_info: Json;
 					personality_tags: Json;
 					personality_analysis: Json;
+					interaction_style: Json;
 					interests: Json;
 					values: Json;
 					romance_style: Json;
@@ -213,6 +214,7 @@ export type Database = {
 					basic_info?: Json;
 					personality_tags?: Json;
 					personality_analysis?: Json;
+					interaction_style?: Json;
 					interests?: Json;
 					values?: Json;
 					romance_style?: Json;

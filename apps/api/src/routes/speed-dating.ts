@@ -52,8 +52,22 @@ function stableIndexFromString(input: string): number {
 function detectGender(compiledDocument: string): "male" | "female" {
 	const parsed = parsePersonaMarkdown(compiledDocument);
 	if (parsed.gender) return parsed.gender;
-	if (/男性|彼は|おじさん|お兄さん/.test(compiledDocument)) return "male";
+	if (/男性|彼は|おじさん|お兄さん|\bhe\b|\bhis\b/i.test(compiledDocument)) return "male";
 	return "female";
+}
+
+function detectLangFromHeader(c: { req: { header: (name: string) => string | undefined } }): "ja" | "en" {
+	const accept = c.req.header("accept-language") ?? "";
+	return accept.startsWith("en") ? "en" : "ja";
+}
+
+/** Detect the language a persona was generated in by checking for Japanese content */
+function detectLangFromDocument(compiledDocument: string): "ja" | "en" {
+	// Count Japanese characters (hiragana, katakana, CJK) in the content
+	const jpChars = (compiledDocument.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g) ?? []).length;
+	// If significant Japanese content exists, treat as Japanese
+	if (jpChars > 20) return "ja";
+	return "en";
 }
 
 const SECTION_ORDER = [
@@ -89,12 +103,20 @@ function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "f
 				sections[currentSection] = currentContent.join("\n").trim();
 			}
 			currentSection = match[1].trim().toLowerCase().replace(/\s+/g, "_");
+			// Japanese headers
 			if (currentSection === "コアアイデンティティ") currentSection = "core_identity";
 			else if (currentSection === "コミュニケーションルール") currentSection = "communication_rules";
 			else if (currentSection === "パーソナリティプロファイル") currentSection = "personality_profile";
 			else if (currentSection === "興味・関心マップ") currentSection = "interests";
 			else if (currentSection === "価値観") currentSection = "values";
 			else if (currentSection === "制約事項") currentSection = "constraints";
+			// English headers
+			else if (currentSection === "core_identity") { /* already correct */ }
+			else if (currentSection === "communication_rules") { /* already correct */ }
+			else if (currentSection === "personality_profile") { /* already correct */ }
+			else if (currentSection === "interests_map") currentSection = "interests";
+			else if (currentSection === "values") { /* already correct */ }
+			else if (currentSection === "constraints") { /* already correct */ }
 			currentContent = [];
 		} else {
 			currentContent.push(line);
@@ -109,6 +131,7 @@ function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "f
 /** POST /api/speed-dating/personas - generate 3 virtual personas */
 speedDating.post("/personas", requireAuth, async (c) => {
 	const userId = c.get("user_id");
+	const lang = detectLangFromHeader(c);
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (!apiKey) {
 		return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
@@ -122,29 +145,19 @@ speedDating.post("/personas", requireAuth, async (c) => {
 
 	const types = ["virtual_similar", "virtual_complementary", "virtual_discovery"] as const;
 
-	// Generate all 3 personas in PARALLEL (3x faster)
-	const rawResults = await Promise.all(
-		types.map(async (personaType) => {
-			const prompt = buildVirtualPersonaPrompt(quizSummary, personaType);
-			const raw = await chatComplete(
-				apiKey,
-				[{ role: "user", content: prompt }],
-				{ maxTokens: 1500, temperature: 1.0 },
-			);
-			return { personaType, raw };
-		}),
-	);
-
-	// Deduplicate names
-	const usedNames = new Set<string>();
-	for (const r of rawResults) {
-		const { name } = parsePersonaMarkdown(r.raw);
-		if (usedNames.has(name)) {
-			// Append type suffix to avoid duplicates
-			const suffix = r.personaType === "virtual_similar" ? "α" : r.personaType === "virtual_complementary" ? "β" : "γ";
-			r.raw = r.raw.replace(/^(name:\s*)(.+)$/m, `$1${name}${suffix}`);
-		}
-		usedNames.add(name);
+	// Generate personas sequentially to avoid rate limiting
+	const rawResults: { personaType: typeof types[number]; raw: string }[] = [];
+	const usedNames: string[] = [];
+	for (const personaType of types) {
+		const prompt = buildVirtualPersonaPrompt(quizSummary, personaType, usedNames, lang);
+		const raw = await chatComplete(
+			apiKey,
+			[{ role: "user", content: prompt }],
+			{ maxTokens: 1500, temperature: 1.0 },
+		);
+		const { name } = parsePersonaMarkdown(raw);
+		if (name) usedNames.push(name);
+		rawResults.push({ personaType, raw });
 	}
 
 	// Save to DB in parallel
@@ -279,8 +292,11 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	if (session.status === "completed") return jsonError(c, "BAD_REQUEST", "Session already completed");
 	const persona = Array.isArray(session.personas) ? session.personas[0] : session.personas;
 	if (!persona) return jsonError(c, "NOT_FOUND", "Persona not found");
-	const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document);
-	const firstMessage = `はじめまして！${persona.name}です。今日はよろしくお願いします。あなたのことを教えてください！`;
+	const lang = detectLangFromDocument(persona.compiled_document);
+	const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document, lang);
+	const firstMessage = lang === "en"
+		? `Hi there! I'm ${persona.name}. Nice to meet you! Tell me a bit about yourself!`
+		: `はじめまして！${persona.name}です。今日はよろしくお願いします。あなたのことを教えてください！`;
 	const gender = detectGender(persona.compiled_document);
 	const voiceId = pickVoiceId(
 		gender,
@@ -324,6 +340,7 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 			agent: {
 				prompt: { prompt: systemPrompt },
 				firstMessage,
+				language: lang === "en" ? "en" : "ja",
 			},
 			tts: {
 				voiceId,
@@ -386,10 +403,11 @@ speedDating.post("/sessions/:id/messages", requireAuth, async (c) => {
 		role: m.role === "user" ? "user" as const : "assistant" as const,
 		content: m.content,
 	}));
-	let personaContent = "（応答を生成できませんでした）";
+	const lang = persona ? detectLangFromDocument(persona.compiled_document) : "ja";
+	let personaContent = lang === "en" ? "(Failed to generate response)" : "（応答を生成できませんでした）";
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (apiKey && persona) {
-		const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document);
+		const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document, lang);
 		personaContent = await chatComplete(apiKey, [
 			{ role: "system", content: systemPrompt },
 			...messagesForAi,
