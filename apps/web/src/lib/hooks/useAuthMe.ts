@@ -1,6 +1,6 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface AuthMe {
 	id: string;
@@ -11,13 +11,19 @@ export interface AuthMe {
 	avatar_url?: string | null;
 }
 
-export function useAuthMe(options?: { enabled?: boolean }) {
-	return useQuery({
+export function authMeQueryOptions() {
+	return queryOptions({
 		queryKey: ["auth", "me"],
 		queryFn: async (): Promise<AuthMe> => {
 			const res = await client.api.auth.me.$get();
 			return unwrapApiResponse<AuthMe>(res);
 		},
+	});
+}
+
+export function useAuthMe(options?: { enabled?: boolean }) {
+	return useQuery({
+		...authMeQueryOptions(),
 		enabled: options?.enabled !== false,
 	});
 }

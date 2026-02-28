@@ -1576,7 +1576,7 @@ export function PersonasCreate() {
 	const wrapCurrentTable = async () => {
 		if (!currentSessionId || currentPersonaIndex >= virtualPersonas.length) return;
 		try {
-			await completeSession.mutateAsync();
+			await completeSession.mutateAsync(undefined);
 			if (currentPersonaIndex < virtualPersonas.length - 1) {
 				const nextIndex = currentPersonaIndex + 1;
 				const nextPersona = virtualPersonas[nextIndex];

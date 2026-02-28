@@ -12,6 +12,7 @@ export type ChatMessage = { role: "user" | "assistant" | "system"; content: stri
 export type ChatCompleteOptions = {
 	model?: string;
 	maxTokens?: number;
+	temperature?: number;
 	/** 会話スコアなど構造化出力が必要なときに指定 */
 	responseFormat?: { type: "json_object" };
 };
@@ -29,6 +30,7 @@ export async function chatComplete(
 		model: options?.model ?? DEFAULT_MODEL,
 		messages: messages.map((m) => ({ role: m.role, content: m.content })),
 		maxTokens: options?.maxTokens ?? 1024,
+		temperature: options?.temperature,
 		...(options?.responseFormat && { responseFormat: options.responseFormat }),
 	});
 	const content = response.choices?.[0]?.message?.content;
