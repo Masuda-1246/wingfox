@@ -258,8 +258,8 @@
     "lounge_subtitle": "Have short voice conversations with 3 virtual guests, one after another. Start when you're ready.",
     "page_hint": "What is speed dating? You talk to several people for a few minutes each to see who you click with. Here, 3 AI guests will chat with you by voice.",
     "hint_label": "Hint",
-    "generating_personas": "Generating personas",
-    "generating_personas_hint": "Preparing tonight's guests. This may take a moment.",
+    "generating_personas": "Finding your dates tonight",
+    "generating_personas_hint": "This may take a moment.",
     "display_name": "Nickname",
     "name_placeholder": "Name you want to display",
     "gender": "Gender",
@@ -313,7 +313,16 @@
     "end_conversation": "End Conversation",
     "preparing_next": "Preparing next date partner...",
     "session_complete_title": "Session Complete",
-    "session_complete_desc": "Conversations complete. Review and confirm your profile on the next page."
+    "session_complete_desc": "Conversations complete. Review and confirm your profile on the next page.",
+    "generating_profile": "Analyzing your conversations...",
+    "generating_wingfox": "Creating your AI companion...",
+    "generation_complete": "All done!",
+    "generation_failed_title": "Generation Failed",
+    "generation_failed_desc": "Something went wrong while generating your profile. You can retry or skip to the review page.",
+    "retry_generation": "Retry",
+    "skip_to_review": "Skip to review page",
+    "step_profile": "Profile",
+    "step_wingfox": "WingFox"
   },
   "review": {
     "title": "Profile Review",

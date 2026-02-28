@@ -258,8 +258,8 @@
     "lounge_subtitle": "3人の仮想ゲストと順番に音声で会話し、相性を探る体験です。準備ができたら開始しましょう。",
     "page_hint": "スピードデートとは？ 短時間ずつ複数の相手と会話し、相性を感じ取る形式です。ここではAIが演じる3人のゲストと音声で話します。",
     "hint_label": "ヒント",
-    "generating_personas": "ペルソナを生成しています",
-    "generating_personas_hint": "今夜のゲストを準備しています。しばらくお待ちください。",
+    "generating_personas": "今夜のデート相手を探しています",
+    "generating_personas_hint": "しばらくお待ちください。",
     "display_name": "ニックネーム",
     "name_placeholder": "表示したい名前を入力",
     "gender": "性別",
@@ -313,7 +313,16 @@
     "end_conversation": "会話を終了する",
     "preparing_next": "次のデート相手を準備しています...",
     "session_complete_title": "セッション完了",
-    "session_complete_desc": "会話が完了しました。次のページでプロフィールを確認して確定してください。"
+    "session_complete_desc": "会話が完了しました。次のページでプロフィールを確認して確定してください。",
+    "generating_profile": "会話パターンを分析しています...",
+    "generating_wingfox": "AIコンパニオンを作成しています...",
+    "generation_complete": "完了しました！",
+    "generation_failed_title": "生成に失敗しました",
+    "generation_failed_desc": "プロフィールの生成中にエラーが発生しました。リトライするか、レビューページに進んでください。",
+    "retry_generation": "リトライ",
+    "skip_to_review": "レビューページに進む",
+    "step_profile": "プロフィール",
+    "step_wingfox": "ウィングフォックス"
   },
   "review": {
     "title": "プロフィール確認",

@@ -22,7 +22,7 @@ function extractBio(compiledDocument: string): string {
 	if (coreMatch?.[1]) {
 		const raw = coreMatch[1].trim().replace(/[#*_`]/g, "");
 		const firstSentences = raw.split(/[。.!！\n]/).filter(Boolean).slice(0, 2).join("。");
-		if (firstSentences.length > 80) return `${firstSentences.slice(0, 80)}...`;
+		if (firstSentences.length > 120) return `${firstSentences.slice(0, 120)}...`;
 		return firstSentences;
 	}
 	return "";
@@ -209,24 +209,29 @@ export function OnboardingSpeedDating() {
 											</p>
 										</div>
 									) : (
-										<div className="space-y-2">
+										<div className="space-y-2.5">
 											{previewPersonas.length > 0 ? (
 												previewPersonas.map((p, i) => (
 													<div
 														key={p.id}
-														className="rounded-xl border border-secondary/15 bg-background px-4 py-3 flex items-center justify-between gap-3 shadow-sm"
+														className="rounded-xl border border-secondary/15 bg-background px-4 py-3 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-secondary/30 transition-all"
 													>
+														<div className="w-9 h-9 rounded-full bg-secondary/10 border-2 border-secondary/30 flex items-center justify-center text-sm font-bold text-secondary shrink-0">
+															{p.name[0] ?? "?"}
+														</div>
 														<div className="min-w-0 flex-1">
-															<p className="text-sm font-semibold text-foreground truncate">
-																{i + 1}. {p.name}
-															</p>
-															<p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+															<div className="flex items-center gap-2">
+																<p className="text-sm font-bold text-foreground truncate">
+																	{p.name}
+																</p>
+																<span className="text-[9px] font-bold tracking-widest text-secondary shrink-0 px-2 py-0.5 rounded-md bg-secondary/10">
+																	DATE {i + 1}
+																</span>
+															</div>
+															<p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
 																{p.bio}
 															</p>
 														</div>
-														<span className="text-[10px] font-bold tracking-widest text-secondary shrink-0 px-2 py-1 rounded-md bg-secondary/10">
-															DATE {i + 1}
-														</span>
 													</div>
 												))
 											) : (
