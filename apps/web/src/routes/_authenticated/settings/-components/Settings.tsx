@@ -1,3 +1,4 @@
+import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { useUsers } from "@/lib/hooks/useUsers";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -365,10 +366,9 @@ export function Settings() {
 								<Card className="col-span-1 p-6 flex flex-col items-center justify-center text-center space-y-4">
 									<div className="relative">
 										<div className="w-32 h-32 rounded-full overflow-hidden border-4 border-background shadow-xl ring-2 ring-border">
-											<img
-												src="https://picsum.photos/200/300"
-												className="w-full h-full object-cover"
-												alt="Avatar"
+											<FoxAvatar
+												variant={4}
+												className="w-full h-full"
 											/>
 										</div>
 										<button

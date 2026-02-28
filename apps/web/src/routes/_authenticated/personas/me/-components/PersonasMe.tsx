@@ -1,3 +1,4 @@
+import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatDateTime } from "@/lib/date";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { cn } from "@/lib/utils";
@@ -274,10 +275,9 @@ export function PersonasMe() {
 						className="relative"
 					>
 						<div className="w-40 h-40 rounded-full border-4 border-background overflow-hidden shadow-xl ring-1 ring-border">
-							<img
-								src={`https://picsum.photos/seed/${myPersona.id}/200/200`}
-								alt="Persona Avatar"
-								className="w-full h-full object-cover"
+							<FoxAvatar
+								seed={myPersona.id}
+								className="w-full h-full"
 							/>
 						</div>
 						<div className="absolute bottom-0 right-0 bg-secondary text-secondary-foreground p-2 rounded-full border-4 border-background">
