@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SpeedDatingRouteRouteImport } from './routes/speed-dating/route'
-import { Route as SignupRouteRouteImport } from './routes/signup/route'
 import { Route as RegisterRouteRouteImport } from './routes/register/route'
 import { Route as LoginRouteRouteImport } from './routes/login/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -32,11 +31,6 @@ import { Route as AuthenticatedOnboardingProfileRouteRouteImport } from './route
 const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
   id: '/speed-dating',
   path: '/speed-dating',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignupRouteRoute = SignupRouteRouteImport.update({
-  id: '/signup',
-  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRouteRoute = RegisterRouteRouteImport.update({
@@ -140,7 +134,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
@@ -160,7 +153,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
@@ -182,7 +174,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
@@ -204,7 +195,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
-    | '/signup'
     | '/speed-dating'
     | '/chat'
     | '/onboarding'
@@ -224,7 +214,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
-    | '/signup'
     | '/speed-dating'
     | '/chat'
     | '/onboarding'
@@ -245,7 +234,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/register'
-    | '/signup'
     | '/speed-dating'
     | '/_authenticated/chat'
     | '/_authenticated/onboarding'
@@ -267,7 +255,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRouteRoute: typeof LoginRouteRoute
   RegisterRouteRoute: typeof RegisterRouteRoute
-  SignupRouteRoute: typeof SignupRouteRoute
   SpeedDatingRouteRoute: typeof SpeedDatingRouteRoute
 }
 
@@ -278,13 +265,6 @@ declare module '@tanstack/react-router' {
       path: '/speed-dating'
       fullPath: '/speed-dating'
       preLoaderRoute: typeof SpeedDatingRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -469,7 +449,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRouteRoute: LoginRouteRoute,
   RegisterRouteRoute: RegisterRouteRoute,
-  SignupRouteRoute: SignupRouteRoute,
   SpeedDatingRouteRoute: SpeedDatingRouteRoute,
 }
 export const routeTree = rootRouteImport
