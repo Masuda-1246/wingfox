@@ -43,6 +43,7 @@ export function SpeedDatingPage() {
 	const [currentPersonaName, setCurrentPersonaName] = useState("");
 	const completeSession = useCompleteSpeedDatingSession(currentSessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
+	const handledDoneRef = useRef(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const prefetchedNextRef = useRef<{
 		personaIndex: number;
@@ -95,7 +96,12 @@ export function SpeedDatingPage() {
 
 	// When voice session ends, complete and move to next
 	useEffect(() => {
-		if (voiceStatus !== "done") return;
+		if (voiceStatus !== "done") {
+			handledDoneRef.current = false;
+			return;
+		}
+		if (handledDoneRef.current) return;
+		handledDoneRef.current = true;
 		const completeCurrentSession = async () => {
 			const transcriptData = transcriptRef.current.map((entry) => ({
 				source: entry.source,

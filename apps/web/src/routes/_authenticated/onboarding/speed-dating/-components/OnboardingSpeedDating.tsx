@@ -64,6 +64,7 @@ export function OnboardingSpeedDating() {
 	const [currentPersonaName, setCurrentPersonaName] = useState("");
 	const completeSession = useCompleteSpeedDatingSession(currentSessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
+	const handledDoneRef = useRef(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const prefetchedNextRef = useRef<{
 		personaIndex: number;
@@ -127,7 +128,12 @@ export function OnboardingSpeedDating() {
 
 	// When voice session ends ("done"), complete the session with transcript
 	useEffect(() => {
-		if (voiceStatus !== "done") return;
+		if (voiceStatus !== "done") {
+			handledDoneRef.current = false;
+			return;
+		}
+		if (handledDoneRef.current) return;
+		handledDoneRef.current = true;
 		const completeCurrentSession = async () => {
 			const transcriptData = transcriptRef.current.map((entry) => ({
 				source: entry.source,
