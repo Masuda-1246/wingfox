@@ -1,1 +1,290 @@
-{"quiz":{"title":"質問クイズ","description":"あなたの好みや性格の傾向を教えてください。ペルソナ生成に利用されます。","prev":"前へ","next":"次へ","submit":"送信する","submit_success":"回答を保存しました","submit_error":"保存に失敗しました"},"speed_dating":{"title":"スピードデーティング","description":"仮想ペルソナと短い会話をして、あなたのコミュニケーションスタイルを伝えましょう。","lounge_title":"THE LOUNGE","lounge_subtitle":"交流イベントへの準備。名前・性別・誕生年を入力してスピードデートを開始しましょう。","display_name":"ニックネーム","name_placeholder":"表示したい名前を入力","gender":"性別","gender_select":"選択","gender_male":"男性","gender_female":"女性","gender_other":"その他","interests":"興味","enter_speed_date":"スピードデートを開始","error_basic_info":"ニックネームと性別を入力してください","next_guest":"次のゲストへ","to_review":"レビューへ","complete_session":"セッション完了","finalize_persona":"ペルソナを確定","creating":"生成中...","sync_complete":"SYNC COMPLETE.","sync_description":"交流のリズムが解析されました。ペルソナを生成します。","birth_year":"誕生年","birth_year_placeholder":"例: 1990"},"review":{"title":"プロフィール確認","description":"生成されたプロフィールとペルソナを確認し、問題なければ確定してください。","confirm":"確定する","reset":"やり直す","confirm_success":"プロフィールを確定しました","confirm_error":"確定に失敗しました","reset_success":"オンボーディングを最初からやり直します"}}
+{
+  "profile": {
+    "title": "プロフィール登録",
+    "description": "はじめに、あなたの基本情報を教えてください。",
+    "nickname": "ニックネーム",
+    "nickname_placeholder": "表示したい名前を入力",
+    "birth_year": "誕生年",
+    "birth_year_placeholder": "例: 1990",
+    "gender": "性別",
+    "gender_select": "選択してください",
+    "gender_male": "男性",
+    "gender_female": "女性",
+    "gender_other": "その他",
+    "gender_undisclosed": "未回答",
+    "submit": "次へ進む",
+    "submit_success": "登録しました",
+    "submit_error": "保存に失敗しました",
+    "error_nickname": "ニックネームを入力してください",
+    "error_birth_year": "誕生年は1900〜2100の範囲で入力してください",
+    "error_gender": "性別を選択してください"
+  },
+  "quiz": {
+    "title": "質問クイズ",
+    "description": "あなたの好みや性格の傾向を教えてください。ペルソナ生成に利用されます。",
+    "prev": "前へ",
+    "next": "次へ",
+    "submit": "送信する",
+    "submit_success": "回答を保存しました",
+    "submit_error": "保存に失敗しました",
+    "categories": {
+      "lifestyle": "ライフスタイル",
+      "communication": "コミュニケーション",
+      "humor": "ユーモア",
+      "expression": "感情表現",
+      "values": "価値観",
+      "planning": "行動スタイル",
+      "relationship": "人間関係",
+      "recovery": "ストレス対処",
+      "daily_rhythm": "生活リズム",
+      "lifestyle_zone": "生活行動圏",
+      "personality": "性格",
+      "basic": "基本情報",
+      "romance": "恋愛観",
+      "hobbies": "趣味"
+    },
+    "questions": {
+      "q1": {
+        "text": "自分にとっての「充実した休日」に一番近いのは？",
+        "options": [
+          { "value": "a", "label": "友達と外に出て、いろんな場所をはしごする" },
+          { "value": "b", "label": "家でのんびり、好きなことだけをして過ごす" },
+          { "value": "c", "label": "趣味や習い事に集中して、自分を磨く時間にする" },
+          { "value": "d", "label": "特に計画せず、その日の気分で動く" }
+        ]
+      },
+      "q2": {
+        "text": "会話をしていて「居心地いいな」と感じるのはどんなとき？",
+        "options": [
+          { "value": "a", "label": "話がテンポよく弾んで、笑いが絶えないとき" },
+          { "value": "b", "label": "ゆっくり深い話ができて、間があっても気にならないとき" },
+          { "value": "c", "label": "共感し合えて、「わかる！」が続くとき" },
+          { "value": "d", "label": "お互いの話が刺激になって、新しい発見があるとき" }
+        ]
+      },
+      "q3": {
+        "text": "思わず笑ってしまうのはどんな瞬間？",
+        "options": [
+          { "value": "a", "label": "日常のちょっとした「あるある」を面白く言ってもらったとき" },
+          { "value": "b", "label": "話が突然予想外の方向に飛んだとき" },
+          { "value": "c", "label": "シュールで意味不明なのに、なんかツボにはまったとき" },
+          { "value": "d", "label": "ちょっと毒がある鋭いツッコミを聞いたとき" }
+        ]
+      },
+      "q4": {
+        "text": "自分の気持ちを相手に伝えるとき、どちらに近い？",
+        "options": [
+          { "value": "a", "label": "感じたことをすぐ言葉にして伝える" },
+          { "value": "b", "label": "じっくり考えてから、言葉を選んで伝える" },
+          { "value": "c", "label": "言葉より行動や態度で示すほうが自然" },
+          { "value": "d", "label": "雰囲気で伝わってほしいタイプ" }
+        ]
+      },
+      "q5": {
+        "text": "お金を使うとしたら、どれが一番しっくりくる？",
+        "options": [
+          { "value": "a", "label": "旅行や体験にお金をかけたい（思い出が残るから）" },
+          { "value": "b", "label": "好きなものをじっくり集めたい（モノが好きだから）" },
+          { "value": "c", "label": "なるべく貯めておきたい（安心感が大事だから）" },
+          { "value": "d", "label": "コスパが良ければ何でもいい（合理的がベスト）" }
+        ]
+      },
+      "q6": {
+        "text": "予定の立て方として、自分に近いのは？",
+        "options": [
+          { "value": "a", "label": "先まで細かく決めてから動く（計画通りが好き）" },
+          { "value": "b", "label": "大まかな方向だけ決めて、あとはその場で判断" },
+          { "value": "c", "label": "直前に決めることが多い（ノリで動くのが好き）" },
+          { "value": "d", "label": "計画は立てるけど、変更も全然 OK なフレキシブル派" }
+        ]
+      },
+      "q7": {
+        "text": "友人・知人との関係で、自分に近いのは？",
+        "options": [
+          { "value": "a", "label": "少人数の深い関係を大切にしている" },
+          { "value": "b", "label": "広く浅くでも、色々な人とつながっていたい" },
+          { "value": "c", "label": "一人の時間も同じくらい大切にしたい" },
+          { "value": "d", "label": "状況によって使い分けている" }
+        ]
+      },
+      "q8": {
+        "text": "疲れたとき、一番回復できるのは？",
+        "options": [
+          { "value": "a", "label": "誰かと話して気分を発散する" },
+          { "value": "b", "label": "一人の時間をとって静かに回復する" },
+          { "value": "c", "label": "体を動かしてリフレッシュする" },
+          { "value": "d", "label": "好きなことに没頭して気分を切り替える" }
+        ]
+      },
+      "q9": {
+        "text": "自分の生活リズムはどちらに近い？",
+        "options": [
+          { "value": "a", "label": "朝早く起きて、午前中に集中するタイプ（朝型）" },
+          { "value": "b", "label": "夜の方が活動的で、遅くまで起きていることが多い（夜型）" },
+          { "value": "c", "label": "特に決まっておらず、日によってバラバラ" },
+          { "value": "d", "label": "できるだけ規則正しく、決まった時間に起きる・寝る" }
+        ]
+      },
+      "q10": {
+        "text": "よく行く・好きなエリアはどれ？",
+        "options": [
+          { "value": "a", "label": "都市中心部（ショッピング・グルメ・エンタメが充実している）" },
+          { "value": "b", "label": "住宅街・下町（落ち着いた雰囲気が好き）" },
+          { "value": "c", "label": "自然・郊外（公園・山・川沿いでリフレッシュ）" },
+          { "value": "d", "label": "特にこだわりはなく、その日の気分で選ぶ" }
+        ]
+      },
+      "q1_weekend": {
+        "text": "週末の理想的な過ごし方は？",
+        "options": [
+          { "value": "friends", "label": "友達と外出" },
+          { "value": "home", "label": "家でのんびり" },
+          { "value": "explore", "label": "新しい場所を探索" },
+          { "value": "sports", "label": "スポーツや運動" }
+        ]
+      },
+      "q2_travel": {
+        "text": "旅行の計画はどう立てる？",
+        "options": [
+          { "value": "detailed", "label": "きっちり計画" },
+          { "value": "rough_plan", "label": "ざっくり決めてあとは自由" },
+          { "value": "no_plan", "label": "完全ノープラン" },
+          { "value": "delegate", "label": "誰かに任せる" }
+        ]
+      },
+      "q3_contact": {
+        "text": "友達との連絡頻度は？",
+        "options": [
+          { "value": "daily", "label": "毎日やり取り" },
+          { "value": "weekly", "label": "週に数回" },
+          { "value": "when_needed", "label": "用事がある時だけ" },
+          { "value": "sns_only", "label": "SNSで十分" }
+        ]
+      },
+      "q4_indoor": {
+        "text": "好きなインドア趣味は？（複数選択可）",
+        "options": [
+          { "value": "movie", "label": "映画・ドラマ" },
+          { "value": "reading", "label": "読書" },
+          { "value": "game", "label": "ゲーム" },
+          { "value": "cooking", "label": "料理" },
+          { "value": "music", "label": "音楽" },
+          { "value": "none", "label": "なし" }
+        ]
+      },
+      "q5_outdoor": {
+        "text": "好きなアウトドア趣味は？（複数選択可）",
+        "options": [
+          { "value": "sports", "label": "スポーツ" },
+          { "value": "travel", "label": "旅行" },
+          { "value": "camp", "label": "キャンプ" },
+          { "value": "cafe", "label": "カフェ巡り" },
+          { "value": "walk", "label": "散歩" },
+          { "value": "none", "label": "なし" }
+        ]
+      },
+      "q6_work_life": {
+        "text": "仕事とプライベート、大切にしたいのは？",
+        "options": [
+          { "value": "work", "label": "仕事重視" },
+          { "value": "private", "label": "プライベート重視" },
+          { "value": "balance", "label": "バランス型" },
+          { "value": "depends", "label": "その時々で変わる" }
+        ]
+      },
+      "q7_future": {
+        "text": "将来的に大切にしたいことは？",
+        "options": [
+          { "value": "family", "label": "家族との時間" },
+          { "value": "career", "label": "キャリア" },
+          { "value": "hobby", "label": "趣味の充実" },
+          { "value": "contribution", "label": "社会貢献" }
+        ]
+      },
+      "q8_relationship": {
+        "text": "理想の関係性は？",
+        "options": [
+          { "value": "together", "label": "いつも一緒" },
+          { "value": "distance", "label": "適度な距離感" },
+          { "value": "independent", "label": "お互い自立" },
+          { "value": "situation", "label": "状況による" }
+        ]
+      },
+      "q9_partner": {
+        "text": "パートナーに一番求めるものは？",
+        "options": [
+          { "value": "kindness", "label": "優しさ" },
+          { "value": "humor", "label": "ユーモア" },
+          { "value": "intelligence", "label": "知性" },
+          { "value": "common_interest", "label": "共通の趣味" },
+          { "value": "stability", "label": "安定感" }
+        ]
+      },
+      "q10_diet": {
+        "text": "食事のこだわりは？",
+        "options": [
+          { "value": "cook", "label": "自炊派" },
+          { "value": "eat_out", "label": "外食派" },
+          { "value": "no_preference", "label": "こだわりなし" },
+          { "value": "health", "label": "健康志向" }
+        ]
+      },
+      "q11_age": {
+        "text": "年齢層は？",
+        "options": [
+          { "value": "20-24", "label": "20-24" },
+          { "value": "25-29", "label": "25-29" },
+          { "value": "30-34", "label": "30-34" },
+          { "value": "35-39", "label": "35-39" },
+          { "value": "40+", "label": "40+" }
+        ]
+      },
+      "q12_location": {
+        "text": "お住まいの地域は？",
+        "options": [
+          { "value": "hokkaido", "label": "北海道" },
+          { "value": "tokyo", "label": "東京都" },
+          { "value": "kanagawa", "label": "神奈川県" },
+          { "value": "osaka", "label": "大阪府" },
+          { "value": "aichi", "label": "愛知県" },
+          { "value": "fukuoka", "label": "福岡県" },
+          { "value": "other", "label": "その他" }
+        ]
+      }
+    }
+  },
+  "speed_dating": {
+    "title": "スピードデーティング",
+    "description": "仮想ペルソナと短い会話をして、あなたのコミュニケーションスタイルを伝えましょう。",
+    "lounge_title": "THE LOUNGE",
+    "lounge_subtitle": "交流イベントへの準備。名前・性別・誕生年を入力してスピードデートを開始しましょう。",
+    "display_name": "ニックネーム",
+    "name_placeholder": "表示したい名前を入力",
+    "gender": "性別",
+    "gender_select": "選択",
+    "gender_male": "男性",
+    "gender_female": "女性",
+    "gender_other": "その他",
+    "interests": "興味",
+    "enter_speed_date": "スピードデートを開始",
+    "error_basic_info": "ニックネームと性別を入力してください",
+    "next_guest": "次のゲストへ",
+    "to_review": "レビューへ",
+    "complete_session": "セッション完了",
+    "finalize_persona": "ペルソナを確定",
+    "creating": "生成中...",
+    "sync_complete": "SYNC COMPLETE.",
+    "sync_description": "交流のリズムが解析されました。ペルソナを生成します。",
+    "birth_year": "誕生年",
+    "birth_year_placeholder": "例: 1990"
+  },
+  "review": {
+    "title": "プロフィール確認",
+    "description": "生成されたプロフィールとペルソナを確認し、問題なければ確定してください。",
+    "confirm": "確定する",
+    "reset": "やり直す",
+    "confirm_success": "プロフィールを確定しました",
+    "confirm_error": "確定に失敗しました",
+    "reset_success": "オンボーディングを最初からやり直します"
+  }
+}

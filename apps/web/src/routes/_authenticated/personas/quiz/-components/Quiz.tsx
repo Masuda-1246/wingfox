@@ -37,7 +37,7 @@ function normalizeOptions(
 }
 
 export function Quiz() {
-	const { t } = useTranslation("personas");
+	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: questions, isLoading } = useQuizQuestions();
 	const submit = useSubmitQuizAnswers();
 	const [step, setStep] = useState(0);
@@ -52,7 +52,14 @@ export function Quiz() {
 	);
 
 	const current = sortedQuestions[step];
-	const options = current ? normalizeOptions(current.options) : [];
+	const options = current
+		? normalizeOptions(
+				t(`quiz.questions.${current.id}.options`, {
+					ns: "onboarding",
+					returnObjects: true,
+				}) as string[] | Record<string, unknown>,
+			)
+		: [];
 	const currentSelected = current ? answers[current.id] ?? [] : [];
 
 	const handleSelect = useCallback(
@@ -119,10 +126,14 @@ export function Quiz() {
 					<>
 						<div>
 							<span className="text-xs font-medium text-muted-foreground">
-								{current.category}
+								{t(`quiz.categories.${current.category}`, {
+									ns: "onboarding",
+								})}
 							</span>
 							<h3 className="text-lg font-semibold mt-1">
-								{current.question_text}
+								{t(`quiz.questions.${current.id}.text`, {
+									ns: "onboarding",
+								})}
 							</h3>
 						</div>
 						<div
@@ -168,11 +179,11 @@ export function Quiz() {
 						disabled={step === 0}
 					>
 						<ChevronLeft className="size-4" />
-						前へ
+						{t("quiz.prev")}
 					</Button>
 					{step < sortedQuestions.length - 1 ? (
 						<Button size="sm" onClick={handleNext}>
-							次へ
+							{t("quiz.next")}
 							<ChevronRight className="size-4" />
 						</Button>
 					) : (
@@ -186,7 +197,7 @@ export function Quiz() {
 							) : (
 								<>
 									<Send className="size-4" />
-									送信する
+									{t("quiz.submit")}
 								</>
 							)}
 						</Button>

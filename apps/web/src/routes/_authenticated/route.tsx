@@ -24,16 +24,34 @@ export const Route = createFileRoute("/_authenticated")({
 		const token = session.access_token;
 		const base = typeof window !== "undefined" ? window.location.origin : "";
 		let onboardingStatus = "not_started";
+		let profileComplete = false;
 		try {
 			const res = await fetch(`${base}/api/auth/me`, {
 				headers: { Authorization: `Bearer ${token}` },
 			});
 			if (res.ok) {
-				const json = (await res.json()) as { data?: { onboarding_status?: string } };
-				onboardingStatus = json.data?.onboarding_status ?? "not_started";
+				const json = (await res.json()) as {
+					data?: {
+						onboarding_status?: string;
+						nickname?: string | null;
+						birth_year?: number | null;
+						gender?: string | null;
+					};
+				};
+				const data = json.data;
+				onboardingStatus = data?.onboarding_status ?? "not_started";
+				const nickname = (data?.nickname ?? "").toString().trim();
+				const birthYear = data?.birth_year;
+				const gender = data?.gender;
+				profileComplete =
+					nickname.length > 0 &&
+					typeof birthYear === "number" &&
+					birthYear >= 1900 &&
+					birthYear <= 2100 &&
+					(typeof gender === "string" ? gender.length > 0 : false);
 			}
 		} catch {
-			// keep default not_started
+			// keep default not_started, profileComplete false
 		}
 		const onOnboarding = pathname.startsWith("/onboarding");
 		if (onboardingStatus === "confirmed") {
@@ -42,11 +60,17 @@ export const Route = createFileRoute("/_authenticated")({
 			}
 			return;
 		}
+		if (onOnboarding && pathname === "/onboarding/profile" && profileComplete) {
+			throw redirect({ to: "/onboarding/quiz" });
+		}
 		if (!onOnboarding) {
 			if (isAllowedWithoutOnboarding(pathname)) {
 				return;
 			}
 			if (onboardingStatus === "not_started") {
+				if (!profileComplete) {
+					throw redirect({ to: "/onboarding/profile" });
+				}
 				throw redirect({ to: "/onboarding/quiz" });
 			}
 			if (onboardingStatus === "quiz_completed") {

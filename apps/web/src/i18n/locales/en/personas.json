@@ -38,6 +38,9 @@
 	"quiz": {
 		"title": "Question Quiz",
 		"description": "Tell us your preferences and personality. Used for persona generation.",
+		"prev": "Prev",
+		"next": "Next",
+		"submit": "Submit",
 		"submit_success": "Answers saved",
 		"submit_error": "Failed to save"
 	},
