@@ -5,30 +5,8 @@ import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
 import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingfox-generation";
+import { getRandomIconUrlForGender } from "../lib/fox-icons";
 import { z } from "zod";
-
-/** Icon paths under /foxes (apps/web/public/foxes). Key = user gender. */
-const FOX_ICONS: Record<string, string[]> = {
-	male: [
-		"/foxes/male/normal.png",
-		"/foxes/male/balckfox.png",
-		"/foxes/male/glasses.png",
-		"/foxes/male/face.png",
-		"/foxes/male/sunglasses.png",
-		"/foxes/male/tie.png",
-		"/foxes/male/pias.png",
-	],
-	female: [
-		"/foxes/female/ribbon.png",
-		"/foxes/female/whitefox_glasses.png",
-		"/foxes/female/whitefox.png",
-		"/foxes/female/whtefox_hat.png",
-		"/foxes/female/pinkfox.png",
-		"/foxes/female/pinkfox_cap.png",
-		"/foxes/female/whitefox_blue_ribbon.png",
-	],
-};
-const FOX_ICONS_ALL = [...FOX_ICONS.male, ...FOX_ICONS.female];
 
 const personas = new Hono<Env>();
 const WINGFOX_MAX_SESSIONS = 3;
@@ -101,6 +79,8 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 	});
 	sections.push({ section_id: "constraints", content: CONSTRAINTS_CONTENT });
 	const compiledDocument = sections.map((s) => `## ${s.section_id}\n\n${s.content}`).join("\n\n");
+	const { data: userProfile } = await supabase.from("user_profiles").select("gender").eq("id", userId).single();
+	const iconUrl = getRandomIconUrlForGender(userProfile?.gender ?? "");
 	const { data: persona, error } = await supabase
 		.from("personas")
 		.upsert(
@@ -109,6 +89,7 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 				persona_type: "wingfox",
 				name: "ウィングフォックス",
 				compiled_document: compiledDocument,
+				icon_url: iconUrl,
 				updated_at: new Date().toISOString(),
 			},
 			{ onConflict: "user_id,persona_type" },
@@ -275,9 +256,7 @@ personas.post("/:personaId/icon", requireAuth, async (c) => {
 	const { data: p } = await supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single();
 	if (!p) return jsonError(c, "NOT_FOUND", "Persona not found");
 	const { data: profile } = await supabase.from("user_profiles").select("gender").eq("id", userId).single();
-	const gender = (profile?.gender ?? "").toLowerCase();
-	const pool = gender === "male" ? FOX_ICONS.male : gender === "female" ? FOX_ICONS.female : FOX_ICONS_ALL;
-	const iconUrl = pool[Math.floor(Math.random() * pool.length)];
+	const iconUrl = getRandomIconUrlForGender(profile?.gender ?? "");
 	const { error: updateError } = await supabase
 		.from("personas")
 		.update({ icon_url: iconUrl, updated_at: new Date().toISOString() })
