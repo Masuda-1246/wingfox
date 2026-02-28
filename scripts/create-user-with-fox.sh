@@ -526,6 +526,19 @@ CONSTRAINTS_CONTENT="- 不適切な内容は生成しない
 
 CONVERSATION_REFERENCES_CONTENT="会話サンプルから自動抽出（編集不可）"
 
+# キツネアイコン一覧（apps/api/src/lib/fox-icons.ts と一致）
+FOX_ICONS_MALE=("/foxes/male/normal.png" "/foxes/male/balckfox.png" "/foxes/male/glasses.png" "/foxes/male/face.png" "/foxes/male/sunglasses.png" "/foxes/male/tie.png" "/foxes/male/pias.png")
+FOX_ICONS_FEMALE=("/foxes/female/ribbon.png" "/foxes/female/whitefox_glasses.png" "/foxes/female/whitefox.png" "/foxes/female/whtefox_hat.png" "/foxes/female/pinkfox.png" "/foxes/female/pinkfox_cap.png" "/foxes/female/whitefox_blue_ribbon.png")
+FOX_ICONS_ALL=("${FOX_ICONS_MALE[@]}" "${FOX_ICONS_FEMALE[@]}")
+
+case "$(echo "$GENDER" | tr '[:upper:]' '[:lower:]')" in
+  male)   ICON_POOL=("${FOX_ICONS_MALE[@]}") ;;
+  female) ICON_POOL=("${FOX_ICONS_FEMALE[@]}") ;;
+  *)      ICON_POOL=("${FOX_ICONS_ALL[@]}") ;;
+esac
+PERSONA_ICON_URL="${ICON_POOL[$((RANDOM % ${#ICON_POOL[@]}))]}"
+log_info "ペルソナアイコン: $PERSONA_ICON_URL (gender=$GENDER)"
+
 # セクション定義（sort_order 順）
 SECTION_IDS=("core_identity" "communication_rules" "personality_profile" "interests" "values" "romance_style" "conversation_references" "constraints")
 
@@ -563,12 +576,15 @@ PERSONA_RESPONSE=$(curl -s -X POST \
   -d "$(jq -n \
     --arg user_id "$USER_PROFILE_ID" \
     --arg compiled_document "$COMPILED_DOCUMENT" \
+    --arg icon_url "$PERSONA_ICON_URL" \
+    --arg nickname "$NICKNAME" \
     '{
       user_id: $user_id,
       persona_type: "wingfox",
-      name: "ウィングフォックス",
+      name: ($nickname + "FOX"),
       compiled_document: $compiled_document,
-      version: 1
+      version: 1,
+      icon_url: $icon_url
     }'
   )")
 

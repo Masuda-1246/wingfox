@@ -4,6 +4,7 @@ import { z } from "zod";
 import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
+import { truncateFoxMessage } from "../lib/truncate";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -49,8 +50,6 @@ const CONVERSATION_FEATURE_MAP: Record<string, { id: number; nameJa: string }> =
 	conflict_resolution: { id: 14, nameJa: "葛藤解決スタイル" },
 };
 
-const TOTAL_ROUNDS = 15;
-
 export async function runFoxConversation(
 	supabase: SupabaseClient<Database>,
 	mistralApiKey: string,
@@ -58,13 +57,23 @@ export async function runFoxConversation(
 ): Promise<void> {
 	const { data: conv } = await supabase
 		.from("fox_conversations")
-		.select("id, match_id, total_rounds")
+		.select("id, match_id, total_rounds, current_round")
 		.eq("id", conversationId)
 		.single();
 	if (!conv || conv.total_rounds === 0) {
 		console.error(`[runFoxConversation] Conversation not found or total_rounds=0: ${conversationId}`);
 		return;
 	}
+	const TOTAL_ROUNDS_LOCAL = conv.total_rounds;
+
+	const { data: existingMsgs } = await supabase
+		.from("fox_conversation_messages")
+		.select("speaker_user_id, content, round_number")
+		.eq("conversation_id", conversationId)
+		.order("round_number");
+
+	const existingRounds = (existingMsgs ?? []).map((m) => m.round_number);
+	const startRound = existingRounds.length > 0 ? Math.max(...existingRounds) + 1 : 1;
 	const { data: match } = await supabase.from("matches").select("user_a_id, user_b_id").eq("id", conv.match_id).single();
 	if (!match) {
 		console.error(`[runFoxConversation] Match not found for conversation ${conversationId}, match_id=${conv.match_id}`);
@@ -73,13 +82,13 @@ export async function runFoxConversation(
 	const [userA, userB] = [match.user_a_id, match.user_b_id];
 	const { data: personaA } = await supabase
 		.from("personas")
-		.select("compiled_document")
+		.select("compiled_document, name")
 		.eq("user_id", userA)
 		.eq("persona_type", "wingfox")
 		.single();
 	const { data: personaB } = await supabase
 		.from("personas")
-		.select("compiled_document")
+		.select("compiled_document, name")
 		.eq("user_id", userB)
 		.eq("persona_type", "wingfox")
 		.single();
@@ -93,35 +102,46 @@ export async function runFoxConversation(
 		.from("fox_conversations")
 		.update({ status: "in_progress", started_at: new Date().toISOString() })
 		.eq("id", conversationId);
-	const systemA = buildFoxConversationSystemPrompt(personaA.compiled_document);
-	const systemB = buildFoxConversationSystemPrompt(personaB.compiled_document);
-	const history: { speaker: "A" | "B"; content: string }[] = [];
-	let currentSpeaker: "A" | "B" = "A";
-	for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+	const systemA = buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "");
+	const systemB = buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "");
+
+	// Build history from existing messages (for retry: resume from existing)
+	const history: { speaker: "A" | "B"; content: string }[] = (existingMsgs ?? []).map((m) => ({
+		speaker: (m.speaker_user_id === userA ? "A" : "B") as "A" | "B",
+		content: m.content ?? "",
+	}));
+	let currentSpeaker: "A" | "B" = startRound % 2 === 1 ? "A" : "B";
+
+	for (let round = startRound; round <= TOTAL_ROUNDS_LOCAL; round++) {
 		const systemPrompt = currentSpeaker === "A" ? systemA : systemB;
 		const context = history.length
-			? history.map((m) => `相手: ${m.content}`).join("\n\n")
+			? history
+					.map((m) =>
+						m.speaker === currentSpeaker ? `自分: ${m.content}` : `相手: ${m.content}`,
+					)
+					.join("\n\n")
 			: "自己紹介と、相手に一言聞いてください。";
-		const content = await chatComplete(
+		const raw = await chatComplete(
 			mistralApiKey,
 			[
 				{ role: "system", content: systemPrompt },
 				{ role: "user", content: context },
 			],
-			{ maxTokens: 300 },
+			{ maxTokens: 60 },
 		);
+		const content = (raw && truncateFoxMessage(raw)) || "（応答なし）";
 		const speakerUserId = currentSpeaker === "A" ? userA : userB;
 		await supabase.from("fox_conversation_messages").insert({
 			conversation_id: conversationId,
 			speaker_user_id: speakerUserId,
-			content: content || "（応答なし）",
+			content,
 			round_number: round,
 		});
 		await supabase
 			.from("fox_conversations")
 			.update({ current_round: round })
 			.eq("id", conversationId);
-		history.push({ speaker: currentSpeaker, content: content || "" });
+		history.push({ speaker: currentSpeaker, content });
 		currentSpeaker = currentSpeaker === "A" ? "B" : "A";
 	}
 
@@ -145,7 +165,35 @@ export async function runFoxConversation(
 			maxTokens: 1024,
 			responseFormat: { type: "json_object" },
 		});
-		const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
+		let parsed: z.infer<typeof ConversationScoreSchema>;
+		try {
+			parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw ?? "{}"));
+		} catch (parseErr) {
+			// LLM may return truncated JSON (finish_reason=length); try to extract at least score
+			const scoreMatch = (scoreRaw ?? "").match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
+			if (scoreMatch) {
+				const n = Number.parseFloat(scoreMatch[1]);
+				const clamped = Math.min(100, Math.max(0, n));
+				parsed = ConversationScoreSchema.parse({
+					score: Math.round(clamped),
+					excitement_level: 0.5,
+					common_topics: [],
+					mutual_interest: 0.5,
+					topic_distribution: [],
+					feature_scores: {
+						reciprocity: 0.5,
+						humor_sharing: 0.5,
+						self_disclosure: 0.5,
+						emotional_responsiveness: 0.5,
+						self_esteem: 0.5,
+						conflict_resolution: 0.5,
+					},
+				});
+				parsed.score = Math.round(clamped);
+			} else {
+				throw parseErr;
+			}
+		}
 		conversationScore = parsed.score;
 		analysis = {
 			excitement_level: parsed.excitement_level,
@@ -272,7 +320,7 @@ export async function runFoxConversation(
 		.from("fox_conversations")
 		.update({
 			status: "completed",
-			current_round: TOTAL_ROUNDS,
+			current_round: TOTAL_ROUNDS_LOCAL,
 			conversation_analysis: analysis as Json,
 			completed_at: new Date().toISOString(),
 		})

@@ -254,8 +254,12 @@
     }
   },
   "speed_dating": {
-    "lounge_title": "THE LOUNGE",
-    "lounge_subtitle": "3人の仮想デート相手と会話します。興味を選んで、準備ができたら開始しましょう。",
+    "lounge_title": "スピードデート",
+    "lounge_subtitle": "3人の仮想ゲストと順番に音声で会話し、相性を探る体験です。準備ができたら開始しましょう。",
+    "page_hint": "スピードデートとは？ 短時間ずつ複数の相手と会話し、相性を感じ取る形式です。ここではAIが演じる3人のゲストと音声で話します。",
+    "hint_label": "ヒント",
+    "generating_personas": "今夜のデート相手を探しています",
+    "generating_personas_hint": "しばらくお待ちください。",
     "display_name": "ニックネーム",
     "name_placeholder": "表示したい名前を入力",
     "gender": "性別",
@@ -286,7 +290,7 @@
     "complete_session": "セッション完了",
     "finalize_persona": "ペルソナを確定",
     "creating": "生成中...",
-    "sync_complete": "SYNC COMPLETE.",
+    "sync_complete": "解析完了",
     "sync_description": "交流のリズムが解析されました。ペルソナを生成します。",
     "birth_year": "誕生年",
     "birth_year_placeholder": "例: 1990",
@@ -309,7 +313,16 @@
     "end_conversation": "会話を終了する",
     "preparing_next": "次のデート相手を準備しています...",
     "session_complete_title": "セッション完了",
-    "session_complete_desc": "会話が完了しました。次のページでプロフィールを確認して確定してください。"
+    "session_complete_desc": "会話が完了しました。次のページでプロフィールを確認して確定してください。",
+    "generating_profile": "会話パターンを分析しています...",
+    "generating_wingfox": "AIコンパニオンを作成しています...",
+    "generation_complete": "完了しました！",
+    "generation_failed_title": "生成に失敗しました",
+    "generation_failed_desc": "プロフィールの生成中にエラーが発生しました。リトライするか、レビューページに進んでください。",
+    "retry_generation": "リトライ",
+    "skip_to_review": "レビューページに進む",
+    "step_profile": "プロフィール",
+    "step_wingfox": "ウィングフォックス"
   },
   "review": {
     "title": "プロフィール確認",
@@ -345,6 +358,12 @@
     "wingfox_gen_failed": "ウィングフォックスの生成に失敗しました",
     "profile_needs_generation": "先にプロフィールが生成されている必要があります。",
     "confirm_failed": "確認に失敗しました",
-    "wingfox_not_ready": "ウィングフォックスがまだ生成されていません。やり直すか、しばらく待ってから再度お試しください。"
+    "wingfox_not_ready": "ウィングフォックスがまだ生成されていません。やり直すか、しばらく待ってから再度お試しください。",
+    "interaction_dna": "インタラクションDNA",
+    "dna_layer1": "出会いの親和性",
+    "dna_layer2": "心理的シンクロ",
+    "dna_layer3": "将来の適合性",
+    "dna_confidence": "信頼度",
+    "dna_reasoning": "根拠"
   }
 }

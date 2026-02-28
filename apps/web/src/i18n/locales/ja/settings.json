@@ -26,7 +26,6 @@
   "bio_count": "{{count}} / 500 文字",
   "change_photo": "写真を変更",
   "delete_photo": "削除",
-  "account_title": "アカウント設定",
   "account_description": "ログイン情報や連絡先を管理します。",
   "email_label": "メールアドレス",
   "password_label": "パスワード",

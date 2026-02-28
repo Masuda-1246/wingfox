@@ -56,7 +56,7 @@ export interface Reports {
 export interface MatchResultItem {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null } | null;
+	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
 	final_score: number | null;
 	profile_score: number | null;
 	conversation_score: number | null;
@@ -70,7 +70,7 @@ export interface MatchResultItem {
 export interface MatchResultDetail {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null } | null;
+	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
 	profile_score: number | null;
 	conversation_score: number | null;
 	final_score: number | null;
@@ -84,13 +84,36 @@ export interface MatchResultDetail {
 	direct_chat_room_id: string | null;
 }
 
+export interface DnaScoreEntry {
+	score: number;
+	confidence: number;
+	evidence_turns: number[];
+	reasoning: string;
+}
+
+export interface InteractionStyleWithDna {
+	// Backward-compatible old fields
+	warmup_speed?: number;
+	humor_responsiveness?: number;
+	self_disclosure_depth?: number;
+	emotional_responsiveness?: number;
+	conflict_style?: string;
+	attachment_tendency?: string;
+	rhythm_preference?: string;
+	mirroring_tendency?: number;
+	// New DNA fields
+	dna_scores?: Record<string, DnaScoreEntry>;
+	overall_signature?: string;
+	preferred_persona_type?: string;
+}
+
 export interface ProfileMe {
 	id: string;
 	user_id: string;
 	basic_info?: Record<string, unknown>;
 	personality_tags?: string[];
 	personality_analysis?: Record<string, unknown>;
-	interaction_style?: Record<string, unknown>;
+	interaction_style?: InteractionStyleWithDna;
 	interests?: Array<{ category: string; items: string[] }>;
 	values?: Record<string, unknown>;
 	romance_style?: Record<string, unknown>;
@@ -106,6 +129,7 @@ export interface PersonaListItem {
 	persona_type: string;
 	name: string;
 	version?: number;
+	icon_url?: string | null;
 	created_at: string;
 	updated_at: string;
 }

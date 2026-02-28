@@ -3,15 +3,16 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete } from "../services/mistral";
+import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingfox-generation";
+import { getRandomIconUrlForGender } from "../lib/fox-icons";
 import { z } from "zod";
 
 const personas = new Hono<Env>();
 const WINGFOX_MAX_SESSIONS = 3;
 const WINGFOX_MAX_MESSAGES_PER_SESSION = 24;
 const WINGFOX_MAX_MESSAGE_CHARS = 400;
-const WINGFOX_MIN_MESSAGES = 12;
+const WINGFOX_MIN_MESSAGES = 6;
 const WINGFOX_MAX_EXCERPT_CHARS = 12_000;
 
 const WINGFOX_EDITABLE_SECTIONS = [
@@ -69,7 +70,7 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 	for (const sectionId of WINGFOX_EDITABLE_SECTIONS) {
 		const title = sectionId;
 		const prompt = buildWingfoxSectionPrompt(sectionId, title, profileJson, conversationExcerpts || "（なし）");
-		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { maxTokens: 500 });
+		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { model: MISTRAL_LARGE, maxTokens: 500 });
 		sections.push({ section_id: sectionId, content: content || `（${sectionId}）` });
 	}
 	sections.push({
@@ -78,14 +79,18 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 	});
 	sections.push({ section_id: "constraints", content: CONSTRAINTS_CONTENT });
 	const compiledDocument = sections.map((s) => `## ${s.section_id}\n\n${s.content}`).join("\n\n");
+	const { data: userProfile } = await supabase.from("user_profiles").select("gender, nickname").eq("id", userId).single();
+	const iconUrl = getRandomIconUrlForGender(userProfile?.gender ?? "");
+	const displayName = `${(userProfile?.nickname ?? "User").toString().trim()}Fox`;
 	const { data: persona, error } = await supabase
 		.from("personas")
 		.upsert(
 			{
 				user_id: userId,
 				persona_type: "wingfox",
-				name: "ウィングフォックス",
+				name: displayName,
 				compiled_document: compiledDocument,
+				icon_url: iconUrl,
 				updated_at: new Date().toISOString(),
 			},
 			{ onConflict: "user_id,persona_type" },
@@ -130,7 +135,7 @@ personas.get("/", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const typeFilter = c.req.query("persona_type");
 	const supabase = getSupabaseClient(c.env);
-	let q = supabase.from("personas").select("id, persona_type, name, version, created_at, updated_at").eq("user_id", userId);
+	let q = supabase.from("personas").select("id, persona_type, name, version, icon_url, created_at, updated_at").eq("user_id", userId);
 	if (typeFilter) q = q.eq("persona_type", typeFilter);
 	const { data, error } = await q;
 	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to fetch personas");
@@ -173,15 +178,15 @@ personas.get("/:personaId/sections", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const personaId = c.req.param("personaId");
 	const supabase = getSupabaseClient(c.env);
-	const { data: p } = await supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single();
-	if (!p) return jsonError(c, "NOT_FOUND", "Persona not found");
-	const { data: sections } = await supabase
-		.from("persona_sections")
-		.select("id, section_id, content, source, updated_at")
-		.eq("persona_id", personaId);
-	const { data: defs } = await supabase.from("persona_section_definitions").select("id, title, editable");
-	const defMap = new Map((defs ?? []).map((d) => [d.id, d]));
-	const list = (sections ?? []).map((s) => ({
+	// Run ownership check, sections fetch, and definitions fetch in parallel
+	const [ownerResult, sectionsResult, defsResult] = await Promise.all([
+		supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single(),
+		supabase.from("persona_sections").select("id, section_id, content, source, updated_at").eq("persona_id", personaId),
+		supabase.from("persona_section_definitions").select("id, title, editable"),
+	]);
+	if (!ownerResult.data) return jsonError(c, "NOT_FOUND", "Persona not found");
+	const defMap = new Map((defsResult.data ?? []).map((d) => [d.id, d]));
+	const list = (sectionsResult.data ?? []).map((s) => ({
 		...s,
 		title: defMap.get(s.section_id)?.title ?? s.section_id,
 		editable: defMap.get(s.section_id)?.editable ?? true,
@@ -242,6 +247,24 @@ personas.put("/:personaId/sections/:sectionId", requireAuth, async (c) => {
 		.eq("section_id", sectionId)
 		.single();
 	return jsonData(c, updated ?? { section_id: sectionId, content: parsed.data.content, source: "manual", updated_at: new Date().toISOString() });
+});
+
+/** POST /api/personas/:personaId/icon - set random fox icon by user gender, save path to DB */
+personas.post("/:personaId/icon", requireAuth, async (c) => {
+	const userId = c.get("user_id");
+	const personaId = c.req.param("personaId");
+	const supabase = getSupabaseClient(c.env);
+	const { data: p } = await supabase.from("personas").select("id").eq("id", personaId).eq("user_id", userId).single();
+	if (!p) return jsonError(c, "NOT_FOUND", "Persona not found");
+	const { data: profile } = await supabase.from("user_profiles").select("gender").eq("id", userId).single();
+	const iconUrl = getRandomIconUrlForGender(profile?.gender ?? "");
+	const { error: updateError } = await supabase
+		.from("personas")
+		.update({ icon_url: iconUrl, updated_at: new Date().toISOString() })
+		.eq("id", personaId)
+		.eq("user_id", userId);
+	if (updateError) return jsonError(c, "INTERNAL_ERROR", "Failed to update icon");
+	return jsonData(c, { icon_url: iconUrl });
 });
 
 export default personas;

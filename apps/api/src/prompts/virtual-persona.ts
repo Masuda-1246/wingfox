@@ -94,6 +94,7 @@ export function buildVirtualPersonaPrompt(
 	personaType: "virtual_similar" | "virtual_complementary" | "virtual_discovery",
 	usedNames: string[] = [],
 	lang: "ja" | "en" = "ja",
+	personaGender: "male" | "female" = "female",
 ): string {
 	// Seed from current time + persona type for randomness across calls
 	const seed = Date.now() ^ (personaType === "virtual_similar" ? 7 : personaType === "virtual_complementary" ? 13 : 23);
@@ -123,8 +124,10 @@ export function buildVirtualPersonaPrompt(
 			? `\nIMPORTANT: These names are already taken. You MUST use a different name: ${usedNames.join(", ")}`
 			: "";
 
+		const genderInstruction = `\nIMPORTANT: This persona MUST be ${personaGender}. The user is on a speed date and expects to meet someone of the opposite gender. Do not generate a ${personaGender === "male" ? "female" : "male"} persona.`;
+
 		return `You are an assistant that creates virtual personas (AI characters) for speed dating.
-Based on the quiz answers below, create ONE persona that is ${typeDesc}.${nameConstraint}
+Based on the quiz answers below, create ONE persona that is ${typeDesc}.${nameConstraint}${genderInstruction}
 
 Goal:
 - The conversation partner should feel like they're talking to a real, imperfect human — not a template
@@ -191,7 +194,7 @@ Markdown with the following sections. Section headings MUST use "## Title" forma
 
 Output these two lines at the very end:
 name: A first name (e.g., Sakura, Alex, Jordan, Haru)
-gender: male or female`;
+gender: ${personaGender}`;
 	}
 
 	// Japanese version
@@ -206,8 +209,13 @@ gender: male or female`;
 		? `\n重要: 以下の名前は既に使われています。必ず異なる名前を付けてください: ${usedNames.join("、")}`
 		: "";
 
+	const genderInstruction =
+		personaGender === "male"
+			? "\n重要: このペルソナは必ず男性にしてください。ユーザーはスピードデートで異性と会話する想定です。女性のペルソナは生成しないでください。"
+			: "\n重要: このペルソナは必ず女性にしてください。ユーザーはスピードデートで異性と会話する想定です。男性のペルソナは生成しないでください。";
+
 	return `あなたはスピードデーティング用の仮想ペルソナ（AIキャラクター）を作成するアシスタントです。
-以下のクイズ回答に基づき、${typeDesc}のペルソナを1人作成してください。${nameConstraint}
+以下のクイズ回答に基づき、${typeDesc}のペルソナを1人作成してください。${nameConstraint}${genderInstruction}
 
 目的:
 - 会話相手が「作り物っぽくない、人間らしい人物」に感じること
@@ -274,5 +282,5 @@ Markdown形式で以下のセクションを埋めてください。セクショ
 
 最後に以下の2行を出力してください：
 name: 名前（例：さくら、はると）
-gender: male または female`;
+gender: ${personaGender}`;
 }

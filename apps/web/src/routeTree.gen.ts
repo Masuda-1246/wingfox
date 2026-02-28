@@ -15,12 +15,15 @@ import { Route as RegisterRouteRouteImport } from './routes/register/route'
 import { Route as LoginRouteRouteImport } from './routes/login/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteRouteImport } from './routes/index/route'
+import { Route as AuthenticatedSpeedDatingStandaloneRouteRouteImport } from './routes/_authenticated/speed-dating-standalone/route'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as AuthenticatedOnboardingRouteRouteImport } from './routes/_authenticated/onboarding/route'
 import { Route as AuthenticatedChatRouteRouteImport } from './routes/_authenticated/chat/route'
 import { Route as AuthenticatedPersonasQuizRouteRouteImport } from './routes/_authenticated/personas/quiz/route'
 import { Route as AuthenticatedPersonasMeRouteRouteImport } from './routes/_authenticated/personas/me/route'
 import { Route as AuthenticatedPersonasCreateRouteRouteImport } from './routes/_authenticated/personas/create/route'
+import { Route as AuthenticatedOnboardingSpeedDatingSessionRouteRouteImport } from './routes/_authenticated/onboarding/speed-dating-session/route'
+import { Route as AuthenticatedOnboardingSpeedDatingCompleteRouteRouteImport } from './routes/_authenticated/onboarding/speed-dating-complete/route'
 import { Route as AuthenticatedOnboardingSpeedDatingRouteRouteImport } from './routes/_authenticated/onboarding/speed-dating/route'
 import { Route as AuthenticatedOnboardingReviewRouteRouteImport } from './routes/_authenticated/onboarding/review/route'
 import { Route as AuthenticatedOnboardingQuizRouteRouteImport } from './routes/_authenticated/onboarding/quiz/route'
@@ -55,6 +58,12 @@ const IndexRouteRoute = IndexRouteRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSpeedDatingStandaloneRouteRoute =
+  AuthenticatedSpeedDatingStandaloneRouteRouteImport.update({
+    id: '/speed-dating-standalone',
+    path: '/speed-dating-standalone',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsRouteRoute =
   AuthenticatedSettingsRouteRouteImport.update({
     id: '/settings',
@@ -90,6 +99,18 @@ const AuthenticatedPersonasCreateRouteRoute =
     path: '/personas/create',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOnboardingSpeedDatingSessionRouteRoute =
+  AuthenticatedOnboardingSpeedDatingSessionRouteRouteImport.update({
+    id: '/speed-dating-session',
+    path: '/speed-dating-session',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
+const AuthenticatedOnboardingSpeedDatingCompleteRouteRoute =
+  AuthenticatedOnboardingSpeedDatingCompleteRouteRouteImport.update({
+    id: '/speed-dating-complete',
+    path: '/speed-dating-complete',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
 const AuthenticatedOnboardingSpeedDatingRouteRoute =
   AuthenticatedOnboardingSpeedDatingRouteRouteImport.update({
     id: '/speed-dating',
@@ -124,10 +145,13 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/speed-dating-standalone': typeof AuthenticatedSpeedDatingStandaloneRouteRoute
   '/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
+  '/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
+  '/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
   '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
@@ -141,10 +165,13 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/speed-dating-standalone': typeof AuthenticatedSpeedDatingStandaloneRouteRoute
   '/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
+  '/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
+  '/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
   '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
@@ -160,10 +187,13 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/_authenticated/speed-dating-standalone': typeof AuthenticatedSpeedDatingStandaloneRouteRoute
   '/_authenticated/onboarding/profile': typeof AuthenticatedOnboardingProfileRouteRoute
   '/_authenticated/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
   '/_authenticated/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
   '/_authenticated/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
+  '/_authenticated/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
+  '/_authenticated/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/_authenticated/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/_authenticated/personas/me': typeof AuthenticatedPersonasMeRouteRoute
   '/_authenticated/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
@@ -179,10 +209,13 @@ export interface FileRouteTypes {
     | '/chat'
     | '/onboarding'
     | '/settings'
+    | '/speed-dating-standalone'
     | '/onboarding/profile'
     | '/onboarding/quiz'
     | '/onboarding/review'
     | '/onboarding/speed-dating'
+    | '/onboarding/speed-dating-complete'
+    | '/onboarding/speed-dating-session'
     | '/personas/create'
     | '/personas/me'
     | '/personas/quiz'
@@ -196,10 +229,13 @@ export interface FileRouteTypes {
     | '/chat'
     | '/onboarding'
     | '/settings'
+    | '/speed-dating-standalone'
     | '/onboarding/profile'
     | '/onboarding/quiz'
     | '/onboarding/review'
     | '/onboarding/speed-dating'
+    | '/onboarding/speed-dating-complete'
+    | '/onboarding/speed-dating-session'
     | '/personas/create'
     | '/personas/me'
     | '/personas/quiz'
@@ -214,10 +250,13 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
+    | '/_authenticated/speed-dating-standalone'
     | '/_authenticated/onboarding/profile'
     | '/_authenticated/onboarding/quiz'
     | '/_authenticated/onboarding/review'
     | '/_authenticated/onboarding/speed-dating'
+    | '/_authenticated/onboarding/speed-dating-complete'
+    | '/_authenticated/onboarding/speed-dating-session'
     | '/_authenticated/personas/create'
     | '/_authenticated/personas/me'
     | '/_authenticated/personas/quiz'
@@ -276,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/speed-dating-standalone': {
+      id: '/_authenticated/speed-dating-standalone'
+      path: '/speed-dating-standalone'
+      fullPath: '/speed-dating-standalone'
+      preLoaderRoute: typeof AuthenticatedSpeedDatingStandaloneRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -318,6 +364,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPersonasCreateRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/onboarding/speed-dating-session': {
+      id: '/_authenticated/onboarding/speed-dating-session'
+      path: '/speed-dating-session'
+      fullPath: '/onboarding/speed-dating-session'
+      preLoaderRoute: typeof AuthenticatedOnboardingSpeedDatingSessionRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
+    '/_authenticated/onboarding/speed-dating-complete': {
+      id: '/_authenticated/onboarding/speed-dating-complete'
+      path: '/speed-dating-complete'
+      fullPath: '/onboarding/speed-dating-complete'
+      preLoaderRoute: typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
     '/_authenticated/onboarding/speed-dating': {
       id: '/_authenticated/onboarding/speed-dating'
       path: '/speed-dating'
@@ -354,6 +414,8 @@ interface AuthenticatedOnboardingRouteRouteChildren {
   AuthenticatedOnboardingQuizRouteRoute: typeof AuthenticatedOnboardingQuizRouteRoute
   AuthenticatedOnboardingReviewRouteRoute: typeof AuthenticatedOnboardingReviewRouteRoute
   AuthenticatedOnboardingSpeedDatingRouteRoute: typeof AuthenticatedOnboardingSpeedDatingRouteRoute
+  AuthenticatedOnboardingSpeedDatingCompleteRouteRoute: typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
+  AuthenticatedOnboardingSpeedDatingSessionRouteRoute: typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
 }
 
 const AuthenticatedOnboardingRouteRouteChildren: AuthenticatedOnboardingRouteRouteChildren =
@@ -366,6 +428,10 @@ const AuthenticatedOnboardingRouteRouteChildren: AuthenticatedOnboardingRouteRou
       AuthenticatedOnboardingReviewRouteRoute,
     AuthenticatedOnboardingSpeedDatingRouteRoute:
       AuthenticatedOnboardingSpeedDatingRouteRoute,
+    AuthenticatedOnboardingSpeedDatingCompleteRouteRoute:
+      AuthenticatedOnboardingSpeedDatingCompleteRouteRoute,
+    AuthenticatedOnboardingSpeedDatingSessionRouteRoute:
+      AuthenticatedOnboardingSpeedDatingSessionRouteRoute,
   }
 
 const AuthenticatedOnboardingRouteRouteWithChildren =
@@ -377,6 +443,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRouteRoute: typeof AuthenticatedChatRouteRoute
   AuthenticatedOnboardingRouteRoute: typeof AuthenticatedOnboardingRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
+  AuthenticatedSpeedDatingStandaloneRouteRoute: typeof AuthenticatedSpeedDatingStandaloneRouteRoute
   AuthenticatedPersonasCreateRouteRoute: typeof AuthenticatedPersonasCreateRouteRoute
   AuthenticatedPersonasMeRouteRoute: typeof AuthenticatedPersonasMeRouteRoute
   AuthenticatedPersonasQuizRouteRoute: typeof AuthenticatedPersonasQuizRouteRoute
@@ -387,6 +454,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRouteRoute:
     AuthenticatedOnboardingRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRoute,
+  AuthenticatedSpeedDatingStandaloneRouteRoute:
+    AuthenticatedSpeedDatingStandaloneRouteRoute,
   AuthenticatedPersonasCreateRouteRoute: AuthenticatedPersonasCreateRouteRoute,
   AuthenticatedPersonasMeRouteRoute: AuthenticatedPersonasMeRouteRoute,
   AuthenticatedPersonasQuizRouteRoute: AuthenticatedPersonasQuizRouteRoute,

@@ -46,6 +46,26 @@ export function useStartFoxSearch() {
 	});
 }
 
+interface RetryFoxSearchResult {
+	match_id: string;
+	fox_conversation_id: string;
+}
+
+export function useRetryFoxConversation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (matchId: string): Promise<RetryFoxSearchResult> => {
+			const res = await foxSearchApi.retry[":matchId"].$post({
+				param: { matchId },
+			});
+			return unwrapApiResponse<RetryFoxSearchResult>(res);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+		},
+	});
+}
+
 export function useFoxConversationStatus(
 	conversationId: string | null | undefined,
 ) {
@@ -115,24 +135,4 @@ export function useMultipleFoxConversationStatus(conversationIds: string[]) {
 		currentRounds,
 		total: conversationIds.length,
 	};
-}
-
-interface RetryFoxConversationResult {
-	match_id: string;
-	fox_conversation_id: string;
-}
-
-export function useRetryFoxConversation() {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: async (matchId: string): Promise<RetryFoxConversationResult> => {
-			const res = await foxSearchApi.retry[":matchId"].$post({
-				param: { matchId },
-			});
-			return unwrapApiResponse<RetryFoxConversationResult>(res);
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
-		},
-	});
 }

@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import type { Database } from "../db/types";
+import type { Database, Json } from "../db/types";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete } from "../services/mistral";
+import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
 import { buildProfileGenerationPrompt } from "../prompts/profile-generation";
 import { executeMatching } from "../services/matching";
+import { scoreInteractionDna } from "../services/interaction-dna";
 import { z } from "zod";
 
 const profiles = new Hono<Env>();
@@ -36,7 +37,8 @@ profiles.post("/generate", requireAuth, async (c) => {
 		.select("id, completed_at")
 		.eq("user_id", userId)
 		.eq("status", "completed")
-		.order("completed_at", { ascending: true, nullsFirst: false });
+		.order("completed_at", { ascending: false, nullsFirst: false })
+		.limit(3);
 	if ((sessions ?? []).length < MIN_COMPLETED_SESSIONS) {
 		return jsonError(c, "CONFLICT", "Not enough completed speed-dating sessions");
 	}
@@ -61,6 +63,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 	const quizText = JSON.stringify(answers ?? [], null, 2);
 	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs, lang);
 	const raw = await chatComplete(apiKey, [{ role: "user", content: prompt }], {
+		model: MISTRAL_LARGE,
 		maxTokens: 1500,
 		responseFormat: { type: "json_object" },
 	});
@@ -83,7 +86,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 				basic_info: profileData.basic_info ?? {},
 				personality_tags: profileData.personality_tags ?? [],
 				personality_analysis: profileData.personality_analysis ?? {},
-				interaction_style: profileData.interaction_style ?? {},
+				interaction_style: (profileData.interaction_style ?? {}) as Json,
 				interests: profileData.interests ?? [],
 				values: profileData.values ?? {},
 				romance_style: profileData.romance_style ?? {},
@@ -97,12 +100,40 @@ profiles.post("/generate", requireAuth, async (c) => {
 		)
 		.select()
 		.single();
-	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to save profile");
+	if (error) {
+		console.error("[profiles/generate] upsert error:", error.message, error.code, error.details);
+		return jsonError(c, "INTERNAL_ERROR", `Failed to save profile: ${error.message}`);
+	}
+
+	// DNA scoring: analyze all 3 speed dating transcripts for 13 psychological features.
+	// Non-fatal — if it fails, the basic profile is still saved above.
+	try {
+		const dnaResult = await scoreInteractionDna(supabase, userId, apiKey, lang);
+		if (dnaResult) {
+			await supabase
+				.from("profiles")
+				.update({
+					interaction_style: dnaResult.interactionStyle as Json,
+					updated_at: new Date().toISOString(),
+				})
+				.eq("user_id", userId);
+		}
+	} catch (e) {
+		console.error("[profiles/generate] DNA scoring failed (non-fatal):", e);
+	}
+
 	await supabase
 		.from("user_profiles")
 		.update({ onboarding_status: "profile_generated", updated_at: new Date().toISOString() })
 		.eq("id", userId);
-	return jsonData(c, profile);
+
+	// Re-fetch profile to include DNA scoring results
+	const { data: updatedProfile } = await supabase
+		.from("profiles")
+		.select("*")
+		.eq("user_id", userId)
+		.single();
+	return jsonData(c, updatedProfile ?? profile);
 });
 
 /** GET /api/profiles/me */
@@ -189,14 +220,20 @@ profiles.post("/me/confirm", requireAuth, async (c) => {
 		.eq("id", userId);
 	if (onboardingError) return jsonError(c, "INTERNAL_ERROR", "Failed to update onboarding status");
 
-	// Do not block confirm response on matching; run it in background.
-	void executeMatching(supabase, 10)
+	// Run matching in the background without blocking the response.
+	// Use waitUntil on Workers so the runtime keeps the task alive after response.
+	const matchingTask = executeMatching(supabase, 10)
 		.then((count) => {
 			console.log(`[matching] created ${count} matches after profile confirm`);
 		})
 		.catch((err) => {
 			console.error("[matching] executeMatching failed after profile confirm:", err);
 		});
+	try {
+		c.executionCtx.waitUntil(matchingTask);
+	} catch {
+		// Node.js dev server — promise runs detached
+	}
 	return jsonData(c, { status: "confirmed", confirmed_at: new Date().toISOString() });
 });
 

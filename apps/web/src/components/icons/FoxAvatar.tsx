@@ -1,13 +1,15 @@
 export function FoxAvatar({
 	className,
+	iconUrl,
 }: {
 	seed?: string;
 	variant?: number;
 	className?: string;
+	iconUrl?: string | null;
 }) {
 	return (
 		<img
-			src="/logo.png"
+			src={iconUrl ?? "/logo.png"}
 			alt=""
 			className={className}
 		/>

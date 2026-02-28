@@ -1,6 +1,8 @@
 import { Mistral } from "@mistralai/mistralai";
 
-const DEFAULT_MODEL = "mistral-small-latest";
+const DEFAULT_MODEL = "ministral-8b-latest";
+export const MISTRAL_LARGE = "mistral-large-latest";
+export const MISTRAL_LIGHT = "ministral-8b-latest";
 
 export function getMistralClient(apiKey: string) {
 	return new Mistral({

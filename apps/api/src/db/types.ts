@@ -109,6 +109,7 @@ export type Database = {
 					name: string;
 					compiled_document: string;
 					version: number;
+					icon_url: string | null;
 					created_at: string;
 					updated_at: string;
 				};
@@ -119,6 +120,7 @@ export type Database = {
 					name: string;
 					compiled_document: string;
 					version?: number;
+					icon_url?: string | null;
 					created_at?: string;
 					updated_at?: string;
 				};
