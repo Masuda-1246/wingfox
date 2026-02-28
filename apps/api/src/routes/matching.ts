@@ -48,6 +48,13 @@ matching.get("/results", requireAuth, async (c) => {
 	const partnerIds = list.map((m) => partnerId(m as { user_a_id: string; user_b_id: string }));
 	const { data: profiles } = await supabase.from("user_profiles").select("id, nickname, avatar_url").in("id", partnerIds);
 	const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+	// Partner wingfox persona icons (for chat list avatar)
+	const { data: partnerPersonas } = await supabase
+		.from("personas")
+		.select("user_id, icon_url")
+		.eq("persona_type", "wingfox")
+		.in("user_id", partnerIds);
+	const personaIconMap = new Map((partnerPersonas ?? []).map((p) => [p.user_id, p.icon_url]));
 	const matchIds = list.map((x) => x.id);
 	const { data: foxConvs } = await supabase.from("fox_conversations").select("match_id, status").in("match_id", matchIds);
 	const fcMap = new Map((foxConvs ?? []).map((f) => [f.match_id, f.status]));
@@ -57,7 +64,11 @@ matching.get("/results", requireAuth, async (c) => {
 		return {
 			id: m.id,
 			partner_id: pid,
-			partner: partner ? { nickname: partner.nickname, avatar_url: partner.avatar_url } : null,
+			partner: partner ? {
+				nickname: partner.nickname,
+				avatar_url: partner.avatar_url,
+				persona_icon_url: personaIconMap.get(pid) ?? null,
+			} : null,
 			final_score: m.final_score,
 			profile_score: m.profile_score,
 			conversation_score: m.conversation_score,
@@ -98,6 +109,12 @@ matching.get("/results/:id", requireAuth, async (c) => {
 	if (blockRow) return jsonError(c, "NOT_FOUND", "Match not found");
 
 	const { data: partner } = await supabase.from("user_profiles").select("nickname, avatar_url").eq("id", partnerId).single();
+	const { data: partnerPersona } = await supabase
+		.from("personas")
+		.select("icon_url")
+		.eq("user_id", partnerId)
+		.eq("persona_type", "wingfox")
+		.maybeSingle();
 	const { data: fc } = await supabase.from("fox_conversations").select("id, status").eq("match_id", id).single();
 	const { data: pfc } = await supabase.from("partner_fox_chats").select("id").eq("match_id", id).eq("user_id", userId).single();
 	const { data: cr } = await supabase.from("chat_requests").select("status").eq("match_id", id).single();
@@ -105,7 +122,11 @@ matching.get("/results/:id", requireAuth, async (c) => {
 	return jsonData(c, {
 		id: match.id,
 		partner_id: partnerId,
-		partner: partner ? { nickname: partner.nickname, avatar_url: partner.avatar_url } : null,
+		partner: partner ? {
+			nickname: partner.nickname,
+			avatar_url: partner.avatar_url,
+			persona_icon_url: partnerPersona?.icon_url ?? null,
+		} : null,
 		profile_score: match.profile_score,
 		conversation_score: match.conversation_score,
 		final_score: match.final_score,

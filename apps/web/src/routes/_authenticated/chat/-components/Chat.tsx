@@ -124,7 +124,7 @@ export function Chat() {
 		id: m.id,
 		partnerName: m.partner?.nickname ?? "マッチ",
 		partnerFoxVariant: 0,
-		partnerImage: m.partner?.avatar_url ?? "https://picsum.photos/200/300?random=0",
+		partnerImage: m.partner?.persona_icon_url ?? m.partner?.avatar_url ?? undefined,
 		lastMessage: "",
 		compatibilityScore: m.conversation_score != null ? (m.final_score ?? 0) : null,
 		status: "active" as const,
@@ -281,7 +281,7 @@ export function Chat() {
 		: {
 				id: activeSessionId,
 				partnerName: partnerName || "マッチ",
-				partnerImage: "https://picsum.photos/200/300?random=0",
+				partnerImage: detail?.partner?.persona_icon_url ?? detail?.partner?.avatar_url ?? undefined,
 				partnerFoxVariant: 0,
 				lastMessage: "",
 				compatibilityScore: detail?.conversation_score != null ? (detail?.final_score ?? 0) : null,
@@ -578,7 +578,7 @@ export function Chat() {
 								<div className="flex items-start gap-3">
 									<div className="relative">
 										<FoxAvatar
-											variant={session.partnerFoxVariant}
+											iconUrl={session.partnerImage}
 											className="w-10 h-10 md:w-12 md:h-12"
 										/>
 										{(() => {
