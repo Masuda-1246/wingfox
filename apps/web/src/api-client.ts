@@ -8,7 +8,9 @@ function getBaseUrl(): string {
 	return "";
 }
 
-export const client = hc<AppType>(getBaseUrl(), {
+export type ApiClient = ReturnType<typeof hc<AppType>>;
+
+const _client = hc<AppType>(getBaseUrl(), {
 	fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
 		const { data } = await supabase.auth.getSession();
 		const headers = new Headers(init?.headers);
@@ -27,4 +29,8 @@ export const client = hc<AppType>(getBaseUrl(), {
 		}
 		return res;
 	},
-}) as any;
+});
+
+// Workaround: AppType from @repo/api can resolve to unknown in consumers; use any so client is usable until TS resolution is fixed
+// biome-ignore lint/suspicious/noExplicitAny: intentional workaround for cross-package type resolution
+export const client = _client as any;

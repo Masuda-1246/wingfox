@@ -1,12 +1,12 @@
+import { type TranscriptEntry, useSpeedDate } from "@/hooks/use-speed-date";
 import {
 	useCompleteSpeedDatingSession,
 	useSpeedDatingPersonas,
-	useSpeedDatingSignedUrl,
 	useSpeedDatingSessions,
+	useSpeedDatingSignedUrl,
 } from "@/lib/hooks/useSpeedDating";
-import { useSpeedDate, type TranscriptEntry } from "@/hooks/use-speed-date";
 import { useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { ArrowLeft, CheckCircle2, Loader2, MicOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -34,7 +34,9 @@ export function SpeedDatingPage() {
 		reset: resetVoice,
 	} = useSpeedDate();
 
-	const [step, setStep] = useState<"start" | "generating" | "dating" | "done">("start");
+	const [step, setStep] = useState<"start" | "generating" | "dating" | "done">(
+		"start",
+	);
 	const [virtualPersonas, setVirtualPersonas] = useState<
 		Array<{ id: string; name: string; persona_type: string }>
 	>([]);
@@ -56,38 +58,46 @@ export function SpeedDatingPage() {
 		transcriptRef.current = transcript;
 	}, [transcript]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: transcript is the intentional trigger to scroll on new messages
 	useEffect(() => {
 		if (scrollRef.current) {
 			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 		}
 	}, [transcript]);
 
-	const prefetchNext = useCallback(async (fromIndex: number) => {
-		const nextIndex = fromIndex + 1;
-		if (nextIndex >= virtualPersonas.length) return;
-		if (prefetchedNextRef.current?.personaIndex === nextIndex) return;
-		if (prefetchingIndexRef.current === nextIndex) return;
+	const prefetchNext = useCallback(
+		async (fromIndex: number) => {
+			const nextIndex = fromIndex + 1;
+			if (nextIndex >= virtualPersonas.length) return;
+			if (prefetchedNextRef.current?.personaIndex === nextIndex) return;
+			if (prefetchingIndexRef.current === nextIndex) return;
 
-		const nextPersona = virtualPersonas[nextIndex];
-		if (!nextPersona) return;
+			const nextPersona = virtualPersonas[nextIndex];
+			if (!nextPersona) return;
 
-		prefetchingIndexRef.current = nextIndex;
-		try {
-			const nextSession = (await createSession.mutateAsync(nextPersona.id)) as { session_id: string };
-			const signedUrlData = await getSignedUrl.mutateAsync(nextSession.session_id);
-			prefetchedNextRef.current = {
-				personaIndex: nextIndex,
-				sessionId: nextSession.session_id,
-				signedUrlData,
-			};
-		} catch (err) {
-			console.error("[SpeedDate] next prefetch failed:", err);
-		} finally {
-			if (prefetchingIndexRef.current === nextIndex) {
-				prefetchingIndexRef.current = null;
+			prefetchingIndexRef.current = nextIndex;
+			try {
+				const nextSession = (await createSession.mutateAsync(
+					nextPersona.id,
+				)) as { session_id: string };
+				const signedUrlData = await getSignedUrl.mutateAsync(
+					nextSession.session_id,
+				);
+				prefetchedNextRef.current = {
+					personaIndex: nextIndex,
+					sessionId: nextSession.session_id,
+					signedUrlData,
+				};
+			} catch (err) {
+				console.error("[SpeedDate] next prefetch failed:", err);
+			} finally {
+				if (prefetchingIndexRef.current === nextIndex) {
+					prefetchingIndexRef.current = null;
+				}
 			}
-		}
-	}, [virtualPersonas, createSession, getSignedUrl]);
+		},
+		[virtualPersonas, createSession, getSignedUrl],
+	);
 
 	useEffect(() => {
 		if (step !== "dating") return;
@@ -113,14 +123,18 @@ export function SpeedDatingPage() {
 					const nextIndex = currentPersonaIndex + 1;
 					const nextPersona = virtualPersonas[nextIndex];
 					let nextSessionId: string;
-					let signedUrlData: Awaited<ReturnType<typeof getSignedUrl.mutateAsync>>;
+					let signedUrlData: Awaited<
+						ReturnType<typeof getSignedUrl.mutateAsync>
+					>;
 					const prefetched = prefetchedNextRef.current;
 					if (prefetched?.personaIndex === nextIndex) {
 						nextSessionId = prefetched.sessionId;
 						signedUrlData = prefetched.signedUrlData;
 						prefetchedNextRef.current = null;
 					} else {
-						const nextSession = (await createSession.mutateAsync(nextPersona.id)) as {
+						const nextSession = (await createSession.mutateAsync(
+							nextPersona.id,
+						)) as {
 							session_id: string;
 						};
 						nextSessionId = nextSession.session_id;
@@ -131,7 +145,10 @@ export function SpeedDatingPage() {
 					resetVoice();
 					setCurrentPersonaName(signedUrlData.persona.name);
 					void persistPromise.catch((persistErr) => {
-						console.error("[SpeedDate] Failed to persist transcript:", persistErr);
+						console.error(
+							"[SpeedDate] Failed to persist transcript:",
+							persistErr,
+						);
 						toast.error("セッション保存に失敗しました");
 					});
 					await startDate({
@@ -149,7 +166,17 @@ export function SpeedDatingPage() {
 			}
 		};
 		completeCurrentSession();
-	}, [voiceStatus, prefetchNext]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [
+		voiceStatus,
+		prefetchNext,
+		createSession.mutateAsync,
+		getSignedUrl.mutateAsync,
+		completeSession.mutateAsync,
+		resetVoice,
+		currentPersonaIndex,
+		virtualPersonas,
+		startDate,
+	]);
 
 	const handleStart = async () => {
 		setStep("generating");
@@ -164,19 +191,25 @@ export function SpeedDatingPage() {
 			prefetchedNextRef.current = null;
 			prefetchingIndexRef.current = null;
 			setVirtualPersonas(
-				personas.map((p: { id: string; name: string; persona_type: string }) => ({
-					id: p.id,
-					name: p.name,
-					persona_type: p.persona_type,
-				})),
+				personas.map(
+					(p: { id: string; name: string; persona_type: string }) => ({
+						id: p.id,
+						name: p.name,
+						persona_type: p.persona_type,
+					}),
+				),
 			);
-			const firstSession = (await createSession.mutateAsync(personas[0].id)) as {
+			const firstSession = (await createSession.mutateAsync(
+				personas[0].id,
+			)) as {
 				session_id: string;
 			};
 			setCurrentPersonaIndex(0);
 			setCurrentSessionId(firstSession.session_id);
 			setStep("dating");
-			const signedUrlData = await getSignedUrl.mutateAsync(firstSession.session_id);
+			const signedUrlData = await getSignedUrl.mutateAsync(
+				firstSession.session_id,
+			);
 			setCurrentPersonaName(signedUrlData.persona.name);
 			await startDate({
 				signedUrl: signedUrlData.signed_url,
@@ -194,13 +227,14 @@ export function SpeedDatingPage() {
 	}, [endDate]);
 
 	const isLowTime = remainingMs < 30_000;
-	const isVoiceActive = voiceStatus === "talking" || voiceStatus === "connecting";
+	const isVoiceActive =
+		voiceStatus === "talking" || voiceStatus === "connecting";
 
 	return (
 		<div className="min-h-[calc(100vh-4rem)] w-full max-w-2xl mx-auto p-6">
 			<AnimatePresence mode="wait">
 				{step === "start" && (
-					<motion.div
+					<m.div
 						key="start"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
@@ -227,11 +261,11 @@ export function SpeedDatingPage() {
 						>
 							<ArrowLeft className="w-3 h-3" /> 戻る
 						</button>
-					</motion.div>
+					</m.div>
 				)}
 
 				{step === "generating" && (
-					<motion.div
+					<m.div
 						key="generating"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
@@ -239,12 +273,14 @@ export function SpeedDatingPage() {
 						className="flex flex-col items-center justify-center min-h-[60vh] gap-4"
 					>
 						<Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-						<p className="text-sm text-muted-foreground">今夜のゲストを探しています...</p>
-					</motion.div>
+						<p className="text-sm text-muted-foreground">
+							今夜のゲストを探しています...
+						</p>
+					</m.div>
 				)}
 
 				{step === "dating" && (
-					<motion.div
+					<m.div
 						key="dating"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
@@ -264,7 +300,9 @@ export function SpeedDatingPage() {
 												: "bg-muted text-muted-foreground"
 									}`}
 								>
-									{i < currentPersonaIndex && <CheckCircle2 className="w-3 h-3" />}
+									{i < currentPersonaIndex && (
+										<CheckCircle2 className="w-3 h-3" />
+									)}
 									{p.name}
 								</div>
 							))}
@@ -292,7 +330,9 @@ export function SpeedDatingPage() {
 							</div>
 							<p className="font-bold">{currentPersonaName}</p>
 							{voiceStatus === "connecting" && (
-								<p className="text-sm text-muted-foreground animate-pulse">接続中...</p>
+								<p className="text-sm text-muted-foreground animate-pulse">
+									接続中...
+								</p>
 							)}
 							{voiceStatus === "talking" && (
 								<p className="text-xs text-muted-foreground">
@@ -315,12 +355,14 @@ export function SpeedDatingPage() {
 							>
 								{transcript.length === 0 && (
 									<p className="text-center text-sm text-muted-foreground py-4">
-										{voiceStatus === "connecting" ? "接続を待っています..." : "会話が始まるのを待っています..."}
+										{voiceStatus === "connecting"
+											? "接続を待っています..."
+											: "会話が始まるのを待っています..."}
 									</p>
 								)}
-								{transcript.map((entry, i) => (
-									<motion.div
-										key={`${entry.timestamp}-${i}`}
+								{transcript.map((entry) => (
+									<m.div
+										key={entry.id ?? `${entry.timestamp}-${entry.source}`}
 										initial={{ opacity: 0, y: 5 }}
 										animate={{ opacity: 1, y: 0 }}
 										className={`flex ${entry.source === "ai" ? "justify-start" : "justify-end"}`}
@@ -334,7 +376,7 @@ export function SpeedDatingPage() {
 										>
 											{entry.message}
 										</div>
-									</motion.div>
+									</m.div>
 								))}
 							</div>
 						</div>
@@ -357,11 +399,11 @@ export function SpeedDatingPage() {
 								次のゲストを準備しています...
 							</div>
 						)}
-					</motion.div>
+					</m.div>
 				)}
 
 				{step === "done" && (
-					<motion.div
+					<m.div
 						key="done"
 						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{ opacity: 1, scale: 1 }}
@@ -396,7 +438,7 @@ export function SpeedDatingPage() {
 								マイページへ
 							</button>
 						</div>
-					</motion.div>
+					</m.div>
 				)}
 			</AnimatePresence>
 		</div>

@@ -1,20 +1,33 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/lib/auth";
 import { formatTime } from "@/lib/date";
+import {
+	usePendingChatRequests,
+	useRequestDirectChat,
+	useRespondChatRequest,
+} from "@/lib/hooks/useChatRequests";
+import {
+	useDirectChatMessages,
+	useSendDirectChatMessage,
+} from "@/lib/hooks/useDirectChats";
+import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
+import {
+	useMultipleFoxConversationStatus,
+	useRetryFoxConversation,
+	useStartFoxSearch,
+} from "@/lib/hooks/useFoxSearch";
 import { useMatchingResults } from "@/lib/hooks/useMatchingResults";
 import { useMatchingResult } from "@/lib/hooks/useMatchingResults";
-import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
-import { useRequestDirectChat, usePendingChatRequests, useRespondChatRequest } from "@/lib/hooks/useChatRequests";
+import { useBlockUser } from "@/lib/hooks/useModeration";
 import {
+	useCreatePartnerFoxChat,
 	usePartnerFoxChatMessages,
 	useSendPartnerFoxMessage,
-	useCreatePartnerFoxChat,
 } from "@/lib/hooks/usePartnerFoxChats";
-import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
-import { useStartFoxSearch, useRetryFoxConversation, useMultipleFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
-import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
-import { useBlockUser } from "@/lib/hooks/useModeration";
+import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, m } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowLeft,
@@ -32,8 +45,6 @@ import {
 	User,
 	UserX,
 } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -104,7 +115,9 @@ function getTraitScores(details: unknown): number[] | null {
 	return scores.map((s) => s ?? 0);
 }
 
-function getTopicDistribution(details: unknown): { topic: string; percentage: number }[] | null {
+function getTopicDistribution(
+	details: unknown,
+): { topic: string; percentage: number }[] | null {
 	const d = details as ScoreDetails | null;
 	const dist = d?.conversation_analysis?.topic_distribution;
 	if (!dist || !Array.isArray(dist) || dist.length === 0) return null;
@@ -128,7 +141,10 @@ export function Chat() {
 	const { user } = useAuth();
 	const queryClient = useQueryClient();
 	const { data: matchingData, isLoading } = useMatchingResults(
-		{ status: "fox_conversation_in_progress,fox_conversation_completed,fox_conversation_failed,partner_chat_started,direct_chat_requested,direct_chat_active,chat_request_expired,chat_request_declined" },
+		{
+			status:
+				"fox_conversation_in_progress,fox_conversation_completed,fox_conversation_failed,partner_chat_started,direct_chat_requested,direct_chat_active,chat_request_expired,chat_request_declined",
+		},
 		{ enabled: !!user },
 	);
 	const matches = matchingData?.data ?? [];
@@ -136,9 +152,11 @@ export function Chat() {
 		id: m.id,
 		partnerName: m.partner?.nickname ?? "マッチ",
 		partnerFoxVariant: 0,
-		partnerImage: m.partner?.persona_icon_url ?? m.partner?.avatar_url ?? undefined,
+		partnerImage:
+			m.partner?.persona_icon_url ?? m.partner?.avatar_url ?? undefined,
 		lastMessage: "",
-		compatibilityScore: m.conversation_score != null ? (m.final_score ?? 0) : null,
+		compatibilityScore:
+			m.conversation_score != null ? (m.final_score ?? 0) : null,
 		status: "active" as const,
 		matchStatus: m.status,
 		messages: [],
@@ -161,9 +179,16 @@ export function Chat() {
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showUnmatchModal, setShowUnmatchModal] = useState(false);
 	const isMobile = useIsMobile();
-	const [mobileView, setMobileView] = useState<'list' | 'chat' | 'analysis'>('list');
-	const [activeFoxConvMap, setActiveFoxConvMap] = useState<Record<string, string>>({});
-	const activeFoxConvIds = useMemo(() => Object.values(activeFoxConvMap), [activeFoxConvMap]);
+	const [mobileView, setMobileView] = useState<"list" | "chat" | "analysis">(
+		"list",
+	);
+	const [activeFoxConvMap, setActiveFoxConvMap] = useState<
+		Record<string, string>
+	>({});
+	const activeFoxConvIds = useMemo(
+		() => Object.values(activeFoxConvMap),
+		[activeFoxConvMap],
+	);
 	const anyFoxConvLive = activeFoxConvIds.length > 0;
 	const blockUser = useBlockUser();
 	const startFoxSearch = useStartFoxSearch();
@@ -171,11 +196,15 @@ export function Chat() {
 	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
 
 	// Restore activeFoxConvMap from server data on mount/reload
+	// biome-ignore lint/correctness/useExhaustiveDependencies: run only when matches changes; activeFoxConvMap intentionally excluded to avoid loop
 	useEffect(() => {
 		if (Object.keys(activeFoxConvMap).length > 0) return;
 		const restoredMap: Record<string, string> = {};
 		for (const m of matches) {
-			if (m.status === "fox_conversation_in_progress" && m.fox_conversation_id) {
+			if (
+				m.status === "fox_conversation_in_progress" &&
+				m.fox_conversation_id
+			) {
 				restoredMap[m.id] = m.fox_conversation_id;
 			}
 		}
@@ -190,7 +219,10 @@ export function Chat() {
 		let newlyCompleted = false;
 		for (const id of activeFoxConvIds) {
 			const s = multiStatus.statusMap.get(id);
-			if ((s?.status === "completed" || s?.status === "failed") && !completedIdsRef.current.has(id)) {
+			if (
+				(s?.status === "completed" || s?.status === "failed") &&
+				!completedIdsRef.current.has(id)
+			) {
 				completedIdsRef.current.add(id);
 				newlyCompleted = true;
 			}
@@ -198,7 +230,9 @@ export function Chat() {
 		if (newlyCompleted) {
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 		}
-		const allDone = activeFoxConvIds.length > 0 && activeFoxConvIds.every(id => completedIdsRef.current.has(id));
+		const allDone =
+			activeFoxConvIds.length > 0 &&
+			activeFoxConvIds.every((id) => completedIdsRef.current.has(id));
 		if (allDone) {
 			setActiveFoxConvMap({});
 			completedIdsRef.current.clear();
@@ -209,10 +243,14 @@ export function Chat() {
 	const detail = matchDetail.data;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
 	// Use fox_conversation_id mapped to the currently selected match, or fall back to match detail
-	const foxConversationId = activeFoxConvMap[activeSessionId] ?? detail?.fox_conversation_id ?? null;
+	const foxConversationId =
+		activeFoxConvMap[activeSessionId] ?? detail?.fox_conversation_id ?? null;
 	const isFoxConvLive = Boolean(activeFoxConvMap[activeSessionId]);
 	const partnerId = detail?.partner_id ?? null;
-	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
+	const partnerName =
+		detail?.partner?.nickname ??
+		sessions.find((s) => s.id === activeSessionId)?.partnerName ??
+		"";
 
 	// Tab state
 	type ChatTab = "fox" | "partner_fox" | "direct";
@@ -226,11 +264,9 @@ export function Chat() {
 
 	const directMessages = useDirectChatMessages(directChatRoomId);
 	const sendDirect = useSendDirectChatMessage(directChatRoomId);
-	const foxMessages = useFoxConversationMessages(
-		foxConversationId,
-		undefined,
-		{ refetchInterval: isFoxConvLive ? 3000 : false },
-	);
+	const foxMessages = useFoxConversationMessages(foxConversationId, undefined, {
+		refetchInterval: isFoxConvLive ? 3000 : false,
+	});
 
 	// Chat request hooks
 	const requestDirectChat = useRequestDirectChat();
@@ -239,22 +275,47 @@ export function Chat() {
 
 	// Find pending chat request for the currently selected match
 	const pendingRequestForMatch = useMemo(() => {
-		return pendingChatRequests.data?.find((r) => r.match_id === activeSessionId) ?? null;
+		return (
+			pendingChatRequests.data?.find((r) => r.match_id === activeSessionId) ??
+			null
+		);
 	}, [pendingChatRequests.data, activeSessionId]);
 
 	// Tab visibility conditions
 	const showFoxTab = Boolean(foxConversationId);
 	// Tab visibility: show "Foxとチャット" when completed so user can create it, or when already started
-	const showPartnerFoxTab = Boolean(partnerFoxChatId) || (detail?.status && ["fox_conversation_completed", "partner_chat_started", "direct_chat_requested", "direct_chat_active"].includes(detail.status));
-	const showDirectTab = Boolean(directChatRoomId) ||
-		(detail?.status && ["partner_chat_started", "direct_chat_requested", "direct_chat_active"].includes(detail.status)) ||
+	const showPartnerFoxTab =
+		Boolean(partnerFoxChatId) ||
+		(detail?.status &&
+			[
+				"fox_conversation_completed",
+				"partner_chat_started",
+				"direct_chat_requested",
+				"direct_chat_active",
+			].includes(detail.status));
+	const showDirectTab =
+		Boolean(directChatRoomId) ||
+		(detail?.status &&
+			[
+				"partner_chat_started",
+				"direct_chat_requested",
+				"direct_chat_active",
+			].includes(detail.status)) ||
 		Boolean(pendingRequestForMatch);
 
 	// Auto-select appropriate tab when match status changes (do not switch to partner_fox when only completed)
 	useEffect(() => {
 		if (directChatRoomId) {
 			setActiveTab("direct");
-		} else if (partnerFoxChatId || (detail?.status && ["partner_chat_started", "direct_chat_requested", "direct_chat_active"].includes(detail.status))) {
+		} else if (
+			partnerFoxChatId ||
+			(detail?.status &&
+				[
+					"partner_chat_started",
+					"direct_chat_requested",
+					"direct_chat_active",
+				].includes(detail.status))
+		) {
 			setActiveTab("partner_fox");
 		} else {
 			setActiveTab("fox");
@@ -263,7 +324,11 @@ export function Chat() {
 
 	// Resolve messages for active session based on active tab
 	const activeMessages: Message[] = useMemo(() => {
-		if (activeTab === "direct" && directChatRoomId && directMessages.data?.pages) {
+		if (
+			activeTab === "direct" &&
+			directChatRoomId &&
+			directMessages.data?.pages
+		) {
 			return [...directMessages.data.pages].reverse().flatMap((page) =>
 				page.data.map((m) => ({
 					id: m.id,
@@ -276,7 +341,11 @@ export function Chat() {
 				})),
 			);
 		}
-		if (activeTab === "partner_fox" && partnerFoxChatId && partnerFoxMessages.data?.data) {
+		if (
+			activeTab === "partner_fox" &&
+			partnerFoxChatId &&
+			partnerFoxMessages.data?.data
+		) {
 			return partnerFoxMessages.data.data.map((m) => ({
 				id: m.id,
 				senderId: m.role === "user" ? "me" : "partner_fox",
@@ -299,24 +368,39 @@ export function Chat() {
 			}));
 		}
 		return [];
-	}, [activeTab, directChatRoomId, directMessages.data?.pages, partnerFoxChatId, partnerFoxMessages.data?.data, foxConversationId, foxMessages.data?.data, partnerName]);
+	}, [
+		activeTab,
+		directChatRoomId,
+		directMessages.data?.pages,
+		partnerFoxChatId,
+		partnerFoxMessages.data?.data,
+		foxConversationId,
+		foxMessages.data?.data,
+		partnerName,
+	]);
 
 	const activeSession: ChatSession | undefined = sessions.find(
 		(s) => s.id === activeSessionId,
 	);
 	const displaySession: ChatSession = activeSession
 		? { ...activeSession, messages: activeMessages }
-		: {
+		: ({
 				id: activeSessionId,
 				partnerName: partnerName || "マッチ",
-				partnerImage: detail?.partner?.persona_icon_url ?? detail?.partner?.avatar_url ?? undefined,
+				partnerImage:
+					detail?.partner?.persona_icon_url ??
+					detail?.partner?.avatar_url ??
+					undefined,
 				partnerFoxVariant: 0,
 				lastMessage: "",
-				compatibilityScore: detail?.conversation_score != null ? (detail?.final_score ?? 0) : null,
+				compatibilityScore:
+					detail?.conversation_score != null
+						? (detail?.final_score ?? 0)
+						: null,
 				status: "active",
 				matchStatus: detail?.status ?? "",
 				messages: activeMessages,
-			} as ChatSession;
+			} as ChatSession);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const chatContainerRef = useRef<HTMLDivElement>(null);
 	const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -330,7 +414,10 @@ export function Chat() {
 
 	// Initial scroll to bottom when session changes or first load
 	useEffect(() => {
-		if (activeMessages.length > 0 && initialScrollDoneRef.current !== activeSessionId) {
+		if (
+			activeMessages.length > 0 &&
+			initialScrollDoneRef.current !== activeSessionId
+		) {
 			initialScrollDoneRef.current = activeSessionId;
 			// Use requestAnimationFrame to ensure DOM has rendered
 			requestAnimationFrame(() => {
@@ -340,11 +427,13 @@ export function Chat() {
 	}, [activeMessages.length, activeSessionId, scrollToBottom]);
 
 	// Reset initial scroll flag when session changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset ref when session changes intentionally
 	useEffect(() => {
 		initialScrollDoneRef.current = null;
 	}, [activeSessionId]);
 
 	// Scroll position preservation after loading older messages
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync scroll on layout; activeMessages used as trigger only
 	useEffect(() => {
 		const container = chatContainerRef.current;
 		if (!container) return;
@@ -360,11 +449,16 @@ export function Chat() {
 		const sentinel = topSentinelRef.current;
 		const container = chatContainerRef.current;
 		if (!sentinel || !container) return;
-		if (!directMessages.hasNextPage || directMessages.isFetchingNextPage) return;
+		if (!directMessages.hasNextPage || directMessages.isFetchingNextPage)
+			return;
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0]?.isIntersecting && directMessages.hasNextPage && !directMessages.isFetchingNextPage) {
+				if (
+					entries[0]?.isIntersecting &&
+					directMessages.hasNextPage &&
+					!directMessages.isFetchingNextPage
+				) {
 					prevScrollHeightRef.current = container.scrollHeight;
 					directMessages.fetchNextPage();
 				}
@@ -373,7 +467,11 @@ export function Chat() {
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
-	}, [directMessages.hasNextPage, directMessages.isFetchingNextPage, directMessages.fetchNextPage]);
+	}, [
+		directMessages.hasNextPage,
+		directMessages.isFetchingNextPage,
+		directMessages.fetchNextPage,
+	]);
 
 	// Auto-scroll to bottom when sending a new message (if near bottom)
 	const prevMessageCountRef = useRef(activeMessages.length);
@@ -381,7 +479,8 @@ export function Chat() {
 		const container = chatContainerRef.current;
 		if (!container) return;
 		const wasNearBottom =
-			container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+			container.scrollHeight - container.scrollTop - container.clientHeight <
+			100;
 		if (activeMessages.length > prevMessageCountRef.current && wasNearBottom) {
 			requestAnimationFrame(() => scrollToBottom("smooth"));
 		}
@@ -390,7 +489,8 @@ export function Chat() {
 
 	const canSendMessage =
 		(activeTab === "direct" && Boolean(directChatRoomId && sendDirect)) ||
-		(activeTab === "partner_fox" && Boolean(partnerFoxChatId && sendPartnerFox));
+		(activeTab === "partner_fox" &&
+			Boolean(partnerFoxChatId && sendPartnerFox));
 
 	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
@@ -416,7 +516,9 @@ export function Chat() {
 		try {
 			toast.info(t("creating_partner_fox_chat"));
 			await createPartnerFoxChat.mutateAsync(activeSessionId);
-			queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
+			queryClient.invalidateQueries({
+				queryKey: ["matching", "results", activeSessionId],
+			});
 			toast.success(t("partner_fox_chat_created"));
 			setActiveTab("partner_fox");
 		} catch (e) {
@@ -436,10 +538,14 @@ export function Chat() {
 			// Auto-select the first new match and refresh sidebar
 			if (result.conversations.length > 0) {
 				setActiveSessionId(result.conversations[0].match_id);
-				if (isMobile) setMobileView('chat');
+				if (isMobile) setMobileView("chat");
 			}
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
-			toast.success(t("fox_search_started_multiple", { count: result.conversations.length }));
+			toast.success(
+				t("fox_search_started_multiple", {
+					count: result.conversations.length,
+				}),
+			);
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : "";
 			if (msg.includes("already in progress")) {
@@ -479,7 +585,12 @@ export function Chat() {
 	// Aggregate progress from multiple conversations
 	const foxProgress =
 		anyFoxConvLive && multiStatus.totalRounds > 0
-			? { current_round: multiStatus.currentRounds, total_rounds: multiStatus.totalRounds, completed: multiStatus.completedCount, total: multiStatus.total }
+			? {
+					current_round: multiStatus.currentRounds,
+					total_rounds: multiStatus.totalRounds,
+					completed: multiStatus.completedCount,
+					total: multiStatus.total,
+				}
 			: null;
 
 	// When all fox conversations are terminal, refresh matches and clear state
@@ -488,23 +599,40 @@ export function Chat() {
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 			setActiveFoxConvMap({});
 			if (multiStatus.completedCount > 0) {
-				toast.success(t("fox_search_completed_multiple", { count: multiStatus.completedCount }));
+				toast.success(
+					t("fox_search_completed_multiple", {
+						count: multiStatus.completedCount,
+					}),
+				);
 			}
 			if (multiStatus.failedCount > 0) {
-				toast.error(t("fox_search_failed_multiple", { count: multiStatus.failedCount }));
+				toast.error(
+					t("fox_search_failed_multiple", { count: multiStatus.failedCount }),
+				);
 			}
 		}
-	}, [anyFoxConvLive, multiStatus.allTerminal, multiStatus.completedCount, multiStatus.failedCount, queryClient, t]);
+	}, [
+		anyFoxConvLive,
+		multiStatus.allTerminal,
+		multiStatus.completedCount,
+		multiStatus.failedCount,
+		queryClient,
+		t,
+	]);
 
 	// Reset mobileView when switching to desktop
 	useEffect(() => {
-		if (!isMobile) setMobileView('list');
+		if (!isMobile) setMobileView("list");
 	}, [isMobile]);
 
 	// Set first match as active when matches load or current session is removed (stable deps to avoid re-run every render)
 	useEffect(() => {
 		const list = matchingData?.data ?? [];
-		if (list.length > 0 && (!activeSessionId || !list.some((m) => m.id === activeSessionId)) && !activeFoxConvMap[activeSessionId]) {
+		if (
+			list.length > 0 &&
+			(!activeSessionId || !list.some((m) => m.id === activeSessionId)) &&
+			!activeFoxConvMap[activeSessionId]
+		) {
 			setActiveSessionId(list[0].id);
 		}
 	}, [matchingData?.data, activeSessionId, activeFoxConvMap]);
@@ -536,7 +664,11 @@ export function Chat() {
 				<div
 					className={cn(
 						"col-span-12 md:col-span-4 lg:col-span-3 flex flex-col min-h-0 h-full",
-						isMobile ? (mobileView === 'list' ? "flex" : "hidden") : "hidden md:flex",
+						isMobile
+							? mobileView === "list"
+								? "flex"
+								: "hidden"
+							: "hidden md:flex",
 					)}
 				>
 					<div className="flex items-center justify-between mb-2 shrink-0">
@@ -567,13 +699,16 @@ export function Chat() {
 						{anyFoxConvLive && foxProgress && (
 							<div className="mt-2 px-2">
 								<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground mb-1">
-									<span>{t("fox_search_progress")} ({foxProgress.completed}/{foxProgress.total})</span>
+									<span>
+										{t("fox_search_progress")} ({foxProgress.completed}/
+										{foxProgress.total})
+									</span>
 									<span>
 										{foxProgress.current_round}/{foxProgress.total_rounds}
 									</span>
 								</div>
 								<div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-									<motion.div
+									<m.div
 										initial={{ width: 0 }}
 										animate={{
 											width: `${(foxProgress.current_round / foxProgress.total_rounds) * 100}%`,
@@ -596,199 +731,222 @@ export function Chat() {
 								マッチング結果がありません
 							</p>
 						) : (
-						sortedSessions.map((session) => (
-							<div
-								key={session.id}
-								onClick={() => {
-									setActiveSessionId(session.id);
-									if (isMobile) setMobileView('chat');
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
+							sortedSessions.map((session) => (
+								<button
+									type="button"
+									key={session.id}
+									tabIndex={0}
+									onClick={() => {
 										setActiveSessionId(session.id);
-										if (isMobile) setMobileView('chat');
-									}
-								}}
-								className={cn(
-									"group relative p-4 rounded-2xl border transition-all cursor-pointer",
-									activeSessionId === session.id
-										? "bg-card border-secondary/50 ring-1 ring-secondary/20 shadow-sm"
-										: "bg-card border-border hover:bg-accent/50",
-								)}
-							>
-								<div className="flex items-start gap-3">
-									<div className="relative">
-										<FoxAvatar
-											iconUrl={session.partnerImage}
-											className="w-10 h-10 md:w-12 md:h-12"
-										/>
-										{(() => {
-											const foxConvId = activeFoxConvMap[session.id];
-											if (!foxConvId) return null;
-											const status = multiStatus.statusMap.get(foxConvId);
-											if (status?.status === "completed") {
+										if (isMobile) setMobileView("chat");
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											setActiveSessionId(session.id);
+											if (isMobile) setMobileView("chat");
+										}
+									}}
+									className={cn(
+										"group relative p-4 rounded-2xl border transition-all cursor-pointer w-full text-left",
+										activeSessionId === session.id
+											? "bg-card border-secondary/50 ring-1 ring-secondary/20 shadow-sm"
+											: "bg-card border-border hover:bg-accent/50",
+									)}
+								>
+									<div className="flex items-start gap-3">
+										<div className="relative">
+											<FoxAvatar
+												iconUrl={session.partnerImage}
+												className="w-10 h-10 md:w-12 md:h-12"
+											/>
+											{(() => {
+												const foxConvId = activeFoxConvMap[session.id];
+												if (!foxConvId) return null;
+												const status = multiStatus.statusMap.get(foxConvId);
+												if (status?.status === "completed") {
+													return (
+														<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-card" />
+													);
+												}
+												if (status?.status === "failed") {
+													return (
+														<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-card" />
+													);
+												}
 												return (
-													<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-card" />
+													<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-secondary rounded-full border-2 border-card animate-pulse" />
 												);
-											}
-											if (status?.status === "failed") {
-												return (
-													<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-card" />
-												);
-											}
-											return (
-												<span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-secondary rounded-full border-2 border-card animate-pulse" />
-											);
-										})()}
-									</div>
-									<div className="flex-1 min-w-0">
-										<div className="flex justify-between items-center gap-2 mb-1 min-h-[22px]">
-											<h3 className="font-bold text-sm truncate uppercase">
-												{session.partnerName}
-											</h3>
-											<span className="shrink-0">
-												{session.compatibilityScore != null ? (
-													<span className="text-[10px] font-black text-secondary bg-secondary/10 px-2 py-0.5 rounded-full border border-secondary/20">
-														{session.compatibilityScore}%
-													</span>
-												) : session.matchStatus === "fox_conversation_in_progress" ? (
-													<span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">
-														{t("score_measuring")}
-													</span>
-												) : (
-													<span className="text-[10px] font-medium text-muted-foreground/60 tabular-nums">—%</span>
-												)}
-											</span>
+											})()}
 										</div>
-										{(() => {
-											const foxConvId = activeFoxConvMap[session.id];
-											if (!foxConvId) {
-												if (session.matchStatus === "fox_conversation_failed") {
-													return (
-														<div className="flex items-center gap-2 mt-1 min-h-[24px]">
-															<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-																{t("match_status_fox_failed", "会話失敗")}
-															</span>
-															<button
-																type="button"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleRetryFoxConversation(session.id);
-																}}
-																disabled={retryFoxConversation.isPending}
-																className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
-															>
-																{retryFoxConversation.isPending ? (
-																	<Loader2 className="w-3 h-3 animate-spin inline" />
-																) : (
-																	t("retry_measurement", "再測定")
-																)}
-															</button>
-														</div>
-													);
-												}
-												if (session.matchStatus === "fox_conversation_completed") {
-													return (
-														<div className="flex items-center gap-2 mt-1 min-h-[24px]">
-															<button
-																type="button"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleRetryFoxConversation(session.id);
-																}}
-																disabled={retryFoxConversation.isPending}
-																className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
-															>
-																{retryFoxConversation.isPending ? (
-																	<Loader2 className="w-3 h-3 animate-spin inline" />
-																) : (
-																	t("retry_measurement", "再測定")
-																)}
-															</button>
-														</div>
-													);
-												}
-												if (session.matchStatus === "chat_request_expired") {
+										<div className="flex-1 min-w-0">
+											<div className="flex justify-between items-center gap-2 mb-1 min-h-[22px]">
+												<h3 className="font-bold text-sm truncate uppercase">
+													{session.partnerName}
+												</h3>
+												<span className="shrink-0">
+													{session.compatibilityScore != null ? (
+														<span className="text-[10px] font-black text-secondary bg-secondary/10 px-2 py-0.5 rounded-full border border-secondary/20">
+															{session.compatibilityScore}%
+														</span>
+													) : session.matchStatus ===
+														"fox_conversation_in_progress" ? (
+														<span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">
+															{t("score_measuring")}
+														</span>
+													) : (
+														<span className="text-[10px] font-medium text-muted-foreground/60 tabular-nums">
+															—%
+														</span>
+													)}
+												</span>
+											</div>
+											{(() => {
+												const foxConvId = activeFoxConvMap[session.id];
+												if (!foxConvId) {
+													if (
+														session.matchStatus === "fox_conversation_failed"
+													) {
+														return (
+															<div className="flex items-center gap-2 mt-1 min-h-[24px]">
+																<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+																	{t("match_status_fox_failed", "会話失敗")}
+																</span>
+																<button
+																	type="button"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		handleRetryFoxConversation(session.id);
+																	}}
+																	disabled={retryFoxConversation.isPending}
+																	className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
+																>
+																	{retryFoxConversation.isPending ? (
+																		<Loader2 className="w-3 h-3 animate-spin inline" />
+																	) : (
+																		t("retry_measurement", "再測定")
+																	)}
+																</button>
+															</div>
+														);
+													}
+													if (
+														session.matchStatus === "fox_conversation_completed"
+													) {
+														return (
+															<div className="flex items-center gap-2 mt-1 min-h-[24px]">
+																<button
+																	type="button"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		handleRetryFoxConversation(session.id);
+																	}}
+																	disabled={retryFoxConversation.isPending}
+																	className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
+																>
+																	{retryFoxConversation.isPending ? (
+																		<Loader2 className="w-3 h-3 animate-spin inline" />
+																	) : (
+																		t("retry_measurement", "再測定")
+																	)}
+																</button>
+															</div>
+														);
+													}
+													if (session.matchStatus === "chat_request_expired") {
+														return (
+															<div className="mt-1 min-h-[24px] flex items-center">
+																<span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-2 py-0.5 rounded-full">
+																	{t(
+																		"match_status_request_expired",
+																		"リクエスト期限切れ",
+																	)}
+																</span>
+															</div>
+														);
+													}
+													if (session.matchStatus === "chat_request_declined") {
+														return (
+															<div className="mt-1 min-h-[24px] flex items-center">
+																<span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+																	{t(
+																		"match_status_request_declined",
+																		"リクエスト辞退",
+																	)}
+																</span>
+															</div>
+														);
+													}
 													return (
 														<div className="mt-1 min-h-[24px] flex items-center">
-															<span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-																{t("match_status_request_expired", "リクエスト期限切れ")}
-															</span>
+															<p className="text-xs text-muted-foreground truncate line-clamp-1">
+																{session.lastMessage}
+															</p>
 														</div>
 													);
 												}
-												if (session.matchStatus === "chat_request_declined") {
+												const status = multiStatus.statusMap.get(foxConvId);
+												if (status?.status === "completed") {
 													return (
 														<div className="mt-1 min-h-[24px] flex items-center">
-															<span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
-																{t("match_status_request_declined", "リクエスト辞退")}
+															<span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+																{t("fox_search_completed_badge")}
 															</span>
 														</div>
 													);
 												}
+												if (status?.status === "failed") {
+													return (
+														<div className="mt-1 min-h-[24px] flex items-center">
+															<span className="text-[10px] font-bold text-red-500">
+																{t("fox_search_error")}
+															</span>
+														</div>
+													);
+												}
+												const current = status?.current_round ?? 0;
+												const total = status?.total_rounds ?? 0;
 												return (
-													<div className="mt-1 min-h-[24px] flex items-center">
-														<p className="text-xs text-muted-foreground truncate line-clamp-1">
-															{session.lastMessage}
-														</p>
-													</div>
-												);
-											}
-											const status = multiStatus.statusMap.get(foxConvId);
-											if (status?.status === "completed") {
-												return (
-													<div className="mt-1 min-h-[24px] flex items-center">
-														<span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
-															{t("fox_search_completed_badge")}
+													<div className="mt-1 min-h-[24px]">
+														<div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+															<m.div
+																initial={{ width: 0 }}
+																animate={{
+																	width:
+																		total > 0
+																			? `${(current / total) * 100}%`
+																			: "0%",
+																}}
+																transition={{ duration: 0.5, ease: "easeOut" }}
+																className="h-full bg-secondary rounded-full"
+															/>
+														</div>
+														<span className="text-[9px] text-muted-foreground font-bold">
+															{current}/{total}
 														</span>
 													</div>
 												);
-											}
-											if (status?.status === "failed") {
-												return (
-													<div className="mt-1 min-h-[24px] flex items-center">
-														<span className="text-[10px] font-bold text-red-500">
-															{t("fox_search_error")}
-														</span>
-													</div>
-												);
-											}
-											const current = status?.current_round ?? 0;
-											const total = status?.total_rounds ?? 0;
-											return (
-												<div className="mt-1 min-h-[24px]">
-													<div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-														<motion.div
-															initial={{ width: 0 }}
-															animate={{ width: total > 0 ? `${(current / total) * 100}%` : "0%" }}
-															transition={{ duration: 0.5, ease: "easeOut" }}
-															className="h-full bg-secondary rounded-full"
-														/>
-													</div>
-													<span className="text-[9px] text-muted-foreground font-bold">
-														{current}/{total}
-													</span>
-												</div>
-											);
-										})()}
+											})()}
+										</div>
 									</div>
-								</div>
-							</div>
-						)))}
+								</button>
+							))
+						)}
 					</div>
 				</div>
 
 				{/* Center Main Chat Area */}
-				<div className={cn(
-					"col-span-12 md:col-span-8 lg:col-span-6 flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden relative min-h-0",
-					isMobile && mobileView !== 'chat' && "hidden",
-				)}>
+				<div
+					className={cn(
+						"col-span-12 md:col-span-8 lg:col-span-6 flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden relative min-h-0",
+						isMobile && mobileView !== "chat" && "hidden",
+					)}
+				>
 					<div className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/50 backdrop-blur-sm shrink-0 z-10">
 						<div className="flex items-center gap-3">
 							{isMobile && (
 								<button
 									type="button"
-									onClick={() => setMobileView('list')}
+									onClick={() => setMobileView("list")}
 									className="p-2 -ml-2 rounded-full hover:bg-accent"
 								>
 									<ArrowLeft className="w-5 h-5" />
@@ -813,7 +971,7 @@ export function Chat() {
 							{isMobile && (
 								<button
 									type="button"
-									onClick={() => setMobileView('analysis')}
+									onClick={() => setMobileView("analysis")}
 									className="p-2 text-muted-foreground hover:text-secondary transition-colors"
 									title={t("analysis")}
 								>
@@ -894,7 +1052,10 @@ export function Chat() {
 						</div>
 					)}
 
-					<div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 min-h-0">
+					<div
+						ref={chatContainerRef}
+						className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 min-h-0"
+					>
 						{/* Sentinel for loading older messages */}
 						<div ref={topSentinelRef} className="h-1" />
 						{directMessages.isFetchingNextPage && (
@@ -903,98 +1064,133 @@ export function Chat() {
 							</div>
 						)}
 						{/* Direct Chat state UI (when no messages yet) */}
-						{activeTab === "direct" && !directChatRoomId && (() => {
-							// State B: Request already sent (requester side)
-							if (detail?.chat_request_status === "pending" || detail?.status === "direct_chat_requested") {
-								return (
-									<div className="flex flex-col items-center justify-center py-16 text-center">
-										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-											<Clock className="w-8 h-8 text-muted-foreground" />
+						{activeTab === "direct" &&
+							!directChatRoomId &&
+							(() => {
+								// State B: Request already sent (requester side)
+								if (
+									detail?.chat_request_status === "pending" ||
+									detail?.status === "direct_chat_requested"
+								) {
+									return (
+										<div className="flex flex-col items-center justify-center py-16 text-center">
+											<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+												<Clock className="w-8 h-8 text-muted-foreground" />
+											</div>
+											<h3 className="text-lg font-black mb-2">
+												{t("direct_chat_request_sent")}
+											</h3>
+											<p className="text-sm text-muted-foreground">
+												{t("direct_chat_request_pending")}
+											</p>
 										</div>
-										<h3 className="text-lg font-black mb-2">{t("direct_chat_request_sent")}</h3>
-										<p className="text-sm text-muted-foreground">{t("direct_chat_request_pending")}</p>
-									</div>
-								);
-							}
-							// State: Received request (responder side)
-							if (pendingRequestForMatch) {
+									);
+								}
+								// State: Received request (responder side)
+								if (pendingRequestForMatch) {
+									return (
+										<div className="flex flex-col items-center justify-center py-16 text-center">
+											<div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4">
+												<Mail className="w-8 h-8 text-secondary" />
+											</div>
+											<h3 className="text-lg font-black mb-2">
+												{t("direct_chat_request_received_title")}
+											</h3>
+											<p className="text-sm text-muted-foreground mb-6">
+												{t("direct_chat_request_received_description", {
+													name: pendingRequestForMatch.requester.nickname,
+												})}
+											</p>
+											<div className="flex gap-3">
+												<button
+													type="button"
+													onClick={async () => {
+														try {
+															await respondChatRequest.mutateAsync({
+																id: pendingRequestForMatch.id,
+																action: "accept",
+															});
+															toast.success(t("direct_chat_accepted"));
+															queryClient.invalidateQueries({
+																queryKey: [
+																	"matching",
+																	"results",
+																	activeSessionId,
+																],
+															});
+														} catch {
+															toast.error(t("direct_chat_request_error"));
+														}
+													}}
+													disabled={respondChatRequest.isPending}
+													className="px-6 py-2.5 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50"
+												>
+													{respondChatRequest.isPending ? (
+														<Loader2 className="w-4 h-4 animate-spin" />
+													) : (
+														t("direct_chat_accept")
+													)}
+												</button>
+												<button
+													type="button"
+													onClick={async () => {
+														try {
+															await respondChatRequest.mutateAsync({
+																id: pendingRequestForMatch.id,
+																action: "decline",
+															});
+															toast.info(t("direct_chat_declined"));
+														} catch {
+															toast.error(t("direct_chat_request_error"));
+														}
+													}}
+													disabled={respondChatRequest.isPending}
+													className="px-6 py-2.5 border border-border text-[11px] font-black uppercase rounded-full hover:bg-muted disabled:opacity-50"
+												>
+													{t("direct_chat_decline")}
+												</button>
+											</div>
+										</div>
+									);
+								}
+								// State A: Can send request
 								return (
 									<div className="flex flex-col items-center justify-center py-16 text-center">
 										<div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4">
-											<Mail className="w-8 h-8 text-secondary" />
+											<MessageCircle className="w-8 h-8 text-secondary" />
 										</div>
-										<h3 className="text-lg font-black mb-2">{t("direct_chat_request_received_title")}</h3>
+										<h3 className="text-lg font-black mb-2">
+											{t("direct_chat_invite_title")}
+										</h3>
 										<p className="text-sm text-muted-foreground mb-6">
-											{t("direct_chat_request_received_description", { name: pendingRequestForMatch.requester.nickname })}
+											{t("direct_chat_invite_description")}
 										</p>
-										<div className="flex gap-3">
-											<button
-												type="button"
-												onClick={async () => {
-													try {
-														await respondChatRequest.mutateAsync({ id: pendingRequestForMatch.id, action: "accept" });
-														toast.success(t("direct_chat_accepted"));
-														queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
-													} catch {
-														toast.error(t("direct_chat_request_error"));
-													}
-												}}
-												disabled={respondChatRequest.isPending}
-												className="px-6 py-2.5 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50"
-											>
-												{respondChatRequest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("direct_chat_accept")}
-											</button>
-											<button
-												type="button"
-												onClick={async () => {
-													try {
-														await respondChatRequest.mutateAsync({ id: pendingRequestForMatch.id, action: "decline" });
-														toast.info(t("direct_chat_declined"));
-													} catch {
-														toast.error(t("direct_chat_request_error"));
-													}
-												}}
-												disabled={respondChatRequest.isPending}
-												className="px-6 py-2.5 border border-border text-[11px] font-black uppercase rounded-full hover:bg-muted disabled:opacity-50"
-											>
-												{t("direct_chat_decline")}
-											</button>
-										</div>
+										<button
+											type="button"
+											onClick={async () => {
+												try {
+													await requestDirectChat.mutateAsync(activeSessionId);
+													toast.success(t("direct_chat_request_sent"));
+													queryClient.invalidateQueries({
+														queryKey: ["matching", "results", activeSessionId],
+													});
+												} catch {
+													toast.error(t("direct_chat_request_error"));
+												}
+											}}
+											disabled={requestDirectChat.isPending}
+											className="px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50 flex items-center gap-2"
+										>
+											{requestDirectChat.isPending ? (
+												<Loader2 className="w-4 h-4 animate-spin" />
+											) : (
+												<Send className="w-4 h-4" />
+											)}
+											{t("direct_chat_request_button")}
+										</button>
 									</div>
 								);
-							}
-							// State A: Can send request
-							return (
-								<div className="flex flex-col items-center justify-center py-16 text-center">
-									<div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4">
-										<MessageCircle className="w-8 h-8 text-secondary" />
-									</div>
-									<h3 className="text-lg font-black mb-2">{t("direct_chat_invite_title")}</h3>
-									<p className="text-sm text-muted-foreground mb-6">{t("direct_chat_invite_description")}</p>
-									<button
-										type="button"
-										onClick={async () => {
-											try {
-												await requestDirectChat.mutateAsync(activeSessionId);
-												toast.success(t("direct_chat_request_sent"));
-												queryClient.invalidateQueries({ queryKey: ["matching", "results", activeSessionId] });
-											} catch {
-												toast.error(t("direct_chat_request_error"));
-											}
-										}}
-										disabled={requestDirectChat.isPending}
-										className="px-8 py-3 bg-secondary text-white text-[11px] font-black uppercase rounded-full hover:bg-secondary/90 disabled:opacity-50 flex items-center gap-2"
-									>
-										{requestDirectChat.isPending ? (
-											<Loader2 className="w-4 h-4 animate-spin" />
-										) : (
-											<Send className="w-4 h-4" />
-										)}
-										{t("direct_chat_request_button")}
-									</button>
-								</div>
-							);
-						})()}
+							})()}
 
 						{/* Message list */}
 						{displaySession.messages.map((msg) => {
@@ -1003,7 +1199,7 @@ export function Chat() {
 								msg.senderId === "user" ||
 								msg.senderId === "my_fox";
 							return (
-								<motion.div
+								<m.div
 									key={msg.id}
 									initial={{ opacity: 0, y: 10 }}
 									animate={{ opacity: 1, y: 0 }}
@@ -1044,13 +1240,13 @@ export function Chat() {
 											{msg.senderName} &bull; {formatTime(msg.timestamp)}
 										</span>
 									</div>
-								</motion.div>
+								</m.div>
 							);
 						})}
 
 						<AnimatePresence>
 							{displaySession.suggestion && (
-								<motion.div
+								<m.div
 									initial={{ opacity: 0, scale: 0.95 }}
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
@@ -1064,7 +1260,9 @@ export function Chat() {
 											</span>
 										</div>
 										<div className="bg-background border border-border rounded-xl p-4 mb-4 text-sm font-medium italic">
-											&ldquo;{messageToPlainText(displaySession.suggestion.text)}&rdquo;
+											&ldquo;
+											{messageToPlainText(displaySession.suggestion.text)}
+											&rdquo;
 										</div>
 										<div className="flex gap-2 justify-end">
 											<button
@@ -1083,7 +1281,7 @@ export function Chat() {
 											</button>
 										</div>
 									</div>
-								</motion.div>
+								</m.div>
 							)}
 						</AnimatePresence>
 						<div ref={messagesEndRef} />
@@ -1125,17 +1323,21 @@ export function Chat() {
 				</div>
 
 				{/* Right Info Panel */}
-				<div className={cn(
-					isMobile
-						? mobileView === 'analysis' ? "col-span-12 flex flex-col gap-6 min-h-0 overflow-y-auto" : "hidden"
-						: "hidden lg:col-span-3 lg:flex flex-col gap-6 min-h-0 overflow-y-auto pr-1",
-				)}>
+				<div
+					className={cn(
+						isMobile
+							? mobileView === "analysis"
+								? "col-span-12 flex flex-col gap-6 min-h-0 overflow-y-auto"
+								: "hidden"
+							: "hidden lg:col-span-3 lg:flex flex-col gap-6 min-h-0 overflow-y-auto pr-1",
+					)}
+				>
 					{/* Mobile analysis header */}
-					{isMobile && mobileView === 'analysis' && (
+					{isMobile && mobileView === "analysis" && (
 						<div className="flex items-center gap-3 py-2 shrink-0">
 							<button
 								type="button"
-								onClick={() => setMobileView('chat')}
+								onClick={() => setMobileView("chat")}
 								className="p-2 -ml-2 rounded-full hover:bg-accent"
 							>
 								<ArrowLeft className="w-5 h-5" />
@@ -1163,7 +1365,7 @@ export function Chat() {
 									</span>
 								</div>
 								<div className="h-1 w-full bg-muted rounded-full overflow-hidden mb-4">
-									<motion.div
+									<m.div
 										initial={{ width: 0 }}
 										animate={{
 											width: `${displaySession.compatibilityScore}%`,
@@ -1190,72 +1392,101 @@ export function Chat() {
 								{t("trait_synergy")}
 							</span>
 						</div>
-						{traitScores ? (() => {
-							const peakIdx = traitScores.indexOf(Math.max(...traitScores));
-							const avg = Math.round(traitScores.reduce((a, b) => a + b, 0) / traitScores.length);
-							const angles = TRAIT_AXES.map((_, i) => (360 / TRAIT_AXES.length) * i - 90);
-							const labelPositions = angles.map((deg) => {
-								const rad = (Math.PI / 180) * deg;
-								return { x: 50 + 48 * Math.cos(rad), y: 50 + 48 * Math.sin(rad) };
-							});
-							return (
-								<>
-									<div className="relative w-full aspect-square flex items-center justify-center">
-										<svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" aria-hidden="true">
-											{[0.2, 0.4, 0.6, 0.8, 1.0].map((level) => (
-												<polygon
-													key={level}
-													points={angles
-														.map((deg) => {
-															const rad = (Math.PI / 180) * deg;
-															return `${50 + 40 * level * Math.cos(rad)},${50 + 40 * level * Math.sin(rad)}`;
+						{traitScores ? (
+							(() => {
+								const peakIdx = traitScores.indexOf(Math.max(...traitScores));
+								const avg = Math.round(
+									traitScores.reduce((a, b) => a + b, 0) / traitScores.length,
+								);
+								const angles = TRAIT_AXES.map(
+									(_, i) => (360 / TRAIT_AXES.length) * i - 90,
+								);
+								const labelPositions = angles.map((deg) => {
+									const rad = (Math.PI / 180) * deg;
+									return {
+										x: 50 + 48 * Math.cos(rad),
+										y: 50 + 48 * Math.sin(rad),
+									};
+								});
+								return (
+									<>
+										<div className="relative w-full aspect-square flex items-center justify-center">
+											<svg
+												viewBox="0 0 100 100"
+												className="w-full h-full overflow-visible"
+												aria-hidden="true"
+											>
+												{[0.2, 0.4, 0.6, 0.8, 1.0].map((level) => (
+													<polygon
+														key={level}
+														points={angles
+															.map((deg) => {
+																const rad = (Math.PI / 180) * deg;
+																return `${50 + 40 * level * Math.cos(rad)},${50 + 40 * level * Math.sin(rad)}`;
+															})
+															.join(" ")}
+														className="fill-none stroke-border stroke-[0.5]"
+													/>
+												))}
+												{angles.map((deg) => {
+													const rad = (Math.PI / 180) * deg;
+													return (
+														<line
+															key={deg}
+															x1="50"
+															y1="50"
+															x2={50 + 40 * Math.cos(rad)}
+															y2={50 + 40 * Math.sin(rad)}
+															className="stroke-border stroke-[0.5]"
+														/>
+													);
+												})}
+												<m.polygon
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													points={traitScores
+														.map((val, i) => {
+															const rad = (Math.PI / 180) * angles[i];
+															const dist = (val / 100) * 40;
+															return `${50 + dist * Math.cos(rad)},${50 + dist * Math.sin(rad)}`;
 														})
 														.join(" ")}
-													className="fill-none stroke-border stroke-[0.5]"
+													className="fill-secondary/20 stroke-secondary stroke-1"
 												/>
-											))}
-											{angles.map((deg) => {
-												const rad = (Math.PI / 180) * deg;
-												return (
-													<line key={deg} x1="50" y1="50" x2={50 + 40 * Math.cos(rad)} y2={50 + 40 * Math.sin(rad)} className="stroke-border stroke-[0.5]" />
-												);
-											})}
-											<motion.polygon
-												initial={{ opacity: 0, scale: 0.8 }}
-												animate={{ opacity: 1, scale: 1 }}
-												points={traitScores
-													.map((val, i) => {
-														const rad = (Math.PI / 180) * angles[i];
-														const dist = (val / 100) * 40;
-														return `${50 + dist * Math.cos(rad)},${50 + dist * Math.sin(rad)}`;
-													})
-													.join(" ")}
-												className="fill-secondary/20 stroke-secondary stroke-1"
-											/>
-											{labelPositions.map((pos, i) => (
-												<text key={TRAIT_AXES[i].key} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground font-bold text-[3.5px]">
-													{TRAIT_AXES[i].label}
-												</text>
-											))}
-										</svg>
-									</div>
-									<div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-1">
-										<div className="flex flex-col">
-											<span className="text-[8px] font-black text-muted-foreground uppercase">
-												{t("peak")}
-											</span>
-											<span className="text-xs font-black truncate">{TRAIT_AXES[peakIdx].label}</span>
+												{labelPositions.map((pos, i) => (
+													<text
+														key={TRAIT_AXES[i].key}
+														x={pos.x}
+														y={pos.y}
+														textAnchor="middle"
+														dominantBaseline="central"
+														className="fill-muted-foreground font-bold text-[3.5px]"
+													>
+														{TRAIT_AXES[i].label}
+													</text>
+												))}
+											</svg>
 										</div>
-										<div className="flex flex-col items-end">
-											<span className="text-[8px] font-black text-muted-foreground uppercase">
-												{t("avg")}
-											</span>
-											<span className="text-xs font-black">{avg}%</span>
+										<div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-1">
+											<div className="flex flex-col">
+												<span className="text-[8px] font-black text-muted-foreground uppercase">
+													{t("peak")}
+												</span>
+												<span className="text-xs font-black truncate">
+													{TRAIT_AXES[peakIdx].label}
+												</span>
+											</div>
+											<div className="flex flex-col items-end">
+												<span className="text-[8px] font-black text-muted-foreground uppercase">
+													{t("avg")}
+												</span>
+												<span className="text-xs font-black">{avg}%</span>
+											</div>
 										</div>
-									</div>
-								</>
-							);
-						})() : (
+									</>
+								);
+							})()
+						) : (
 							<div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
 								{t("no_trait_data")}
 							</div>
@@ -1275,13 +1506,18 @@ export function Chat() {
 								{topicDist.map((topic, i) => (
 									<div key={topic.topic} className="flex items-center gap-3">
 										<div
-											className={cn("w-1.5 h-1.5 rounded-full", TOPIC_COLORS[i % TOPIC_COLORS.length])}
+											className={cn(
+												"w-1.5 h-1.5 rounded-full",
+												TOPIC_COLORS[i % TOPIC_COLORS.length],
+											)}
 										/>
 										<div className="flex-1 flex justify-between items-center">
 											<span className="text-[10px] font-black uppercase tracking-tight">
 												{topic.topic}
 											</span>
-											<span className="text-[10px] font-black">{topic.percentage}%</span>
+											<span className="text-[10px] font-black">
+												{topic.percentage}%
+											</span>
 										</div>
 									</div>
 								))}
@@ -1299,7 +1535,7 @@ export function Chat() {
 			<AnimatePresence>
 				{showReportModal && (
 					<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-						<motion.div
+						<m.div
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}
@@ -1332,7 +1568,7 @@ export function Chat() {
 									</button>
 								</div>
 							</div>
-						</motion.div>
+						</m.div>
 					</div>
 				)}
 			</AnimatePresence>
@@ -1341,7 +1577,7 @@ export function Chat() {
 			<AnimatePresence>
 				{showUnmatchModal && (
 					<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-						<motion.div
+						<m.div
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}
@@ -1375,7 +1611,7 @@ export function Chat() {
 									</button>
 								</div>
 							</div>
-						</motion.div>
+						</m.div>
 					</div>
 				)}
 			</AnimatePresence>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RoundMessage {
 	round_number: number;
@@ -8,7 +8,12 @@ interface RoundMessage {
 }
 
 interface FoxSearchWsState {
-	status: "connecting" | "in_progress" | "completed" | "failed" | "disconnected";
+	status:
+		| "connecting"
+		| "in_progress"
+		| "completed"
+		| "failed"
+		| "disconnected";
 	current_round: number;
 	total_rounds: number;
 	messages: RoundMessage[];

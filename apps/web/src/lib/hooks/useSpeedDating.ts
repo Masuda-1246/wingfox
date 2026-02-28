@@ -1,6 +1,11 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	queryOptions,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 export interface SpeedDatingPersona {
 	id: string;
@@ -16,9 +21,21 @@ const speedDatingApi = client.api["speed-dating"] as {
 		$post: (opts: { json: { persona_id: string } }) => Promise<Response>;
 		":id": {
 			$get: (opts: { param: { id: string } }) => Promise<Response>;
-			messages: { $post: (opts: { param: { id: string }; json: { content: string } }) => Promise<Response> };
-			complete: { $post: (opts: { param: { id: string }; json?: { transcript?: { source: string; message: string }[] } }) => Promise<Response> };
-			"signed-url": { $get: (opts: { param: { id: string } }) => Promise<Response> };
+			messages: {
+				$post: (opts: {
+					param: { id: string };
+					json: { content: string };
+				}) => Promise<Response>;
+			};
+			complete: {
+				$post: (opts: {
+					param: { id: string };
+					json?: { transcript?: { source: string; message: string }[] };
+				}) => Promise<Response>;
+			};
+			"signed-url": {
+				$get: (opts: { param: { id: string } }) => Promise<Response>;
+			};
 		};
 	};
 };
@@ -81,7 +98,9 @@ export function useSpeedDatingSession(sessionId: string | undefined | null) {
 	});
 }
 
-export function useSendSpeedDatingMessage(sessionId: string | undefined | null) {
+export function useSendSpeedDatingMessage(
+	sessionId: string | undefined | null,
+) {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (content: string) => {
@@ -93,7 +112,9 @@ export function useSendSpeedDatingMessage(sessionId: string | undefined | null) 
 			return unwrapApiResponse(res);
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["speed-dating", "sessions", sessionId] });
+			queryClient.invalidateQueries({
+				queryKey: ["speed-dating", "sessions", sessionId],
+			});
 		},
 	});
 }
@@ -107,7 +128,11 @@ export function useSpeedDatingSignedUrl() {
 			return unwrapApiResponse<{
 				signed_url: string;
 				overrides: {
-					agent: { prompt: { prompt: string }; firstMessage?: string; language?: string };
+					agent: {
+						prompt: { prompt: string };
+						firstMessage?: string;
+						language?: string;
+					};
 					tts?: { voiceId?: string };
 				};
 				persona: { name: string };
@@ -118,7 +143,9 @@ export function useSpeedDatingSignedUrl() {
 
 type SpeedDatingTranscript = { source: string; message: string }[];
 
-export function useCompleteSpeedDatingSession(defaultSessionId: string | undefined | null) {
+export function useCompleteSpeedDatingSession(
+	defaultSessionId: string | undefined | null,
+) {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (
@@ -127,7 +154,9 @@ export function useCompleteSpeedDatingSession(defaultSessionId: string | undefin
 				| { sessionId?: string | null; transcript?: SpeedDatingTranscript },
 		) => {
 			const transcript = Array.isArray(payload) ? payload : payload?.transcript;
-			const sessionId = (Array.isArray(payload) ? undefined : payload?.sessionId) ?? defaultSessionId;
+			const sessionId =
+				(Array.isArray(payload) ? undefined : payload?.sessionId) ??
+				defaultSessionId;
 			if (!sessionId) throw new Error("Session id required");
 			const res = await speedDatingApi.sessions[":id"].complete.$post({
 				param: { id: sessionId },
@@ -136,7 +165,9 @@ export function useCompleteSpeedDatingSession(defaultSessionId: string | undefin
 			return { sessionId, data: await unwrapApiResponse(res) };
 		},
 		onSuccess: ({ sessionId }) => {
-			queryClient.invalidateQueries({ queryKey: ["speed-dating", "sessions", sessionId] });
+			queryClient.invalidateQueries({
+				queryKey: ["speed-dating", "sessions", sessionId],
+			});
 		},
 	});
 }

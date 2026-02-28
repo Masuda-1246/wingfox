@@ -1,5 +1,3 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +8,9 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSpeedDate, type TranscriptEntry } from "@/hooks/use-speed-date";
+import { type TranscriptEntry, useSpeedDate } from "@/hooks/use-speed-date";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/speed-dating")({
 	component: SpeedDatingPage,
@@ -140,10 +140,14 @@ function IdleView({
 						))}
 					</div>
 					<div className="space-y-2">
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							htmlFor="dev-signed-url"
+							className="text-xs font-medium text-muted-foreground"
+						>
 							Signed URL (dev testing)
 						</label>
 						<input
+							id="dev-signed-url"
 							type="text"
 							value={devSignedUrl}
 							onChange={(e) => onDevSignedUrlChange(e.target.value)}
@@ -151,9 +155,7 @@ function IdleView({
 							className="w-full px-3 py-2 text-sm border rounded-md"
 						/>
 					</div>
-					{error && (
-						<p className="text-sm text-destructive">{error}</p>
-					)}
+					{error && <p className="text-sm text-destructive">{error}</p>}
 					<Button
 						size="lg"
 						className="mt-4 w-full"
@@ -181,6 +183,7 @@ function TalkingView({
 }) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: transcript is the intentional trigger to scroll on new messages
 	useEffect(() => {
 		if (scrollRef.current) {
 			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -218,8 +221,11 @@ function TalkingView({
 								会話が始まるのを待っています...
 							</p>
 						)}
-						{transcript.map((entry, i) => (
-							<TranscriptBubble key={`${entry.timestamp}-${i}`} entry={entry} />
+						{transcript.map((entry) => (
+							<TranscriptBubble
+								key={entry.id ?? `${entry.timestamp}-${entry.source}`}
+								entry={entry}
+							/>
 						))}
 					</div>
 				</ScrollArea>
@@ -291,8 +297,11 @@ function DoneView({
 										トランスクリプトはありません
 									</p>
 								)}
-								{transcript.map((entry, i) => (
-									<div key={`${entry.timestamp}-${i}`} className="text-sm">
+								{transcript.map((entry) => (
+									<div
+										key={entry.id ?? `${entry.timestamp}-${entry.source}`}
+										className="text-sm"
+									>
 										<span className="font-semibold">
 											{entry.source === "ai" ? testPersona.name : "あなた"}:
 										</span>{" "}

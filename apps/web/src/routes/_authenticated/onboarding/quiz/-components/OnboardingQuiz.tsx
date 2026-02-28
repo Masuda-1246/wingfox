@@ -1,10 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { OnboardingStepLabel } from "@/components/onboarding/OnboardingContainer";
+import { Button } from "@/components/ui/button";
 import {
-	useQuizQuestions,
-	useQuizAnswers,
-	useSubmitQuizAnswers,
 	type QuizQuestion,
+	useQuizAnswers,
+	useQuizQuestions,
+	useSubmitQuizAnswers,
 } from "@/lib/hooks/useQuiz";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -86,7 +86,9 @@ export function OnboardingQuiz() {
 		const data = Array.isArray(quizAnswersData) ? quizAnswersData : [];
 		const initial: Record<string, string[]> = {};
 		for (const row of data) {
-			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+			initial[row.question_id] = Array.isArray(row.selected)
+				? row.selected
+				: [];
 		}
 		setAnswers((prev) => {
 			const result = Object.keys(prev).length > 0 ? prev : initial;
@@ -111,9 +113,10 @@ export function OnboardingQuiz() {
 				}) as string[] | Record<string, unknown>,
 			)
 		: [];
-	const currentSelected = current ? answers[current.id] ?? [] : [];
+	const currentSelected = current ? (answers[current.id] ?? []) : [];
 	const hasCurrentSelection = currentSelected.length > 0;
-	const progress = sortedQuestions.length > 0 ? (step + 1) / sortedQuestions.length : 0;
+	const progress =
+		sortedQuestions.length > 0 ? (step + 1) / sortedQuestions.length : 0;
 
 	const handleSelect = useCallback(
 		(q: QuizQuestion, value: string) => {
@@ -172,7 +175,7 @@ export function OnboardingQuiz() {
 		);
 	}
 
-		return (
+	return (
 		<div className="space-y-6">
 			<div className="w-full h-2 rounded-full bg-muted overflow-hidden">
 				<div
@@ -182,6 +185,7 @@ export function OnboardingQuiz() {
 					aria-valuenow={Math.round(progress * 100)}
 					aria-valuemin={0}
 					aria-valuemax={100}
+					tabIndex={0}
 				/>
 			</div>
 
@@ -241,9 +245,7 @@ export function OnboardingQuiz() {
 															: "border-muted-foreground/30",
 													)}
 												>
-													{isSelected ? (
-														<Check className="h-3 w-3" />
-													) : null}
+													{isSelected ? <Check className="h-3 w-3" /> : null}
 												</span>
 											)}
 											{opt.label}

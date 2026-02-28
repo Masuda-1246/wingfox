@@ -1,375 +1,465 @@
 {
-  "profile": {
-    "title": "Profile Setup",
-    "description": "First, tell us a bit about yourself.",
-    "nickname": "Nickname",
-    "nickname_placeholder": "Enter the name you want to display",
-    "birth_year": "Birth year",
-    "birth_year_placeholder": "e.g. 1990",
-    "gender": "Gender",
-    "gender_select": "Select",
-    "gender_male": "Male",
-    "gender_female": "Female",
-    "gender_other": "Other",
-    "gender_undisclosed": "Prefer not to say",
-    "submit": "Continue",
-    "submit_success": "Saved",
-    "submit_error": "Failed to save",
-    "error_nickname": "Please enter your nickname",
-    "error_nickname_too_long": "Nickname must be 50 characters or less",
-    "error_birth_year": "Please enter a birth year between 1900 and 2100",
-    "error_birth_year_invalid": "Please enter a valid year",
-    "error_birth_year_range": "Year must be between 1900 and 2100",
-    "error_gender": "Please select your gender"
-  },
-  "quiz": {
-    "title": "Question Quiz",
-    "description": "Tell us your preferences and personality. Used for persona generation.",
-    "prev": "Prev",
-    "next": "Next",
-    "submit": "Submit",
-    "submit_success": "Answers saved",
-    "submit_error": "Failed to save",
-    "categories": {
-      "lifestyle": "Lifestyle",
-      "communication": "Communication",
-      "humor": "Humor",
-      "expression": "Expression",
-      "values": "Values",
-      "planning": "Planning",
-      "relationship": "Relationship",
-      "recovery": "Recovery",
-      "daily_rhythm": "Daily rhythm",
-      "lifestyle_zone": "Lifestyle zone",
-      "personality": "Personality",
-      "basic": "Basic info",
-      "romance": "Romance",
-      "hobbies": "Hobbies"
-    },
-    "questions": {
-      "q1": {
-        "text": "What feels most like a \"fulfilling day off\" to you?",
-        "options": [
-          { "value": "a", "label": "Going out with friends and hopping around different places" },
-          { "value": "b", "label": "Relaxing at home and doing only what you enjoy" },
-          { "value": "c", "label": "Focusing on hobbies or lessons to improve yourself" },
-          { "value": "d", "label": "Going with the flow and deciding on the spot" }
-        ]
-      },
-      "q2": {
-        "text": "When do you feel \"at ease\" in a conversation?",
-        "options": [
-          { "value": "a", "label": "When the conversation flows with a good rhythm and lots of laughter" },
-          { "value": "b", "label": "When you can have a slow, deep talk and silences feel fine" },
-          { "value": "c", "label": "When you resonate with each other and \"I get it!\" keeps coming up" },
-          { "value": "d", "label": "When each other's stories spark something and you discover something new" }
-        ]
-      },
-      "q3": {
-        "text": "What kind of moment makes you laugh out loud?",
-        "options": [
-          { "value": "a", "label": "When everyday \"relatable\" stuff is said in a funny way" },
-          { "value": "b", "label": "When the conversation suddenly goes in an unexpected direction" },
-          { "value": "c", "label": "When something surreal and nonsensical somehow hits the spot" },
-          { "value": "d", "label": "When you hear a sharp, slightly biting remark" }
-        ]
-      },
-      "q4": {
-        "text": "When sharing your feelings with someone, which is closer to you?",
-        "options": [
-          { "value": "a", "label": "Putting what you feel into words right away" },
-          { "value": "b", "label": "Taking time to think, then choosing your words" },
-          { "value": "c", "label": "Showing through actions and attitude rather than words" },
-          { "value": "d", "label": "Hoping they get it from the vibe" }
-        ]
-      },
-      "q5": {
-        "text": "If you're going to spend money, which fits you best?",
-        "options": [
-          { "value": "a", "label": "Spending on travel and experiences (memories last)" },
-          { "value": "b", "label": "Collecting things you love (you like having stuff)" },
-          { "value": "c", "label": "Saving as much as possible (peace of mind matters)" },
-          { "value": "d", "label": "Whatever has the best cost-performance (rational is best)" }
-        ]
-      },
-      "q6": {
-        "text": "How do you usually plan your schedule?",
-        "options": [
-          { "value": "a", "label": "Decide in detail in advance and stick to the plan" },
-          { "value": "b", "label": "Set a rough direction and decide the rest on the spot" },
-          { "value": "c", "label": "Often decide at the last minute (you like going with the flow)" },
-          { "value": "d", "label": "You make plans but are fine changing them (flexible)" }
-        ]
-      },
-      "q7": {
-        "text": "In relationships with friends and acquaintances, which is closer to you?",
-        "options": [
-          { "value": "a", "label": "Valuing a few deep relationships" },
-          { "value": "b", "label": "Wanting to stay connected with many people, even if loosely" },
-          { "value": "c", "label": "Valuing time alone just as much" },
-          { "value": "d", "label": "It depends on the situation" }
-        ]
-      },
-      "q8": {
-        "text": "When you're tired, what helps you recover most?",
-        "options": [
-          { "value": "a", "label": "Talking to someone and venting" },
-          { "value": "b", "label": "Having quiet time alone to recharge" },
-          { "value": "c", "label": "Moving your body to refresh" },
-          { "value": "d", "label": "Getting absorbed in something you enjoy to switch mood" }
-        ]
-      },
-      "q9": {
-        "text": "Which is closer to your daily rhythm?",
-        "options": [
-          { "value": "a", "label": "Early riser who focuses in the morning (morning type)" },
-          { "value": "b", "label": "More active at night, often up late (night owl)" },
-          { "value": "c", "label": "No fixed pattern, varies by day" },
-          { "value": "d", "label": "As regular as possible: fixed wake and sleep times" }
-        ]
-      },
-      "q10": {
-        "text": "Which area do you often go to or like best?",
-        "options": [
-          { "value": "a", "label": "City center (shopping, food, entertainment)" },
-          { "value": "b", "label": "Residential / downtown (calm atmosphere)" },
-          { "value": "c", "label": "Nature / suburbs (parks, mountains, rivers)" },
-          { "value": "d", "label": "No strong preference, depends on the day" }
-        ]
-      },
-      "q1_weekend": {
-        "text": "How do you like to spend your ideal weekend?",
-        "options": [
-          { "value": "friends", "label": "Going out with friends" },
-          { "value": "home", "label": "Relaxing at home" },
-          { "value": "explore", "label": "Exploring new places" },
-          { "value": "sports", "label": "Sports or exercise" }
-        ]
-      },
-      "q2_travel": {
-        "text": "How do you plan trips?",
-        "options": [
-          { "value": "detailed", "label": "Detailed plan" },
-          { "value": "rough_plan", "label": "Rough plan, rest is flexible" },
-          { "value": "no_plan", "label": "No plan" },
-          { "value": "delegate", "label": "Let someone else decide" }
-        ]
-      },
-      "q3_contact": {
-        "text": "How often do you contact friends?",
-        "options": [
-          { "value": "daily", "label": "Daily" },
-          { "value": "weekly", "label": "A few times a week" },
-          { "value": "when_needed", "label": "Only when needed" },
-          { "value": "sns_only", "label": "SNS is enough" }
-        ]
-      },
-      "q4_indoor": {
-        "text": "Favorite indoor hobbies? (multiple choice)",
-        "options": [
-          { "value": "movie", "label": "Movies & TV" },
-          { "value": "reading", "label": "Reading" },
-          { "value": "game", "label": "Games" },
-          { "value": "cooking", "label": "Cooking" },
-          { "value": "music", "label": "Music" },
-          { "value": "none", "label": "None" }
-        ]
-      },
-      "q5_outdoor": {
-        "text": "Favorite outdoor hobbies? (multiple choice)",
-        "options": [
-          { "value": "sports", "label": "Sports" },
-          { "value": "travel", "label": "Travel" },
-          { "value": "camp", "label": "Camping" },
-          { "value": "cafe", "label": "Cafe hopping" },
-          { "value": "walk", "label": "Walking" },
-          { "value": "none", "label": "None" }
-        ]
-      },
-      "q6_work_life": {
-        "text": "What do you value more, work or private life?",
-        "options": [
-          { "value": "work", "label": "Work" },
-          { "value": "private", "label": "Private life" },
-          { "value": "balance", "label": "Balance" },
-          { "value": "depends", "label": "It varies" }
-        ]
-      },
-      "q7_future": {
-        "text": "What do you want to prioritize in the future?",
-        "options": [
-          { "value": "family", "label": "Family time" },
-          { "value": "career", "label": "Career" },
-          { "value": "hobby", "label": "Hobbies" },
-          { "value": "contribution", "label": "Contributing to society" }
-        ]
-      },
-      "q8_relationship": {
-        "text": "What's your ideal relationship?",
-        "options": [
-          { "value": "together", "label": "Always together" },
-          { "value": "distance", "label": "Comfortable distance" },
-          { "value": "independent", "label": "Independent" },
-          { "value": "situation", "label": "Depends on the situation" }
-        ]
-      },
-      "q9_partner": {
-        "text": "What do you value most in a partner?",
-        "options": [
-          { "value": "kindness", "label": "Kindness" },
-          { "value": "humor", "label": "Humor" },
-          { "value": "intelligence", "label": "Intelligence" },
-          { "value": "common_interest", "label": "Shared interests" },
-          { "value": "stability", "label": "Stability" }
-        ]
-      },
-      "q10_diet": {
-        "text": "Any dietary preferences?",
-        "options": [
-          { "value": "cook", "label": "I cook at home" },
-          { "value": "eat_out", "label": "I eat out" },
-          { "value": "no_preference", "label": "No preference" },
-          { "value": "health", "label": "Health-conscious" }
-        ]
-      },
-      "q11_age": {
-        "text": "Age range?",
-        "options": [
-          { "value": "20-24", "label": "20-24" },
-          { "value": "25-29", "label": "25-29" },
-          { "value": "30-34", "label": "30-34" },
-          { "value": "35-39", "label": "35-39" },
-          { "value": "40+", "label": "40+" }
-        ]
-      },
-      "q12_location": {
-        "text": "Where do you live?",
-        "options": [
-          { "value": "hokkaido", "label": "Hokkaido" },
-          { "value": "tokyo", "label": "Tokyo" },
-          { "value": "kanagawa", "label": "Kanagawa" },
-          { "value": "osaka", "label": "Osaka" },
-          { "value": "aichi", "label": "Aichi" },
-          { "value": "fukuoka", "label": "Fukuoka" },
-          { "value": "other", "label": "Other" }
-        ]
-      }
-    }
-  },
-  "speed_dating": {
-    "lounge_title": "Speed Date",
-    "lounge_subtitle": "Have short voice conversations with 3 virtual guests, one after another. Start when you're ready.",
-    "page_hint": "What is speed dating? You talk to several people for a few minutes each to see who you click with. Here, 3 AI guests will chat with you by voice.",
-    "hint_label": "Hint",
-    "generating_personas": "Finding your dates tonight",
-    "generating_personas_hint": "This may take a moment.",
-    "display_name": "Nickname",
-    "name_placeholder": "Name you want to display",
-    "gender": "Gender",
-    "gender_select": "Select",
-    "gender_male": "Male",
-    "gender_female": "Female",
-    "gender_other": "Other",
-    "interests": "Interests",
-    "interest_music": "Music",
-    "interest_movies": "Movies",
-    "interest_tech": "Tech",
-    "interest_travel": "Travel",
-    "interest_art": "Art",
-    "interest_sports": "Sports",
-    "interest_cooking": "Cooking",
-    "interest_reading": "Reading",
-    "enter_speed_date": "Start Speed Date",
-    "preparing": "Preparing...",
-    "error_basic_info": "Please enter nickname and gender",
-    "error_guest_failed": "Failed to prepare guests",
-    "error_regen_failed": "Failed to regenerate dates",
-    "error_session_save_failed": "Failed to save session",
-    "error_voice_failed": "Failed to prepare voice session. Please try again.",
-    "error_start_failed": "Failed to start Speed Date",
-    "error_complete_failed": "Failed to complete session",
-    "next_guest": "Next guest",
-    "to_review": "To review",
-    "complete_session": "Session complete",
-    "finalize_persona": "Finalize Persona",
-    "creating": "Creating...",
-    "sync_complete": "Sync complete",
-    "sync_description": "Your interaction rhythm has been analyzed. We will generate your persona.",
-    "birth_year": "Birth year",
-    "birth_year_placeholder": "e.g. 1990",
-    "tonights_dates": "Tonight's Dates",
-    "candidates_count": "{{count}} candidates",
-    "regenerate": "Regenerate",
-    "regen_success": "Dates regenerated",
-    "no_candidates": "No candidates yet. They'll be generated when you start, or tap Regenerate.",
-    "finding_guests": "Finding tonight's guests...",
-    "preparing_chat": "Preparing conversation with {{name}}...",
-    "finding_dates": "Finding 3 date partners. Please wait...",
-    "slow_hint": "Taking longer than expected. Please check your connection.",
-    "back_to_start": "Back to start",
-    "connecting": "Connecting...",
-    "speaking": "Speaking...",
-    "listening": "Listening...",
-    "starting_voice": "Starting voice session...",
-    "waiting_connection": "Waiting for connection...",
-    "waiting_conversation": "Waiting for conversation to start...",
-    "end_conversation": "End Conversation",
-    "preparing_next": "Preparing next date partner...",
-    "session_complete_title": "Session Complete",
-    "session_complete_desc": "Conversations complete. Review and confirm your profile on the next page.",
-    "generating_profile": "Analyzing your conversations...",
-    "generating_wingfox": "Creating your AI companion...",
-    "generation_complete": "All done!",
-    "generation_failed_title": "Generation Failed",
-    "generation_failed_desc": "Something went wrong while generating your profile. You can retry or skip to the review page.",
-    "retry_generation": "Retry",
-    "skip_to_review": "Skip to review page",
-    "step_profile": "Profile",
-    "step_wingfox": "WingFox"
-  },
-  "review": {
-    "title": "Profile Review",
-    "description": "Review the generated profile and persona, then confirm if everything looks good.",
-    "confirm": "Confirm",
-    "reset": "Start over",
-    "confirm_success": "Profile confirmed",
-    "confirm_error": "Failed to confirm",
-    "reset_success": "Onboarding has been reset",
-    "profile_summary": "Profile Summary",
-    "personality_traits": "Personality Traits",
-    "basic_info": "Basic Info",
-    "location": "Location",
-    "age_range": "Age Range",
-    "occupation": "Occupation",
-    "display_name": "Display Name",
-    "interaction_style": "Interaction Style",
-    "warmup_speed": "Warmup Speed",
-    "humor_responsiveness": "Humor Responsiveness",
-    "self_disclosure_depth": "Self-Disclosure Depth",
-    "emotional_responsiveness": "Emotional Responsiveness",
-    "conflict_style": "Conflict Style",
-    "attachment_tendency": "Attachment Tendency",
-    "rhythm_preference": "Rhythm Preference",
-    "mirroring_tendency": "Mirroring Tendency",
-    "wingfox": "WingFox",
-    "wingfox_not_generated": "WingFox not yet generated",
-    "wingfox_not_generated_desc": "Profile exists but AI persona generation may have failed or is still in progress. Try regenerating below, or start over.",
-    "wingfox_regenerate": "Regenerate WingFox",
-    "profile_ready": "Profile is ready. Confirm to start matching.",
-    "profile_not_generated": "Profile not generated yet.",
-    "wingfox_generated": "WingFox generated",
-    "wingfox_gen_failed": "WingFox generation failed",
-    "profile_needs_generation": "Profile needs to be generated first.",
-    "confirm_failed": "Confirmation failed",
-    "wingfox_not_ready": "WingFox is not ready yet. Start over or wait and try again.",
-    "interaction_dna": "Interaction DNA",
-    "disable_auto": "Disable auto-generation",
-    "enable_auto": "Enable auto-generation",
-    "generation_failed_title": "Generation failed. Please try again or refresh the page.",
-    "dna_layer1": "Meeting Affinity",
-    "dna_layer2": "Psychological Sync",
-    "dna_layer3": "Future Compatibility",
-    "dna_confidence": "Confidence",
-    "dna_reasoning": "Evidence"
-  }
+	"profile": {
+		"title": "Profile Setup",
+		"description": "First, tell us a bit about yourself.",
+		"nickname": "Nickname",
+		"nickname_placeholder": "Enter the name you want to display",
+		"birth_year": "Birth year",
+		"birth_year_placeholder": "e.g. 1990",
+		"gender": "Gender",
+		"gender_select": "Select",
+		"gender_male": "Male",
+		"gender_female": "Female",
+		"gender_other": "Other",
+		"gender_undisclosed": "Prefer not to say",
+		"submit": "Continue",
+		"submit_success": "Saved",
+		"submit_error": "Failed to save",
+		"error_nickname": "Please enter your nickname",
+		"error_nickname_too_long": "Nickname must be 50 characters or less",
+		"error_birth_year": "Please enter a birth year between 1900 and 2100",
+		"error_birth_year_invalid": "Please enter a valid year",
+		"error_birth_year_range": "Year must be between 1900 and 2100",
+		"error_gender": "Please select your gender"
+	},
+	"quiz": {
+		"title": "Question Quiz",
+		"description": "Tell us your preferences and personality. Used for persona generation.",
+		"prev": "Prev",
+		"next": "Next",
+		"submit": "Submit",
+		"submit_success": "Answers saved",
+		"submit_error": "Failed to save",
+		"categories": {
+			"lifestyle": "Lifestyle",
+			"communication": "Communication",
+			"humor": "Humor",
+			"expression": "Expression",
+			"values": "Values",
+			"planning": "Planning",
+			"relationship": "Relationship",
+			"recovery": "Recovery",
+			"daily_rhythm": "Daily rhythm",
+			"lifestyle_zone": "Lifestyle zone",
+			"personality": "Personality",
+			"basic": "Basic info",
+			"romance": "Romance",
+			"hobbies": "Hobbies"
+		},
+		"questions": {
+			"q1": {
+				"text": "What feels most like a \"fulfilling day off\" to you?",
+				"options": [
+					{
+						"value": "a",
+						"label": "Going out with friends and hopping around different places"
+					},
+					{
+						"value": "b",
+						"label": "Relaxing at home and doing only what you enjoy"
+					},
+					{
+						"value": "c",
+						"label": "Focusing on hobbies or lessons to improve yourself"
+					},
+					{
+						"value": "d",
+						"label": "Going with the flow and deciding on the spot"
+					}
+				]
+			},
+			"q2": {
+				"text": "When do you feel \"at ease\" in a conversation?",
+				"options": [
+					{
+						"value": "a",
+						"label": "When the conversation flows with a good rhythm and lots of laughter"
+					},
+					{
+						"value": "b",
+						"label": "When you can have a slow, deep talk and silences feel fine"
+					},
+					{
+						"value": "c",
+						"label": "When you resonate with each other and \"I get it!\" keeps coming up"
+					},
+					{
+						"value": "d",
+						"label": "When each other's stories spark something and you discover something new"
+					}
+				]
+			},
+			"q3": {
+				"text": "What kind of moment makes you laugh out loud?",
+				"options": [
+					{
+						"value": "a",
+						"label": "When everyday \"relatable\" stuff is said in a funny way"
+					},
+					{
+						"value": "b",
+						"label": "When the conversation suddenly goes in an unexpected direction"
+					},
+					{
+						"value": "c",
+						"label": "When something surreal and nonsensical somehow hits the spot"
+					},
+					{
+						"value": "d",
+						"label": "When you hear a sharp, slightly biting remark"
+					}
+				]
+			},
+			"q4": {
+				"text": "When sharing your feelings with someone, which is closer to you?",
+				"options": [
+					{
+						"value": "a",
+						"label": "Putting what you feel into words right away"
+					},
+					{
+						"value": "b",
+						"label": "Taking time to think, then choosing your words"
+					},
+					{
+						"value": "c",
+						"label": "Showing through actions and attitude rather than words"
+					},
+					{ "value": "d", "label": "Hoping they get it from the vibe" }
+				]
+			},
+			"q5": {
+				"text": "If you're going to spend money, which fits you best?",
+				"options": [
+					{
+						"value": "a",
+						"label": "Spending on travel and experiences (memories last)"
+					},
+					{
+						"value": "b",
+						"label": "Collecting things you love (you like having stuff)"
+					},
+					{
+						"value": "c",
+						"label": "Saving as much as possible (peace of mind matters)"
+					},
+					{
+						"value": "d",
+						"label": "Whatever has the best cost-performance (rational is best)"
+					}
+				]
+			},
+			"q6": {
+				"text": "How do you usually plan your schedule?",
+				"options": [
+					{
+						"value": "a",
+						"label": "Decide in detail in advance and stick to the plan"
+					},
+					{
+						"value": "b",
+						"label": "Set a rough direction and decide the rest on the spot"
+					},
+					{
+						"value": "c",
+						"label": "Often decide at the last minute (you like going with the flow)"
+					},
+					{
+						"value": "d",
+						"label": "You make plans but are fine changing them (flexible)"
+					}
+				]
+			},
+			"q7": {
+				"text": "In relationships with friends and acquaintances, which is closer to you?",
+				"options": [
+					{ "value": "a", "label": "Valuing a few deep relationships" },
+					{
+						"value": "b",
+						"label": "Wanting to stay connected with many people, even if loosely"
+					},
+					{ "value": "c", "label": "Valuing time alone just as much" },
+					{ "value": "d", "label": "It depends on the situation" }
+				]
+			},
+			"q8": {
+				"text": "When you're tired, what helps you recover most?",
+				"options": [
+					{ "value": "a", "label": "Talking to someone and venting" },
+					{ "value": "b", "label": "Having quiet time alone to recharge" },
+					{ "value": "c", "label": "Moving your body to refresh" },
+					{
+						"value": "d",
+						"label": "Getting absorbed in something you enjoy to switch mood"
+					}
+				]
+			},
+			"q9": {
+				"text": "Which is closer to your daily rhythm?",
+				"options": [
+					{
+						"value": "a",
+						"label": "Early riser who focuses in the morning (morning type)"
+					},
+					{
+						"value": "b",
+						"label": "More active at night, often up late (night owl)"
+					},
+					{ "value": "c", "label": "No fixed pattern, varies by day" },
+					{
+						"value": "d",
+						"label": "As regular as possible: fixed wake and sleep times"
+					}
+				]
+			},
+			"q10": {
+				"text": "Which area do you often go to or like best?",
+				"options": [
+					{
+						"value": "a",
+						"label": "City center (shopping, food, entertainment)"
+					},
+					{ "value": "b", "label": "Residential / downtown (calm atmosphere)" },
+					{
+						"value": "c",
+						"label": "Nature / suburbs (parks, mountains, rivers)"
+					},
+					{ "value": "d", "label": "No strong preference, depends on the day" }
+				]
+			},
+			"q1_weekend": {
+				"text": "How do you like to spend your ideal weekend?",
+				"options": [
+					{ "value": "friends", "label": "Going out with friends" },
+					{ "value": "home", "label": "Relaxing at home" },
+					{ "value": "explore", "label": "Exploring new places" },
+					{ "value": "sports", "label": "Sports or exercise" }
+				]
+			},
+			"q2_travel": {
+				"text": "How do you plan trips?",
+				"options": [
+					{ "value": "detailed", "label": "Detailed plan" },
+					{ "value": "rough_plan", "label": "Rough plan, rest is flexible" },
+					{ "value": "no_plan", "label": "No plan" },
+					{ "value": "delegate", "label": "Let someone else decide" }
+				]
+			},
+			"q3_contact": {
+				"text": "How often do you contact friends?",
+				"options": [
+					{ "value": "daily", "label": "Daily" },
+					{ "value": "weekly", "label": "A few times a week" },
+					{ "value": "when_needed", "label": "Only when needed" },
+					{ "value": "sns_only", "label": "SNS is enough" }
+				]
+			},
+			"q4_indoor": {
+				"text": "Favorite indoor hobbies? (multiple choice)",
+				"options": [
+					{ "value": "movie", "label": "Movies & TV" },
+					{ "value": "reading", "label": "Reading" },
+					{ "value": "game", "label": "Games" },
+					{ "value": "cooking", "label": "Cooking" },
+					{ "value": "music", "label": "Music" },
+					{ "value": "none", "label": "None" }
+				]
+			},
+			"q5_outdoor": {
+				"text": "Favorite outdoor hobbies? (multiple choice)",
+				"options": [
+					{ "value": "sports", "label": "Sports" },
+					{ "value": "travel", "label": "Travel" },
+					{ "value": "camp", "label": "Camping" },
+					{ "value": "cafe", "label": "Cafe hopping" },
+					{ "value": "walk", "label": "Walking" },
+					{ "value": "none", "label": "None" }
+				]
+			},
+			"q6_work_life": {
+				"text": "What do you value more, work or private life?",
+				"options": [
+					{ "value": "work", "label": "Work" },
+					{ "value": "private", "label": "Private life" },
+					{ "value": "balance", "label": "Balance" },
+					{ "value": "depends", "label": "It varies" }
+				]
+			},
+			"q7_future": {
+				"text": "What do you want to prioritize in the future?",
+				"options": [
+					{ "value": "family", "label": "Family time" },
+					{ "value": "career", "label": "Career" },
+					{ "value": "hobby", "label": "Hobbies" },
+					{ "value": "contribution", "label": "Contributing to society" }
+				]
+			},
+			"q8_relationship": {
+				"text": "What's your ideal relationship?",
+				"options": [
+					{ "value": "together", "label": "Always together" },
+					{ "value": "distance", "label": "Comfortable distance" },
+					{ "value": "independent", "label": "Independent" },
+					{ "value": "situation", "label": "Depends on the situation" }
+				]
+			},
+			"q9_partner": {
+				"text": "What do you value most in a partner?",
+				"options": [
+					{ "value": "kindness", "label": "Kindness" },
+					{ "value": "humor", "label": "Humor" },
+					{ "value": "intelligence", "label": "Intelligence" },
+					{ "value": "common_interest", "label": "Shared interests" },
+					{ "value": "stability", "label": "Stability" }
+				]
+			},
+			"q10_diet": {
+				"text": "Any dietary preferences?",
+				"options": [
+					{ "value": "cook", "label": "I cook at home" },
+					{ "value": "eat_out", "label": "I eat out" },
+					{ "value": "no_preference", "label": "No preference" },
+					{ "value": "health", "label": "Health-conscious" }
+				]
+			},
+			"q11_age": {
+				"text": "Age range?",
+				"options": [
+					{ "value": "20-24", "label": "20-24" },
+					{ "value": "25-29", "label": "25-29" },
+					{ "value": "30-34", "label": "30-34" },
+					{ "value": "35-39", "label": "35-39" },
+					{ "value": "40+", "label": "40+" }
+				]
+			},
+			"q12_location": {
+				"text": "Where do you live?",
+				"options": [
+					{ "value": "hokkaido", "label": "Hokkaido" },
+					{ "value": "tokyo", "label": "Tokyo" },
+					{ "value": "kanagawa", "label": "Kanagawa" },
+					{ "value": "osaka", "label": "Osaka" },
+					{ "value": "aichi", "label": "Aichi" },
+					{ "value": "fukuoka", "label": "Fukuoka" },
+					{ "value": "other", "label": "Other" }
+				]
+			}
+		}
+	},
+	"speed_dating": {
+		"lounge_title": "Speed Date",
+		"lounge_subtitle": "Have short voice conversations with 3 virtual guests, one after another. Start when you're ready.",
+		"page_hint": "What is speed dating? You talk to several people for a few minutes each to see who you click with. Here, 3 AI guests will chat with you by voice.",
+		"hint_label": "Hint",
+		"generating_personas": "Finding your dates tonight",
+		"generating_personas_hint": "This may take a moment.",
+		"display_name": "Nickname",
+		"name_placeholder": "Name you want to display",
+		"gender": "Gender",
+		"gender_select": "Select",
+		"gender_male": "Male",
+		"gender_female": "Female",
+		"gender_other": "Other",
+		"interests": "Interests",
+		"interest_music": "Music",
+		"interest_movies": "Movies",
+		"interest_tech": "Tech",
+		"interest_travel": "Travel",
+		"interest_art": "Art",
+		"interest_sports": "Sports",
+		"interest_cooking": "Cooking",
+		"interest_reading": "Reading",
+		"enter_speed_date": "Start Speed Date",
+		"preparing": "Preparing...",
+		"error_basic_info": "Please enter nickname and gender",
+		"error_guest_failed": "Failed to prepare guests",
+		"error_regen_failed": "Failed to regenerate dates",
+		"error_session_save_failed": "Failed to save session",
+		"error_voice_failed": "Failed to prepare voice session. Please try again.",
+		"error_start_failed": "Failed to start Speed Date",
+		"error_complete_failed": "Failed to complete session",
+		"next_guest": "Next guest",
+		"to_review": "To review",
+		"complete_session": "Session complete",
+		"finalize_persona": "Finalize Persona",
+		"creating": "Creating...",
+		"sync_complete": "Sync complete",
+		"sync_description": "Your interaction rhythm has been analyzed. We will generate your persona.",
+		"birth_year": "Birth year",
+		"birth_year_placeholder": "e.g. 1990",
+		"tonights_dates": "Tonight's Dates",
+		"candidates_count": "{{count}} candidates",
+		"regenerate": "Regenerate",
+		"regen_success": "Dates regenerated",
+		"no_candidates": "No candidates yet. They'll be generated when you start, or tap Regenerate.",
+		"finding_guests": "Finding tonight's guests...",
+		"preparing_chat": "Preparing conversation with {{name}}...",
+		"finding_dates": "Finding 3 date partners. Please wait...",
+		"slow_hint": "Taking longer than expected. Please check your connection.",
+		"back_to_start": "Back to start",
+		"connecting": "Connecting...",
+		"speaking": "Speaking...",
+		"listening": "Listening...",
+		"starting_voice": "Starting voice session...",
+		"waiting_connection": "Waiting for connection...",
+		"waiting_conversation": "Waiting for conversation to start...",
+		"end_conversation": "End Conversation",
+		"preparing_next": "Preparing next date partner...",
+		"session_complete_title": "Session Complete",
+		"session_complete_desc": "Conversations complete. Review and confirm your profile on the next page.",
+		"generating_profile": "Analyzing your conversations...",
+		"generating_wingfox": "Creating your AI companion...",
+		"generation_complete": "All done!",
+		"generation_failed_title": "Generation Failed",
+		"generation_failed_desc": "Something went wrong while generating your profile. You can retry or skip to the review page.",
+		"retry_generation": "Retry",
+		"skip_to_review": "Skip to review page",
+		"step_profile": "Profile",
+		"step_wingfox": "WingFox"
+	},
+	"review": {
+		"title": "Profile Review",
+		"description": "Review the generated profile and persona, then confirm if everything looks good.",
+		"confirm": "Confirm",
+		"reset": "Start over",
+		"confirm_success": "Profile confirmed",
+		"confirm_error": "Failed to confirm",
+		"reset_success": "Onboarding has been reset",
+		"profile_summary": "Profile Summary",
+		"personality_traits": "Personality Traits",
+		"basic_info": "Basic Info",
+		"location": "Location",
+		"age_range": "Age Range",
+		"occupation": "Occupation",
+		"display_name": "Display Name",
+		"interaction_style": "Interaction Style",
+		"warmup_speed": "Warmup Speed",
+		"humor_responsiveness": "Humor Responsiveness",
+		"self_disclosure_depth": "Self-Disclosure Depth",
+		"emotional_responsiveness": "Emotional Responsiveness",
+		"conflict_style": "Conflict Style",
+		"attachment_tendency": "Attachment Tendency",
+		"rhythm_preference": "Rhythm Preference",
+		"mirroring_tendency": "Mirroring Tendency",
+		"wingfox": "WingFox",
+		"wingfox_not_generated": "WingFox not yet generated",
+		"wingfox_not_generated_desc": "Profile exists but AI persona generation may have failed or is still in progress. Try regenerating below, or start over.",
+		"wingfox_regenerate": "Regenerate WingFox",
+		"profile_ready": "Profile is ready. Confirm to start matching.",
+		"profile_not_generated": "Profile not generated yet.",
+		"wingfox_generated": "WingFox generated",
+		"wingfox_gen_failed": "WingFox generation failed",
+		"profile_needs_generation": "Profile needs to be generated first.",
+		"confirm_failed": "Confirmation failed",
+		"wingfox_not_ready": "WingFox is not ready yet. Start over or wait and try again.",
+		"interaction_dna": "Interaction DNA",
+		"disable_auto": "Disable auto-generation",
+		"enable_auto": "Enable auto-generation",
+		"generation_failed_title": "Generation failed. Please try again or refresh the page.",
+		"dna_layer1": "Meeting Affinity",
+		"dna_layer2": "Psychological Sync",
+		"dna_layer3": "Future Compatibility",
+		"dna_confidence": "Confidence",
+		"dna_reasoning": "Evidence"
+	}
 }

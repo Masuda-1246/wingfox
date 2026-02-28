@@ -1,8 +1,9 @@
-import { cn } from "@/lib/utils";
+import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useAuth } from "@/lib/auth";
 import { useAuthMe } from "@/lib/hooks/useAuthMe";
+import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import {
 	Bell,
 	ChevronDown,
@@ -11,7 +12,6 @@ import {
 	Settings,
 	UserCircle2,
 } from "lucide-react";
-import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -124,7 +124,9 @@ export function UpperHeader() {
 									className="flex items-center gap-2 px-3 py-2 rounded-full border border-border hover:bg-accent transition-colors outline-none"
 								>
 									<span className="text-xs font-bold truncate max-w-[120px] sm:max-w-[180px]">
-										{authMe?.nickname?.trim() || user?.user_metadata?.display_name || CURRENT_USER_PLACEHOLDER.name}
+										{authMe?.nickname?.trim() ||
+											user?.user_metadata?.display_name ||
+											CURRENT_USER_PLACEHOLDER.name}
 									</span>
 									<ChevronDown
 										className={cn(
@@ -136,7 +138,7 @@ export function UpperHeader() {
 
 								<AnimatePresence>
 									{isUserMenuOpen && (
-										<motion.div
+										<m.div
 											initial={{ opacity: 0, y: 8, scale: 0.98 }}
 											animate={{ opacity: 1, y: 0, scale: 1 }}
 											exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -207,7 +209,7 @@ export function UpperHeader() {
 													{t("sign_out")}
 												</span>
 											</button>
-										</motion.div>
+										</m.div>
 									)}
 								</AnimatePresence>
 							</div>

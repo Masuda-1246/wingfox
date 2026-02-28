@@ -7,16 +7,16 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import {
-	useQuizQuestions,
-	useQuizAnswers,
-	useSubmitQuizAnswers,
 	type QuizQuestion,
+	useQuizAnswers,
+	useQuizQuestions,
+	useSubmitQuizAnswers,
 } from "@/lib/hooks/useQuiz";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
 
 type OptionItem = { value: string; label: string };
 
@@ -61,7 +61,9 @@ export function Quiz() {
 		const data = Array.isArray(quizAnswersData) ? quizAnswersData : [];
 		const initial: Record<string, string[]> = {};
 		for (const row of data) {
-			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+			initial[row.question_id] = Array.isArray(row.selected)
+				? row.selected
+				: [];
 		}
 		setAnswers((prev) => (Object.keys(prev).length > 0 ? prev : initial));
 		hasInitializedAnswers.current = true;
@@ -76,7 +78,7 @@ export function Quiz() {
 				}) as string[] | Record<string, unknown>,
 			)
 		: [];
-	const currentSelected = current ? answers[current.id] ?? [] : [];
+	const currentSelected = current ? (answers[current.id] ?? []) : [];
 	const hasCurrentSelection = currentSelected.length > 0;
 
 	const handleSelect = useCallback(
@@ -176,9 +178,7 @@ export function Quiz() {
 										)}
 									>
 										{current.allow_multiple && (
-											<span className="mr-2">
-												{isSelected ? "☑" : "☐"}
-											</span>
+											<span className="mr-2">{isSelected ? "☑" : "☐"}</span>
 										)}
 										{opt.label}
 									</button>
@@ -199,7 +199,11 @@ export function Quiz() {
 						{t("quiz.prev")}
 					</Button>
 					{step < sortedQuestions.length - 1 ? (
-						<Button size="sm" onClick={handleNext} disabled={!hasCurrentSelection}>
+						<Button
+							size="sm"
+							onClick={handleNext}
+							disabled={!hasCurrentSelection}
+						>
 							{t("quiz.next")}
 							<ChevronRight className="size-4" />
 						</Button>

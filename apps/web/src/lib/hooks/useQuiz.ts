@@ -32,7 +32,9 @@ export function useQuizAnswers() {
 export function useSubmitQuizAnswers() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (answers: { question_id: string; selected: string[] }[]) => {
+		mutationFn: async (
+			answers: { question_id: string; selected: string[] }[],
+		) => {
 			const res = await client.api.quiz.answers.$post({ json: { answers } });
 			return unwrapApiResponse<{ message: string; count: number }>(res);
 		},
