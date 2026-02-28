@@ -1,8 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../db/types";
+import { z } from "zod";
 import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
+
+const ConversationScoreSchema = z.object({
+	score: z.number().min(0).max(100),
+	excitement_level: z.number().min(0).max(1),
+	common_topics: z.array(z.string()),
+	mutual_interest: z.number().min(0).max(1),
+	topic_distribution: z.array(
+		z.object({
+			topic: z.string(),
+			percentage: z.number(),
+		}),
+	),
+});
 
 const TOTAL_ROUNDS = 15;
 
@@ -93,27 +107,17 @@ export async function runFoxConversation(
 	});
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
-	// JSON mode により scoreRaw は有効な JSON オブジェクト文字列になっている
-	const trimmed = scoreRaw?.trim();
-	if (trimmed) {
-		try {
-			const parsed = JSON.parse(trimmed) as {
-				score?: number;
-				excitement_level?: number;
-				common_topics?: string[];
-				mutual_interest?: number;
-				topic_distribution?: { topic: string; percentage: number }[];
-			};
-			conversationScore = Math.min(100, Math.max(0, parsed.score ?? 50));
-			analysis = {
-				excitement_level: parsed.excitement_level,
-				common_topics: parsed.common_topics,
-				mutual_interest: parsed.mutual_interest,
-				topic_distribution: parsed.topic_distribution,
-			};
-		} catch (_) {
-			// API が JSON を返すため通常は発生しないが、念のため
-		}
+	try {
+		const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
+		conversationScore = parsed.score;
+		analysis = {
+			excitement_level: parsed.excitement_level,
+			common_topics: parsed.common_topics,
+			mutual_interest: parsed.mutual_interest,
+			topic_distribution: parsed.topic_distribution,
+		};
+	} catch (e) {
+		console.error("[runFoxConversation] Score parsing failed:", e);
 	}
 	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
 	const profileScore = (matchRow?.profile_score as number) ?? 50;
