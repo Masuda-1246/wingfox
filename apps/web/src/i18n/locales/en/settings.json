@@ -26,7 +26,6 @@
   "bio_count": "{{count}} / 500 characters",
   "change_photo": "Change photo",
   "delete_photo": "Delete",
-  "account_title": "Account Settings",
   "account_description": "Manage your login credentials and contact info.",
   "email_label": "Email",
   "password_label": "Password",

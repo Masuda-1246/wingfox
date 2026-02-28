@@ -83,7 +83,6 @@ profiles.post("/generate", requireAuth, async (c) => {
 				basic_info: profileData.basic_info ?? {},
 				personality_tags: profileData.personality_tags ?? [],
 				personality_analysis: profileData.personality_analysis ?? {},
-				interaction_style: profileData.interaction_style ?? {},
 				interests: profileData.interests ?? [],
 				values: profileData.values ?? {},
 				romance_style: profileData.romance_style ?? {},
@@ -97,7 +96,10 @@ profiles.post("/generate", requireAuth, async (c) => {
 		)
 		.select()
 		.single();
-	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to save profile");
+	if (error) {
+		console.error("[profiles/generate] upsert error:", error.message, error.code, error.details);
+		return jsonError(c, "INTERNAL_ERROR", `Failed to save profile: ${error.message}`);
+	}
 	await supabase
 		.from("user_profiles")
 		.update({ onboarding_status: "profile_generated", updated_at: new Date().toISOString() })

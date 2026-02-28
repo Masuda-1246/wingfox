@@ -137,6 +137,17 @@ speedDating.post("/personas", requireAuth, async (c) => {
 		return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
 	}
 	const supabase = getSupabaseClient(c.env);
+
+	// ユーザーの性別に応じてペルソナの性別を逆にする（女性ユーザー→男性ペルソナ、男性ユーザー→女性ペルソナ）
+	const { data: userProfile } = await supabase
+		.from("user_profiles")
+		.select("gender")
+		.eq("id", userId)
+		.single();
+	const userGender = (userProfile?.gender ?? "").toLowerCase();
+	const personaGender: "male" | "female" =
+		userGender === "female" ? "male" : userGender === "male" ? "female" : "female";
+
 	const { data: answers } = await supabase
 		.from("quiz_answers")
 		.select("question_id, selected")
@@ -149,7 +160,7 @@ speedDating.post("/personas", requireAuth, async (c) => {
 	const rawResults: { personaType: typeof types[number]; raw: string }[] = [];
 	const usedNames: string[] = [];
 	for (const personaType of types) {
-		const prompt = buildVirtualPersonaPrompt(quizSummary, personaType, usedNames, lang);
+		const prompt = buildVirtualPersonaPrompt(quizSummary, personaType, usedNames, lang, personaGender);
 		const raw = await chatComplete(
 			apiKey,
 			[{ role: "user", content: prompt }],

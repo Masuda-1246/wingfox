@@ -6,7 +6,6 @@ import {
 	Languages,
 	LogOut,
 	Save,
-	Settings as SettingsIcon,
 	Trash2,
 	User,
 } from "lucide-react";
@@ -316,47 +315,6 @@ export function Settings() {
 						<Save className="w-4 h-4" />
 						{t("save")}
 					</Button>
-				</Card>
-
-				<Card className="p-6">
-					<SectionHeader
-						icon={SettingsIcon}
-						title={t("account_title")}
-						description={t("account_description")}
-					/>
-					<div className="grid gap-6 md:grid-cols-2">
-						<div className="space-y-2">
-							<Label htmlFor="email">{t("email_label")}</Label>
-							<Input
-								id="email"
-								type="email"
-								value={formData.email}
-								onChange={(e) =>
-									setFormData({
-										...formData,
-										email: e.target.value,
-									})
-								}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="password">{t("password_label")}</Label>
-							<Input
-								id="password"
-								type="password"
-								value="********"
-								disabled
-								className="bg-accent/50"
-							/>
-							<Button
-								variant="outline"
-								size="sm"
-								className="w-full mt-2"
-							>
-								{t("change_password")}
-							</Button>
-						</div>
-					</div>
 				</Card>
 
 				<Card className="p-6">

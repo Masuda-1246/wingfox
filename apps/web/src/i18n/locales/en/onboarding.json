@@ -254,8 +254,12 @@
     }
   },
   "speed_dating": {
-    "lounge_title": "THE LOUNGE",
-    "lounge_subtitle": "You're about to meet 3 virtual dates. Pick your interests and start when you're ready.",
+    "lounge_title": "Speed Date",
+    "lounge_subtitle": "Have short voice conversations with 3 virtual guests, one after another. Start when you're ready.",
+    "page_hint": "What is speed dating? You talk to several people for a few minutes each to see who you click with. Here, 3 AI guests will chat with you by voice.",
+    "hint_label": "Hint",
+    "generating_personas": "Generating personas",
+    "generating_personas_hint": "Preparing tonight's guests. This may take a moment.",
     "display_name": "Nickname",
     "name_placeholder": "Name you want to display",
     "gender": "Gender",
@@ -286,7 +290,7 @@
     "complete_session": "Session complete",
     "finalize_persona": "Finalize Persona",
     "creating": "Creating...",
-    "sync_complete": "SYNC COMPLETE.",
+    "sync_complete": "Sync complete",
     "sync_description": "Your interaction rhythm has been analyzed. We will generate your persona.",
     "birth_year": "Birth year",
     "birth_year_placeholder": "e.g. 1990",

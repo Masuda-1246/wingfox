@@ -6,7 +6,7 @@ import { queryClient } from "@/lib/query-client";
 import { authMeQueryOptions } from "@/lib/hooks/useAuthMe";
 
 /** オンボーディング未完了でもアクセス可能なパス（設定など） */
-const ALLOWED_WITHOUT_ONBOARDING = ["/settings", "/speed-dating"] as const;
+const ALLOWED_WITHOUT_ONBOARDING = ["/settings", "/speed-dating-standalone"] as const;
 
 function isAllowedWithoutOnboarding(pathname: string): boolean {
 	return ALLOWED_WITHOUT_ONBOARDING.some(
