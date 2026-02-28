@@ -1,8 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../db/types";
+import { z } from "zod";
 import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
+
+const ConversationScoreSchema = z.object({
+	score: z.number().min(0).max(100),
+	excitement_level: z.number().min(0).max(1),
+	common_topics: z.array(z.string()),
+	mutual_interest: z.number().min(0).max(1),
+	topic_distribution: z.array(
+		z.object({
+			topic: z.string(),
+			percentage: z.number(),
+		}),
+	),
+});
 
 const TOTAL_ROUNDS = 15;
 
@@ -87,29 +101,24 @@ export async function runFoxConversation(
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
 	const scorePrompt = buildConversationScorePrompt(logText);
-	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], { maxTokens: 300 });
+	const scoreRaw = await chatComplete(
+		mistralApiKey,
+		[{ role: "user", content: scorePrompt }],
+		{ maxTokens: 300, responseFormat: { type: "json_object" } },
+	);
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
-	const jsonMatch = scoreRaw.match(/\{[\s\S]*\}/);
-	if (jsonMatch) {
-		try {
-			const parsed = JSON.parse(jsonMatch[0]) as {
-				score?: number;
-				excitement_level?: number;
-				common_topics?: string[];
-				mutual_interest?: number;
-				topic_distribution?: { topic: string; percentage: number }[];
-			};
-			conversationScore = Math.min(100, Math.max(0, parsed.score ?? 50));
-			analysis = {
-				excitement_level: parsed.excitement_level,
-				common_topics: parsed.common_topics,
-				mutual_interest: parsed.mutual_interest,
-				topic_distribution: parsed.topic_distribution,
-			};
-		} catch (_) {
-			// ignore
-		}
+	try {
+		const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
+		conversationScore = parsed.score;
+		analysis = {
+			excitement_level: parsed.excitement_level,
+			common_topics: parsed.common_topics,
+			mutual_interest: parsed.mutual_interest,
+			topic_distribution: parsed.topic_distribution,
+		};
+	} catch (e) {
+		console.error("[runFoxConversation] Score parsing failed:", e);
 	}
 	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
 	const profileScore = (matchRow?.profile_score as number) ?? 50;
