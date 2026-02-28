@@ -80,39 +80,23 @@ const Label = forwardRef<
 ));
 Label.displayName = "Label";
 
-const Checkbox = forwardRef<
-	HTMLInputElement,
-	React.InputHTMLAttributes<HTMLInputElement>
->(({ className, ...props }, ref) => {
-	return (
-		<input
-			type="checkbox"
-			ref={ref}
-			className={cn(
-				"peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 accent-secondary",
-				className,
-			)}
-			{...props}
-		/>
-	);
-});
-Checkbox.displayName = "Checkbox";
-
-export function Login() {
+export function Signup() {
 	const { t } = useTranslation("auth");
 	const navigate = useNavigate();
 	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	const [formData, setFormData] = useState({
-		identifier: "",
+		email: "",
 		password: "",
-		rememberMe: false,
+		confirmPassword: "",
 	});
 
 	const [errors, setErrors] = useState({
-		identifier: "",
+		email: "",
 		password: "",
+		confirmPassword: "",
 	});
 
 	useEffect(() => {
@@ -124,15 +108,26 @@ export function Login() {
 
 	const validateForm = () => {
 		let isValid = true;
-		const newErrors = { identifier: "", password: "" };
+		const newErrors = { email: "", password: "", confirmPassword: "" };
 
-		if (!formData.identifier.trim()) {
-			newErrors.identifier = t("login.error_identifier_required");
+		if (!formData.email.trim()) {
+			newErrors.email = t("signup.error_email_required");
+			isValid = false;
+		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+			newErrors.email = t("signup.error_email_invalid");
 			isValid = false;
 		}
 
 		if (!formData.password) {
-			newErrors.password = t("login.error_password_required");
+			newErrors.password = t("signup.error_password_required");
+			isValid = false;
+		}
+
+		if (!formData.confirmPassword) {
+			newErrors.confirmPassword = t("signup.error_confirm_required");
+			isValid = false;
+		} else if (formData.password !== formData.confirmPassword) {
+			newErrors.confirmPassword = t("signup.error_password_mismatch");
 			isValid = false;
 		}
 
@@ -151,12 +146,12 @@ export function Login() {
 
 		setTimeout(() => {
 			localStorage.setItem("isAuthenticated", "true");
-			toast.success(t("login.welcome_toast"), {
-				description: t("login.welcome_description"),
+			toast.success(t("signup.welcome_toast"), {
+				description: t("signup.welcome_description"),
 			});
 
 			setLoading(false);
-			navigate({ to: "/chat" });
+			navigate({ to: "/personas/create" });
 		}, 1000);
 	};
 
@@ -167,61 +162,50 @@ export function Login() {
 				<div className="w-full max-w-[480px] space-y-8 p-8 md:p-12 rounded-2xl border border-border bg-card">
 					<div className="space-y-2 text-center">
 						<h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
-							{t("login.title")}
+							{t("signup.title")}
 						</h2>
 						<p className="text-sm text-muted-foreground">
-							{t("login.subtitle")}
+							{t("signup.subtitle")}
 						</p>
 					</div>
 
 					<form onSubmit={handleSubmit} className="space-y-6">
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<Label htmlFor="identifier">
-									{t("login.identifier_label")}
-								</Label>
+								<Label htmlFor="email">{t("signup.email_label")}</Label>
 								<Input
-									id="identifier"
+									id="email"
 									placeholder="name@example.com"
-									type="text"
+									type="email"
 									autoCapitalize="none"
 									autoComplete="email"
 									autoCorrect="off"
 									disabled={loading}
-									value={formData.identifier}
+									value={formData.email}
 									onChange={(e) => {
 										setFormData({
 											...formData,
-											identifier: e.target.value,
+											email: e.target.value,
 										});
-										if (errors.identifier)
-											setErrors({ ...errors, identifier: "" });
+										if (errors.email) setErrors({ ...errors, email: "" });
 									}}
-									error={!!errors.identifier}
+									error={!!errors.email}
 								/>
-								{errors.identifier && (
+								{errors.email && (
 									<p className="text-xs text-red-500 font-medium">
-										{errors.identifier}
+										{errors.email}
 									</p>
 								)}
 							</div>
 
 							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<Label htmlFor="password">{t("login.password_label")}</Label>
-									<button
-										type="button"
-										className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-									>
-										{t("login.forgot_password")}
-									</button>
-								</div>
+								<Label htmlFor="password">{t("signup.password_label")}</Label>
 								<div className="relative">
 									<Input
 										id="password"
 										placeholder="••••••••"
 										type={showPassword ? "text" : "password"}
-										autoComplete="current-password"
+										autoComplete="new-password"
 										disabled={loading}
 										value={formData.password}
 										onChange={(e) => {
@@ -255,23 +239,47 @@ export function Login() {
 								)}
 							</div>
 
-							<div className="flex items-center space-x-2">
-								<Checkbox
-									id="remember"
-									checked={formData.rememberMe}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											rememberMe: e.target.checked,
-										})
-									}
-								/>
-								<label
-									htmlFor="remember"
-									className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 select-none cursor-pointer"
-								>
-									{t("login.remember_me")}
-								</label>
+							<div className="space-y-2">
+								<Label htmlFor="confirmPassword">
+									{t("signup.confirm_password_label")}
+								</Label>
+								<div className="relative">
+									<Input
+										id="confirmPassword"
+										placeholder="••••••••"
+										type={showConfirmPassword ? "text" : "password"}
+										autoComplete="new-password"
+										disabled={loading}
+										value={formData.confirmPassword}
+										onChange={(e) => {
+											setFormData({
+												...formData,
+												confirmPassword: e.target.value,
+											});
+											if (errors.confirmPassword)
+												setErrors({ ...errors, confirmPassword: "" });
+										}}
+										error={!!errors.confirmPassword}
+										className="pr-10"
+									/>
+									<button
+										type="button"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+										tabIndex={-1}
+									>
+										{showConfirmPassword ? (
+											<EyeOff className="h-4 w-4" />
+										) : (
+											<Eye className="h-4 w-4" />
+										)}
+									</button>
+								</div>
+								{errors.confirmPassword && (
+									<p className="text-xs text-red-500 font-medium">
+										{errors.confirmPassword}
+									</p>
+								)}
 							</div>
 						</div>
 
@@ -284,11 +292,11 @@ export function Login() {
 							{loading ? (
 								<span className="flex items-center gap-2">
 									<span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-									{t("login.signing_in")}
+									{t("signup.creating_account")}
 								</span>
 							) : (
 								<span className="flex items-center gap-2">
-									{t("login.submit")} <ArrowRight className="w-4 h-4" />
+									{t("signup.submit")} <ArrowRight className="w-4 h-4" />
 								</span>
 							)}
 						</Button>
@@ -300,7 +308,7 @@ export function Login() {
 						</div>
 						<div className="relative flex justify-center text-xs uppercase">
 							<span className="bg-card px-2 text-muted-foreground">
-								{t("login.new_to_foxx")}
+								{t("signup.already_have_account")}
 							</span>
 						</div>
 					</div>
@@ -308,10 +316,10 @@ export function Login() {
 					<div className="text-center">
 						<button
 							type="button"
-							onClick={() => navigate({ to: "/signup" })}
+							onClick={() => navigate({ to: "/login" })}
 							className="text-sm font-medium hover:text-secondary transition-colors underline-offset-4 hover:underline"
 						>
-							{t("login.create_account")}
+							{t("signup.log_in")}
 						</button>
 					</div>
 				</div>

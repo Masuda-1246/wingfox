@@ -1,4 +1,5 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
+import { formatDateTime } from "@/lib/date";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -17,6 +18,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const Button = forwardRef<
@@ -116,6 +118,7 @@ function Badge({
 }
 
 export function PersonasMe() {
+	const { t } = useTranslation("personas");
 	const { personas, isLoading, edit, add } = usePersonas();
 	const [isEditing, setIsEditing] = useState(false);
 	const [formData, setFormData] = useState({
@@ -149,10 +152,10 @@ export function PersonasMe() {
 				updated_at: new Date(),
 			});
 			setIsEditing(false);
-			toast.success("ペルソナ情報を更新しました");
+			toast.success(t("me.updated_toast"));
 		} catch (error) {
 			console.error(error);
-			toast.error("更新に失敗しました");
+			toast.error(t("me.update_error"));
 		}
 	};
 
@@ -168,9 +171,9 @@ export function PersonasMe() {
 				created_at: new Date(),
 				updated_at: new Date(),
 			});
-			toast.success("デモ用ペルソナを作成しました");
+			toast.success(t("me.demo_created"));
 		} catch (error) {
-			toast.error("作成に失敗しました");
+			toast.error(t("me.demo_error"));
 		}
 	};
 
@@ -190,11 +193,10 @@ export function PersonasMe() {
 				</div>
 				<div className="space-y-2">
 					<h1 className="text-3xl font-black tracking-tight">
-						まだペルソナがいません
+						{t("me.no_persona_title")}
 					</h1>
 					<p className="text-muted-foreground max-w-md mx-auto">
-						あなた自身の分身となるAIペルソナを作成して、foxx
-						matchの世界に参加しましょう。
+						{t("me.no_persona_description")}
 					</p>
 				</div>
 				<div className="flex flex-col sm:flex-row gap-4">
@@ -204,7 +206,7 @@ export function PersonasMe() {
 							className="w-full sm:w-auto text-base px-8 h-12"
 						>
 							<Sparkles className="w-4 h-4 mr-2" />
-							Speed Dateを開始して作成
+							{t("me.start_speed_date")}
 						</Button>
 					</Link>
 					<Button
@@ -212,7 +214,7 @@ export function PersonasMe() {
 						onClick={createDemoPersona}
 						className="w-full sm:w-auto text-base px-8 h-12"
 					>
-						デモデータを作成
+						{t("me.create_demo")}
 					</Button>
 				</div>
 			</div>
@@ -223,11 +225,12 @@ export function PersonasMe() {
 		<div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-8 pb-20">
 			<header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight">My Persona</h1>
+					<h1 className="text-2xl font-bold tracking-tight">{t("me.title")}</h1>
 					<p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
 						<RefreshCw className="w-3 h-3" />
-						最終更新: {myPersona.updated_at.toLocaleDateString()}{" "}
-						{myPersona.updated_at.toLocaleTimeString()}
+						{t("me.last_updated", {
+							date: formatDateTime(myPersona.updated_at),
+						})}
 					</p>
 				</div>
 
@@ -235,23 +238,23 @@ export function PersonasMe() {
 					{isEditing ? (
 						<div className="flex items-center gap-2">
 							<Button variant="ghost" onClick={() => setIsEditing(false)}>
-								キャンセル
+								{t("me.cancel")}
 							</Button>
 							<Button onClick={handleSave} variant="primary">
 								<Save className="w-4 h-4 mr-2" />
-								保存する
+								{t("me.save")}
 							</Button>
 						</div>
 					) : (
 						<div className="flex items-center gap-2">
 							<Button variant="outline" onClick={() => setIsEditing(true)}>
 								<Edit2 className="w-4 h-4 mr-2" />
-								編集
+								{t("me.edit")}
 							</Button>
 							<Link to="/personas/create">
 								<Button variant="outline">
 									<RefreshCw className="w-4 h-4 mr-2" />
-									再生成 (Speed Date)
+									{t("me.regenerate")}
 								</Button>
 							</Link>
 						</div>
@@ -286,7 +289,7 @@ export function PersonasMe() {
 						{isEditing ? (
 							<div className="space-y-1">
 								<span className="text-xs text-muted-foreground font-medium text-left block w-full px-1">
-									表示名
+									{t("me.display_name")}
 								</span>
 								<Input
 									value={formData.name}
@@ -297,7 +300,7 @@ export function PersonasMe() {
 										})
 									}
 									className="text-center font-bold text-lg"
-									placeholder="ペルソナの名前"
+									placeholder={t("me.name_placeholder")}
 								/>
 							</div>
 						) : (
@@ -319,7 +322,7 @@ export function PersonasMe() {
 								className="w-full h-12 text-base shadow-lg shadow-secondary/20 hover:shadow-secondary/40 transition-all"
 							>
 								<MessageSquare className="w-5 h-5 mr-2" />
-								トークルームへ入室
+								{t("me.enter_talk_room")}
 							</Button>
 						</Link>
 					</div>
@@ -329,7 +332,7 @@ export function PersonasMe() {
 					<Card className="col-span-1 md:col-span-2 p-6 flex flex-col h-full">
 						<div className="flex items-center gap-2 mb-4">
 							<User className="w-5 h-5 text-secondary" />
-							<h3 className="font-bold text-lg">Bio / プロフィール</h3>
+							<h3 className="font-bold text-lg">{t("me.bio_title")}</h3>
 						</div>
 
 						{isEditing ? (
@@ -342,13 +345,12 @@ export function PersonasMe() {
 									})
 								}
 								className="min-h-[150px] text-base leading-relaxed resize-none bg-accent/10"
-								placeholder="あなたのペルソナの自己紹介を入力してください..."
+								placeholder={t("me.bio_placeholder")}
 							/>
 						) : (
-							<div className="prose prose-sm dark:prose-invert max-w-none">
+							<div className="prose prose-sm max-w-none">
 								<p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-									{myPersona.profile_text ||
-										"プロフィールが設定されていません。"}
+									{myPersona.profile_text || t("me.no_profile")}
 								</p>
 							</div>
 						)}
@@ -357,7 +359,7 @@ export function PersonasMe() {
 					<Card className="col-span-1 p-6">
 						<div className="flex items-center gap-2 mb-4">
 							<Tag className="w-5 h-5 text-tertiary" />
-							<h3 className="font-bold text-lg">Traits / 特徴</h3>
+							<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
 						</div>
 
 						{isEditing ? (
@@ -370,10 +372,10 @@ export function PersonasMe() {
 											traits: e.target.value,
 										})
 									}
-									placeholder="カンマ区切りで入力 (例: 明るい, 慎重, 映画好き)"
+									placeholder={t("me.traits_placeholder")}
 								/>
 								<p className="text-xs text-muted-foreground">
-									※カンマ区切りで複数の特徴を設定できます
+									{t("me.traits_hint")}
 								</p>
 							</div>
 						) : (
@@ -389,7 +391,7 @@ export function PersonasMe() {
 									))
 								) : (
 									<p className="text-sm text-muted-foreground">
-										特徴が設定されていません
+										{t("me.no_traits")}
 									</p>
 								)}
 							</div>
@@ -399,23 +401,27 @@ export function PersonasMe() {
 					<Card className="col-span-1 p-6 flex flex-col justify-between">
 						<div className="flex items-center gap-2 mb-4">
 							<Fingerprint className="w-5 h-5 text-chart-1" />
-							<h3 className="font-bold text-lg">Status</h3>
+							<h3 className="font-bold text-lg">{t("me.status_title")}</h3>
 						</div>
 
 						<div className="space-y-4">
 							<div className="flex items-center justify-between p-3 rounded-lg bg-accent/20 border border-border">
-								<span className="text-sm font-medium">互換性スコア平均</span>
+								<span className="text-sm font-medium">
+									{t("me.avg_compatibility")}
+								</span>
 								<span className="text-xl font-black text-secondary">84%</span>
 							</div>
 
 							<div className="flex items-center justify-between p-3 rounded-lg bg-accent/20 border border-border">
-								<span className="text-sm font-medium">総対話数</span>
+								<span className="text-sm font-medium">
+									{t("me.total_dialogues")}
+								</span>
 								<span className="text-xl font-black">128</span>
 							</div>
 
 							<div className="pt-2">
 								<span className="text-sm text-muted-foreground flex items-center gap-1">
-									詳細な分析を見る <ArrowRight className="w-3 h-3" />
+									{t("me.view_analysis")} <ArrowRight className="w-3 h-3" />
 								</span>
 							</div>
 						</div>
@@ -424,12 +430,9 @@ export function PersonasMe() {
 					<div className="col-span-1 md:col-span-2 mt-4">
 						<div className="bg-gradient-to-r from-secondary/10 to-tertiary/10 border border-secondary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
 							<div className="space-y-1">
-								<h3 className="font-bold text-lg">
-									ペルソナの挙動が気になりますか？
-								</h3>
+								<h3 className="font-bold text-lg">{t("me.retrain_title")}</h3>
 								<p className="text-sm text-muted-foreground">
-									Speed
-									Date形式でペルソナを再トレーニング・調整することができます。
+									{t("me.retrain_description")}
 								</p>
 							</div>
 							<Link to="/personas/create">
@@ -438,7 +441,7 @@ export function PersonasMe() {
 									className="bg-background border-secondary/30 hover:bg-secondary hover:text-white transition-all whitespace-nowrap"
 								>
 									<Sparkles className="w-4 h-4 mr-2" />
-									Speed Dateで再調整
+									{t("me.retrain_button")}
 								</Button>
 							</Link>
 						</div>

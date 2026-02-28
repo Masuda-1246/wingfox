@@ -3,20 +3,16 @@ import { useUsers } from "@/lib/hooks/useUsers";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-	Bell,
-	Clock,
-	Eye,
 	Globe,
-	Lock,
+	Languages,
 	LogOut,
 	Save,
 	Settings as SettingsIcon,
-	Shield,
-	Smartphone,
 	Trash2,
 	User,
 } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 function Card({
@@ -126,31 +122,6 @@ const Textarea = forwardRef<
 });
 Textarea.displayName = "Textarea";
 
-function Switch({
-	checked,
-	onCheckedChange,
-}: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
-	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={checked}
-			onClick={() => onCheckedChange(!checked)}
-			className={cn(
-				"peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-				checked ? "bg-primary" : "bg-input",
-			)}
-		>
-			<span
-				className={cn(
-					"pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
-					checked ? "translate-x-5" : "translate-x-0",
-				)}
-			/>
-		</button>
-	);
-}
-
 function SectionHeader({
 	icon: Icon,
 	title,
@@ -174,6 +145,7 @@ function SectionHeader({
 }
 
 export function Settings() {
+	const { t, i18n } = useTranslation("settings");
 	const { users, isLoading, edit, add, remove } = useUsers();
 
 	const [formData, setFormData] = useState({
@@ -183,15 +155,9 @@ export function Settings() {
 		bio: "",
 		age: 0,
 		email: "user@example.com",
-		notifications_email: true,
-		notifications_push: true,
-		privacy_persona_visible: "public",
-		privacy_log_retention: "forever",
 	});
 
-	const [activeTab, setActiveTab] = useState<"profile" | "account" | "privacy">(
-		"profile",
-	);
+	const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
 
 	useEffect(() => {
 		if (!isLoading) {
@@ -224,7 +190,7 @@ export function Settings() {
 					bio: formData.bio,
 					age: Number(formData.age),
 				});
-				toast.success("設定を更新しました");
+				toast.success(t("updated_toast"));
 			} else {
 				await add({
 					id: formData.id,
@@ -234,21 +200,21 @@ export function Settings() {
 					age: Number(formData.age),
 					created_at: new Date(),
 				});
-				toast.success("アカウントを作成しました");
+				toast.success(t("created_toast"));
 			}
 		} catch (error) {
 			console.error(error);
-			toast.error("保存中にエラーが発生しました");
+			toast.error(t("save_error"));
 		}
 	};
 
 	const handleDeleteAccount = async () => {
-		if (confirm("本当にアカウントを削除しますか？この操作は取り消せません。")) {
+		if (confirm(t("delete_confirm"))) {
 			try {
 				await remove(formData.id);
-				toast.success("アカウントを削除しました");
+				toast.success(t("deleted_toast"));
 			} catch (error) {
-				toast.error("削除に失敗しました");
+				toast.error(t("delete_error"));
 			}
 		}
 	};
@@ -266,20 +232,19 @@ export function Settings() {
 			<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 				<div>
 					<h1 className="text-3xl font-black tracking-tighter sm:text-4xl mb-2">
-						Settings
+						{t("title")}
 					</h1>
 					<p className="text-muted-foreground text-sm max-w-lg">
-						アカウント情報、通知設定、およびプライバシーとセキュリティを管理します。
-						ここでの設定はAIペルソナのマッチング精度に影響します。
+						{t("description")}
 					</p>
 				</div>
 				<div className="flex gap-2">
 					<Button variant="outline" onClick={() => window.location.reload()}>
-						キャンセル
+						{t("cancel")}
 					</Button>
 					<Button onClick={handleSave} className="gap-2">
 						<Save className="w-4 h-4" />
-						変更を保存
+						{t("save")}
 					</Button>
 				</div>
 			</div>
@@ -298,7 +263,7 @@ export function Settings() {
 							)}
 						>
 							<User className="w-4 h-4" />
-							プロフィール
+							{t("tab_profile")}
 						</button>
 						<button
 							type="button"
@@ -311,36 +276,9 @@ export function Settings() {
 							)}
 						>
 							<SettingsIcon className="w-4 h-4" />
-							アカウント設定
-						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab("privacy")}
-							className={cn(
-								"flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all",
-								activeTab === "privacy"
-									? "bg-primary text-primary-foreground"
-									: "hover:bg-accent text-muted-foreground hover:text-foreground",
-							)}
-						>
-							<Shield className="w-4 h-4" />
-							プライバシー & 通知
+							{t("tab_account")}
 						</button>
 					</nav>
-
-					<div className="mt-6 px-4 pb-4">
-						<div className="p-4 rounded-xl bg-accent/30 border border-accent">
-							<p className="text-xs font-medium text-muted-foreground mb-2">
-								ストレージ使用状況
-							</p>
-							<div className="h-2 w-full bg-background rounded-full overflow-hidden">
-								<div className="h-full bg-secondary w-[45%]" />
-							</div>
-							<p className="text-[10px] text-muted-foreground mt-2 text-right">
-								45% 使用中
-							</p>
-						</div>
-					</div>
 				</Card>
 
 				<div className="col-span-1 md:col-span-9 space-y-6">
@@ -357,12 +295,12 @@ export function Settings() {
 								<Card className="col-span-1 md:col-span-2 p-6">
 									<SectionHeader
 										icon={User}
-										title="基本プロフィール"
-										description="マッチング時に他のユーザーに表示される情報です。"
+										title={t("profile_title")}
+										description={t("profile_description")}
 									/>
 									<div className="grid gap-6 md:grid-cols-2">
 										<div className="space-y-2">
-											<Label htmlFor="display_name">表示名</Label>
+											<Label htmlFor="display_name">{t("display_name")}</Label>
 											<Input
 												id="display_name"
 												value={formData.display_name}
@@ -372,11 +310,11 @@ export function Settings() {
 														display_name: e.target.value,
 													})
 												}
-												placeholder="例: Alex Foxx"
+												placeholder={t("display_name_placeholder")}
 											/>
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="location">居住地</Label>
+											<Label htmlFor="location">{t("location")}</Label>
 											<Input
 												id="location"
 												value={formData.location}
@@ -386,11 +324,11 @@ export function Settings() {
 														location: e.target.value,
 													})
 												}
-												placeholder="例: Tokyo, Japan"
+												placeholder={t("location_placeholder")}
 											/>
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="age">年齢</Label>
+											<Label htmlFor="age">{t("age")}</Label>
 											<Input
 												id="age"
 												type="number"
@@ -406,7 +344,7 @@ export function Settings() {
 										</div>
 									</div>
 									<div className="space-y-2 mt-6">
-										<Label htmlFor="bio">自己紹介 (Bio)</Label>
+										<Label htmlFor="bio">{t("bio_label")}</Label>
 										<Textarea
 											id="bio"
 											value={formData.bio}
@@ -416,11 +354,11 @@ export function Settings() {
 													bio: e.target.value,
 												})
 											}
-											placeholder="あなたの趣味や興味について教えてください..."
+											placeholder={t("bio_placeholder")}
 											className="min-h-[120px]"
 										/>
 										<p className="text-[11px] text-muted-foreground text-right">
-											{formData.bio.length} / 500 文字
+											{t("bio_count", { count: formData.bio.length })}
 										</p>
 									</div>
 								</Card>
@@ -450,30 +388,15 @@ export function Settings() {
 									</div>
 									<div className="flex gap-2">
 										<Button variant="outline" size="sm">
-											写真を変更
+											{t("change_photo")}
 										</Button>
 										<Button
 											variant="ghost"
 											size="sm"
 											className="text-red-500 hover:text-red-600 hover:bg-red-50"
 										>
-											削除
+											{t("delete_photo")}
 										</Button>
-									</div>
-								</Card>
-
-								<Card className="col-span-1 p-6 bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-									<SectionHeader
-										icon={Globe}
-										title="公開ステータス"
-										description="あなたのプロフィールは現在公開されています。"
-									/>
-									<div className="flex items-center justify-between mt-4 bg-background/50 p-4 rounded-xl border border-border">
-										<div className="flex items-center gap-3">
-											<div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-											<span className="text-sm font-medium">Active Now</span>
-										</div>
-										<Switch checked={true} onCheckedChange={() => {}} />
 									</div>
 								</Card>
 							</motion.div>
@@ -491,12 +414,12 @@ export function Settings() {
 								<Card className="p-6">
 									<SectionHeader
 										icon={SettingsIcon}
-										title="アカウント設定"
-										description="ログイン情報や連絡先を管理します。"
+										title={t("account_title")}
+										description={t("account_description")}
 									/>
 									<div className="grid gap-6 md:grid-cols-2">
 										<div className="space-y-2">
-											<Label htmlFor="email">メールアドレス</Label>
+											<Label htmlFor="email">{t("email_label")}</Label>
 											<Input
 												id="email"
 												type="email"
@@ -510,7 +433,7 @@ export function Settings() {
 											/>
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="password">パスワード</Label>
+											<Label htmlFor="password">{t("password_label")}</Label>
 											<Input
 												id="password"
 												type="password"
@@ -523,193 +446,84 @@ export function Settings() {
 												size="sm"
 												className="w-full mt-2"
 											>
-												パスワードを変更
+												{t("change_password")}
 											</Button>
 										</div>
 									</div>
 								</Card>
 
-								<Card className="p-6 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/10">
+								<Card className="p-6">
+									<SectionHeader
+										icon={Languages}
+										title={t("language_title")}
+										description={t("language_description")}
+									/>
+									<div className="space-y-4 mt-4">
+										{[
+											{
+												id: "ja",
+												label: t("language_ja"),
+											},
+											{
+												id: "en",
+												label: t("language_en"),
+											},
+										].map((option) => (
+											<div
+												key={option.id}
+												onClick={() => i18n.changeLanguage(option.id)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") i18n.changeLanguage(option.id);
+												}}
+												className={cn(
+													"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
+													i18n.language === option.id
+														? "bg-primary/10 border-primary shadow-sm"
+														: "bg-transparent border-transparent hover:bg-accent",
+												)}
+											>
+												<Globe
+													className={cn(
+														"w-5 h-5",
+														i18n.language === option.id
+															? "text-primary"
+															: "text-muted-foreground",
+													)}
+												/>
+												<p className="text-sm font-medium">{option.label}</p>
+											</div>
+										))}
+									</div>
+								</Card>
+
+								<Card className="p-6 border-red-200 bg-red-50/50">
 									<div className="flex items-start gap-4">
-										<div className="p-2 rounded-xl bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
+										<div className="p-2 rounded-xl bg-red-100 text-red-600">
 											<Trash2 className="w-5 h-5" />
 										</div>
 										<div className="flex-1">
-											<h3 className="text-lg font-semibold tracking-tight text-red-600 dark:text-red-400">
-												Danger Zone
+											<h3 className="text-lg font-semibold tracking-tight text-red-600">
+												{t("danger_zone")}
 											</h3>
 											<p className="text-sm text-muted-foreground mt-1">
-												アカウントを削除すると、全てのペルソナ、チャット履歴、マッチングデータが永久に削除されます。
+												{t("danger_description")}
 											</p>
 											<div className="mt-6 flex flex-wrap gap-4">
 												<Button
 													variant="destructive"
 													onClick={handleDeleteAccount}
 												>
-													アカウントを削除する
+													{t("delete_account")}
 												</Button>
 												<Button
 													variant="ghost"
 													className="text-muted-foreground"
 												>
 													<LogOut className="w-4 h-4 mr-2" />
-													ログアウト
+													{t("logout")}
 												</Button>
 											</div>
 										</div>
-									</div>
-								</Card>
-							</motion.div>
-						)}
-
-						{activeTab === "privacy" && (
-							<motion.div
-								key="privacy"
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -10 }}
-								transition={{ duration: 0.2 }}
-								className="grid grid-cols-1 md:grid-cols-2 gap-6"
-							>
-								<Card className="col-span-1 md:col-span-2 p-6">
-									<SectionHeader
-										icon={Bell}
-										title="通知設定"
-										description="受け取る通知の種類をカスタマイズします。"
-									/>
-									<div className="space-y-4">
-										<div className="flex items-center justify-between p-3 rounded-xl hover:bg-accent/30 transition-colors">
-											<div className="space-y-0.5">
-												<Label className="text-base">メール通知</Label>
-												<p className="text-sm text-muted-foreground">
-													マッチングや重要なお知らせをメールで受け取る
-												</p>
-											</div>
-											<Switch
-												checked={formData.notifications_email}
-												onCheckedChange={(c) =>
-													setFormData({
-														...formData,
-														notifications_email: c,
-													})
-												}
-											/>
-										</div>
-										<div className="flex items-center justify-between p-3 rounded-xl hover:bg-accent/30 transition-colors">
-											<div className="space-y-0.5">
-												<Label className="text-base">プッシュ通知</Label>
-												<p className="text-sm text-muted-foreground">
-													ブラウザでのデスクトップ通知を有効にする
-												</p>
-											</div>
-											<Switch
-												checked={formData.notifications_push}
-												onCheckedChange={(c) =>
-													setFormData({
-														...formData,
-														notifications_push: c,
-													})
-												}
-											/>
-										</div>
-									</div>
-								</Card>
-
-								<Card className="col-span-1 p-6">
-									<SectionHeader
-										icon={Eye}
-										title="公開範囲"
-										description="ペルソナAIを誰に見せるか設定します。"
-									/>
-									<div className="space-y-4 mt-4">
-										{[
-											{
-												id: "public",
-												label: "全体公開",
-												desc: "全てのユーザーが閲覧可能",
-												icon: Globe,
-											},
-											{
-												id: "match",
-												label: "マッチのみ",
-												desc: "相性の良い相手にのみ表示",
-												icon: Smartphone,
-											},
-											{
-												id: "private",
-												label: "非公開",
-												desc: "自分だけが閲覧可能",
-												icon: Lock,
-											},
-										].map((option) => (
-											<div
-												key={option.id}
-												onClick={() =>
-													setFormData({
-														...formData,
-														privacy_persona_visible: option.id,
-													})
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter")
-														setFormData({
-															...formData,
-															privacy_persona_visible: option.id,
-														});
-												}}
-												className={cn(
-													"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
-													formData.privacy_persona_visible === option.id
-														? "bg-primary/10 border-primary shadow-sm"
-														: "bg-transparent border-transparent hover:bg-accent",
-												)}
-											>
-												<option.icon
-													className={cn(
-														"w-5 h-5",
-														formData.privacy_persona_visible === option.id
-															? "text-primary"
-															: "text-muted-foreground",
-													)}
-												/>
-												<div>
-													<p className="text-sm font-medium">{option.label}</p>
-													<p className="text-xs text-muted-foreground">
-														{option.desc}
-													</p>
-												</div>
-											</div>
-										))}
-									</div>
-								</Card>
-
-								<Card className="col-span-1 p-6">
-									<SectionHeader
-										icon={Clock}
-										title="データ保持期間"
-										description="会話ログの保存期間を設定します。"
-									/>
-									<div className="space-y-4 mt-4">
-										<div className="p-4 rounded-xl bg-accent/20 border border-border">
-											<div className="flex justify-between items-center mb-2">
-												<span className="text-sm font-medium">保存期間</span>
-												<span className="text-sm text-primary font-bold">
-													無期限
-												</span>
-											</div>
-											<input
-												type="range"
-												className="w-full h-2 bg-secondary/30 rounded-lg appearance-none cursor-pointer accent-secondary"
-												min="0"
-												max="100"
-											/>
-											<p className="text-xs text-muted-foreground mt-2">
-												現在、全ての会話ログが無期限に保存されています。これにより、AIの学習精度が向上します。
-											</p>
-										</div>
-										<Button variant="outline" className="w-full text-xs">
-											ログデータをダウンロード
-										</Button>
 									</div>
 								</Card>
 							</motion.div>
