@@ -149,14 +149,6 @@ export function Settings() {
 	const { data: authMe } = useAuthMe();
 	const updateAuthMe = useUpdateAuthMe();
 
-	const [formData, setFormData] = useState({
-		display_name: "",
-		location: "",
-		bio: "",
-		age: 0,
-		email: "user@example.com",
-	});
-
 	const [basicInfo, setBasicInfo] = useState({
 		nickname: "",
 		gender: "",
@@ -178,19 +170,6 @@ export function Settings() {
 			});
 		}
 	}, [authMe]);
-
-	useEffect(() => {
-		if (profile) {
-			const basic = (profile.basic_info ?? {}) as Record<string, unknown>;
-			setFormData((prev) => ({
-				...prev,
-				display_name: (basic.display_name as string) ?? "",
-				location: (basic.location as string) ?? "",
-				bio: (basic.bio as string) ?? "",
-				age: Number(basic.age) || 0,
-			}));
-		}
-	}, [profile]);
 
 
 	const handleSaveBasicInfo = async () => {
