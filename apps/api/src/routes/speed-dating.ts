@@ -3,7 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
-import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
+import { chatComplete } from "../services/mistral";
 import { buildVirtualPersonaPrompt } from "../prompts/virtual-persona";
 import { buildSpeedDatingSystemPrompt } from "../prompts/speed-dating";
 import { z } from "zod";
