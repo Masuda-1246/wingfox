@@ -8,13 +8,14 @@ import {
 } from "@/components/ui/card";
 import {
 	useQuizQuestions,
+	useQuizAnswers,
 	useSubmitQuizAnswers,
 	type QuizQuestion,
 } from "@/lib/hooks/useQuiz";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Send } from "lucide-react";
 
 type OptionItem = { value: string; label: string };
@@ -39,9 +40,11 @@ function normalizeOptions(
 export function Quiz() {
 	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: questions, isLoading } = useQuizQuestions();
+	const { data: quizAnswersData } = useQuizAnswers();
 	const submit = useSubmitQuizAnswers();
 	const [step, setStep] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, string[]>>({});
+	const hasInitializedAnswers = useRef(false);
 
 	const sortedQuestions = useMemo(
 		() =>
@@ -50,6 +53,19 @@ export function Quiz() {
 			),
 		[questions],
 	);
+
+	// DBに既存の回答がある場合やセクションに戻ったときに表示
+	useEffect(() => {
+		if (hasInitializedAnswers.current || !sortedQuestions.length) return;
+		if (quizAnswersData === undefined) return; // まだ取得中
+		const data = Array.isArray(quizAnswersData) ? quizAnswersData : [];
+		const initial: Record<string, string[]> = {};
+		for (const row of data) {
+			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+		}
+		setAnswers((prev) => (Object.keys(prev).length > 0 ? prev : initial));
+		hasInitializedAnswers.current = true;
+	}, [quizAnswersData, sortedQuestions.length]);
 
 	const current = sortedQuestions[step];
 	const options = current
@@ -61,6 +77,7 @@ export function Quiz() {
 			)
 		: [];
 	const currentSelected = current ? answers[current.id] ?? [] : [];
+	const hasCurrentSelection = currentSelected.length > 0;
 
 	const handleSelect = useCallback(
 		(q: QuizQuestion, value: string) => {
@@ -182,7 +199,7 @@ export function Quiz() {
 						{t("quiz.prev")}
 					</Button>
 					{step < sortedQuestions.length - 1 ? (
-						<Button size="sm" onClick={handleNext}>
+						<Button size="sm" onClick={handleNext} disabled={!hasCurrentSelection}>
 							{t("quiz.next")}
 							<ChevronRight className="size-4" />
 						</Button>
@@ -190,7 +207,7 @@ export function Quiz() {
 						<Button
 							size="sm"
 							onClick={handleSubmit}
-							disabled={submit.isPending}
+							disabled={submit.isPending || !hasCurrentSelection}
 						>
 							{submit.isPending ? (
 								<Loader2 className="size-4 animate-spin" />

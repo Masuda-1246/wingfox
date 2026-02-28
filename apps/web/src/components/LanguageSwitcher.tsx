@@ -1,0 +1,73 @@
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+import { useEffect, useRef, useState } from "react";
+import { Globe } from "lucide-react";
+
+const LANGUAGES = [
+	{ id: "ja" as const, labelKey: "language_ja" },
+	{ id: "en" as const, labelKey: "language_en" },
+] as const;
+
+function isCurrentLanguage(current: string, optionId: string) {
+	return current === optionId || (current ?? "").startsWith(`${optionId}-`);
+}
+
+export function LanguageSwitcher({ className }: { className?: string }) {
+	const { t, i18n } = useTranslation("settings");
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			if (ref.current && !ref.current.contains(event.target as Node)) {
+				setOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, []);
+
+	return (
+		<div ref={ref} className={cn("relative", className)}>
+			<button
+				type="button"
+				onClick={() => setOpen(!open)}
+				className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label={t("language_title")}
+				aria-expanded={open}
+				aria-haspopup="listbox"
+			>
+				<Globe className="h-5 w-5" />
+			</button>
+
+			{open && (
+				<div
+					role="listbox"
+					aria-label={t("language_title")}
+					className="absolute right-0 top-full z-50 mt-2 w-40 rounded-xl border border-border bg-card py-1 shadow-lg"
+				>
+					{LANGUAGES.map((option) => (
+						<button
+							key={option.id}
+							role="option"
+							aria-selected={isCurrentLanguage(i18n.language, option.id)}
+							type="button"
+							onClick={() => {
+								i18n.changeLanguage(option.id);
+								setOpen(false);
+							}}
+							className={cn(
+								"flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
+								isCurrentLanguage(i18n.language, option.id)
+									? "bg-primary/10 font-medium text-primary"
+									: "hover:bg-accent",
+							)}
+						>
+							{t(option.labelKey)}
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}

@@ -11,13 +11,14 @@ export interface AuthMe {
 	avatar_url?: string | null;
 }
 
-export function useAuthMe() {
+export function useAuthMe(options?: { enabled?: boolean }) {
 	return useQuery({
 		queryKey: ["auth", "me"],
 		queryFn: async (): Promise<AuthMe> => {
 			const res = await client.api.auth.me.$get();
 			return unwrapApiResponse<AuthMe>(res);
 		},
+		enabled: options?.enabled !== false,
 	});
 }
 
