@@ -199,14 +199,13 @@ foxSearch.post("/retry/:matchId", requireAuth, async (c) => {
 		}
 	}
 
-	// Reset: keep existing messages for failed (resume); for completed, clear messages and re-run from round 1.
-	if (match.status === "fox_conversation_completed") {
-		await supabase.from("fox_conversation_messages").delete().eq("conversation_id", fc.id);
-	}
+	// Reset: always clear messages so DO starts fresh with history: []
+	await supabase.from("fox_conversation_messages").delete().eq("conversation_id", fc.id);
 	await supabase
 		.from("fox_conversations")
 		.update({
 			status: "pending",
+			current_round: 0,
 			started_at: null,
 			completed_at: null,
 			conversation_analysis: null,
@@ -217,23 +216,36 @@ foxSearch.post("/retry/:matchId", requireAuth, async (c) => {
 		.update({ status: "fox_conversation_in_progress", updated_at: new Date().toISOString() })
 		.eq("id", matchId);
 
-	// Run conversation in background (sequential style; no DO for single retry to keep logic simple)
-	const bgTask = (async () => {
+	// DOでアラームチェーン実行（初回フローと同じ）
+	if (c.env.FOX_CONVERSATION) {
 		try {
-			await runFoxConversation(supabase, apiKey, fc.id);
+			const doId = c.env.FOX_CONVERSATION.idFromName(fc.id);
+			const stub = c.env.FOX_CONVERSATION.get(doId);
+			await stub.fetch(new Request("https://do/init", {
+				method: "POST",
+				body: JSON.stringify({ conversationId: fc.id, matchId }),
+			}));
 		} catch (err) {
-			console.error(`Fox conversation retry failed (${fc.id}):`, err);
+			console.error(`Failed to start DO for retry ${fc.id}:`, err);
 			await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", fc.id);
-			await supabase
-				.from("matches")
-				.update({ status: "fox_conversation_failed" })
-				.eq("id", matchId);
+			await supabase.from("matches").update({ status: "fox_conversation_failed" }).eq("id", matchId);
 		}
-	})();
-	try {
-		c.executionCtx.waitUntil(bgTask);
-	} catch {
-		// Node.js dev server
+	} else {
+		// フォールバック: DO未対応環境（ローカル開発）
+		const bgTask = (async () => {
+			try {
+				await runFoxConversation(supabase, apiKey, fc.id);
+			} catch (err) {
+				console.error(`Fox conversation retry failed (${fc.id}):`, err);
+				await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", fc.id);
+				await supabase.from("matches").update({ status: "fox_conversation_failed" }).eq("id", matchId);
+			}
+		})();
+		try {
+			c.executionCtx.waitUntil(bgTask);
+		} catch {
+			// Node.js dev server
+		}
 	}
 
 	return jsonData(c, {
