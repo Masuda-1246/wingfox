@@ -8,7 +8,10 @@ const partnerFoxApi = client.api["partner-fox-chats"] as {
 		$get: (opts: { param: { id: string } }) => Promise<Response>;
 		messages: {
 			$get: (opts: { param: { id: string } }) => Promise<Response>;
-			$post: (opts: { param: { id: string }; json: { content: string } }) => Promise<Response>;
+			$post: (opts: {
+				param: { id: string };
+				json: { content: string };
+			}) => Promise<Response>;
 		};
 	};
 };
@@ -46,7 +49,14 @@ export function usePartnerFoxChatMessages(id: string | undefined | null) {
 			const res = await partnerFoxApi[":id"].messages.$get({ param: { id } });
 			const json = await res.json();
 			if ("error" in json) throw new Error(json.error.message);
-			return json as { data: Array<{ id: string; role: string; content: string; created_at: string }> };
+			return json as {
+				data: Array<{
+					id: string;
+					role: string;
+					content: string;
+					created_at: string;
+				}>;
+			};
 		},
 		enabled: Boolean(id),
 	});
@@ -86,11 +96,16 @@ export function useSendPartnerFoxMessage(id: string | undefined | null) {
 		},
 		onError: (_err, _content, context) => {
 			if (context?.previous) {
-				queryClient.setQueryData(["partner-fox-chats", id, "messages"], context.previous);
+				queryClient.setQueryData(
+					["partner-fox-chats", id, "messages"],
+					context.previous,
+				);
 			}
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["partner-fox-chats", id, "messages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["partner-fox-chats", id, "messages"],
+			});
 		},
 	});
 }

@@ -1,0 +1,6 @@
+#!/bin/sh
+# コミット前に format と build を実行（マージブロックはCIで実施）
+
+pnpm format
+git add -u
+pnpm build

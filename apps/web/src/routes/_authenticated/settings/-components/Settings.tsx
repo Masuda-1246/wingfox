@@ -1,14 +1,7 @@
 import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { useProfileMe, useUpdateProfileMe } from "@/lib/hooks/useProfile";
 import { cn } from "@/lib/utils";
-import {
-	Globe,
-	Languages,
-	LogOut,
-	Save,
-	Trash2,
-	User,
-} from "lucide-react";
+import { Globe, Languages, LogOut, Save, Trash2, User } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -165,25 +158,32 @@ export function Settings() {
 			};
 			setBasicInfo({
 				nickname: authMe.nickname ?? "",
-				gender: authMe.gender ? genderMap[authMe.gender] ?? "" : "",
+				gender: authMe.gender ? (genderMap[authMe.gender] ?? "") : "",
 				birthYear: authMe.birth_year != null ? String(authMe.birth_year) : "",
 			});
 		}
 	}, [authMe]);
 
-
 	const handleSaveBasicInfo = async () => {
-		const genderApiMap: Record<string, "male" | "female" | "other" | "undisclosed"> = {
+		const genderApiMap: Record<
+			string,
+			"male" | "female" | "other" | "undisclosed"
+		> = {
 			男性: "male",
 			女性: "female",
 			その他: "other",
 			未回答: "undisclosed",
 		};
-		const gender = basicInfo.gender ? genderApiMap[basicInfo.gender] ?? "undisclosed" : "undisclosed";
+		const gender = basicInfo.gender
+			? (genderApiMap[basicInfo.gender] ?? "undisclosed")
+			: "undisclosed";
 		const birthYearNum = basicInfo.birthYear.trim()
 			? Number(basicInfo.birthYear)
 			: null;
-		if (birthYearNum != null && (Number.isNaN(birthYearNum) || birthYearNum < 1900 || birthYearNum > 2100)) {
+		if (
+			birthYearNum != null &&
+			(Number.isNaN(birthYearNum) || birthYearNum < 1900 || birthYearNum > 2100)
+		) {
 			toast.error(t("save_error"));
 			return;
 		}
@@ -217,7 +217,9 @@ export function Settings() {
 	if (error) {
 		return (
 			<div className="p-4 md:p-6 max-w-7xl mx-auto">
-				<p className="text-destructive">プロフィールの読み込みに失敗しました。</p>
+				<p className="text-destructive">
+					プロフィールの読み込みに失敗しました。
+				</p>
 			</div>
 		);
 	}
@@ -315,6 +317,8 @@ export function Settings() {
 						].map((option) => (
 							<div
 								key={option.id}
+								role="button"
+								tabIndex={0}
 								onClick={() => i18n.changeLanguage(option.id)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") i18n.changeLanguage(option.id);
@@ -353,16 +357,10 @@ export function Settings() {
 								{t("danger_description")}
 							</p>
 							<div className="mt-6 flex flex-wrap gap-4">
-								<Button
-									variant="destructive"
-									onClick={handleDeleteAccount}
-								>
+								<Button variant="destructive" onClick={handleDeleteAccount}>
 									{t("delete_account")}
 								</Button>
-								<Button
-									variant="ghost"
-									className="text-muted-foreground"
-								>
+								<Button variant="ghost" className="text-muted-foreground">
 									<LogOut className="w-4 h-4 mr-2" />
 									{t("logout")}
 								</Button>

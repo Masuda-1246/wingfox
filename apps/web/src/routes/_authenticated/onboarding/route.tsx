@@ -1,7 +1,7 @@
-import { Outlet, createFileRoute, useLocation } from "@tanstack/react-router";
-import { ContentPending } from "@/components/route-pending";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingErrorBoundary } from "@/components/onboarding/OnboardingErrorBoundary";
+import { ContentPending } from "@/components/route-pending";
+import { Outlet, createFileRoute, useLocation } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
 	pendingComponent: ContentPending,

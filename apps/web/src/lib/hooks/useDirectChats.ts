@@ -1,13 +1,24 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 const directChatsApi = client.api["direct-chats"] as {
 	$get: () => Promise<Response>;
 	":id": {
 		messages: {
-			$get: (opts: { param: { id: string }; query?: { limit?: number; cursor?: string } }) => Promise<Response>;
-			$post: (opts: { param: { id: string }; json: { content: string } }) => Promise<Response>;
+			$get: (opts: {
+				param: { id: string };
+				query?: { limit?: number; cursor?: string };
+			}) => Promise<Response>;
+			$post: (opts: {
+				param: { id: string };
+				json: { content: string };
+			}) => Promise<Response>;
 		};
 	};
 };
@@ -109,11 +120,16 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 		},
 		onError: (_err, _content, context) => {
 			if (context?.previous) {
-				queryClient.setQueryData(["direct-chats", roomId, "messages"], context.previous);
+				queryClient.setQueryData(
+					["direct-chats", roomId, "messages"],
+					context.previous,
+				);
 			}
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["direct-chats", roomId, "messages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["direct-chats", roomId, "messages"],
+			});
 			queryClient.invalidateQueries({ queryKey: ["direct-chats"] });
 		},
 	});

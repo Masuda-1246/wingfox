@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
-import { useEffect, useRef, useState } from "react";
 import { Globe } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const LANGUAGES = [
 	{ id: "ja" as const, labelKey: "language_ja" },
@@ -45,6 +45,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 					role="listbox"
 					aria-label={t("language_title")}
 					className="absolute right-0 top-full z-50 mt-2 w-40 rounded-xl border border-border bg-card py-1 shadow-lg"
+					tabIndex={0}
 				>
 					{LANGUAGES.map((option) => (
 						<button

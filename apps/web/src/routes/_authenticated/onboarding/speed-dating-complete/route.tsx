@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { ChevronRight } from "lucide-react";
 import { ContentPending } from "@/components/route-pending";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 function SpeedDatingCompletePage() {
 	const { t } = useTranslation("onboarding");
@@ -32,7 +32,9 @@ function SpeedDatingCompletePage() {
 	);
 }
 
-export const Route = createFileRoute("/_authenticated/onboarding/speed-dating-complete")({
+export const Route = createFileRoute(
+	"/_authenticated/onboarding/speed-dating-complete",
+)({
 	pendingComponent: ContentPending,
 	component: SpeedDatingCompletePage,
 });

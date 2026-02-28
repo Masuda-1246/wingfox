@@ -1,30 +1,31 @@
+import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
+import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatDateTime } from "@/lib/date";
+import { useAuthMe } from "@/lib/hooks/useAuthMe";
 import {
-	useQuizQuestions,
-	useQuizAnswers,
-	useSubmitQuizAnswers,
-	type QuizQuestion,
-} from "@/lib/hooks/useQuiz";
-import {
-	usePersonasList,
 	usePersonaSections,
-	useUpdatePersonaSection,
+	usePersonasList,
 	useSetRandomPersonaIcon,
+	useUpdatePersonaSection,
 } from "@/lib/hooks/usePersonasApi";
 import { useProfileMe } from "@/lib/hooks/useProfile";
-import { useAuthMe } from "@/lib/hooks/useAuthMe";
-import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
-import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
+import {
+	type QuizQuestion,
+	useQuizAnswers,
+	useQuizQuestions,
+	useSubmitQuizAnswers,
+} from "@/lib/hooks/useQuiz";
 import type { InteractionStyleWithDna } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
 	Brain,
 	ClipboardList,
 	Edit2,
 	Heart,
+	ImageIcon,
 	Loader2,
 	MessageSquare,
 	RefreshCw,
@@ -33,9 +34,15 @@ import {
 	Tag,
 	User,
 	Zap,
-	ImageIcon,
 } from "lucide-react";
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -154,7 +161,11 @@ function Badge({
 	);
 }
 
-function AxisBar({ value, leftLabel, rightLabel }: { value: number; leftLabel: string; rightLabel: string }) {
+function AxisBar({
+	value,
+	leftLabel,
+	rightLabel,
+}: { value: number; leftLabel: string; rightLabel: string }) {
 	const pct = Math.round(value * 100);
 	return (
 		<div className="space-y-1">
@@ -222,7 +233,14 @@ function PersonalityAnalysisCard({
 	const hasLifestyle = lifestyle && Object.keys(lifestyle).length > 0;
 	const hasTags = tags && tags.length > 0;
 
-	if (!hasAnalysis && !hasValues && !hasRomance && !hasComm && !hasInterests && !hasTags) {
+	if (
+		!hasAnalysis &&
+		!hasValues &&
+		!hasRomance &&
+		!hasComm &&
+		!hasInterests &&
+		!hasTags
+	) {
 		return null;
 	}
 
@@ -230,9 +248,13 @@ function PersonalityAnalysisCard({
 		<Card className="col-span-1 md:col-span-2 p-6">
 			<div className="flex items-center gap-2 mb-1">
 				<Brain className="w-5 h-5 text-secondary" />
-				<h3 className="font-bold text-lg">{t("me.personality_analysis_title")}</h3>
+				<h3 className="font-bold text-lg">
+					{t("me.personality_analysis_title")}
+				</h3>
 			</div>
-			<p className="text-xs text-muted-foreground mb-4">{t("me.personality_analysis_desc")}</p>
+			<p className="text-xs text-muted-foreground mb-4">
+				{t("me.personality_analysis_desc")}
+			</p>
 
 			<div className="space-y-5">
 				{/* Personality tags */}
@@ -284,13 +306,22 @@ function PersonalityAnalysisCard({
 						</span>
 						<div className="grid gap-2">
 							{typeof values.work_life_balance === "number" && (
-								<ScoreBarSimple value={values.work_life_balance} label={t("me.value_work_life_balance")} />
+								<ScoreBarSimple
+									value={values.work_life_balance}
+									label={t("me.value_work_life_balance")}
+								/>
 							)}
 							{typeof values.family_oriented === "number" && (
-								<ScoreBarSimple value={values.family_oriented} label={t("me.value_family_oriented")} />
+								<ScoreBarSimple
+									value={values.family_oriented}
+									label={t("me.value_family_oriented")}
+								/>
 							)}
 							{typeof values.experience_vs_material === "number" && (
-								<ScoreBarSimple value={values.experience_vs_material} label={t("me.value_experience_vs_material")} />
+								<ScoreBarSimple
+									value={values.experience_vs_material}
+									label={t("me.value_experience_vs_material")}
+								/>
 							)}
 						</div>
 					</div>
@@ -304,18 +335,31 @@ function PersonalityAnalysisCard({
 						</span>
 						<div className="grid gap-2">
 							{typeof comm.humor_level === "number" && (
-								<ScoreBarSimple value={comm.humor_level} label={t("me.comm_humor_level")} />
+								<ScoreBarSimple
+									value={comm.humor_level}
+									label={t("me.comm_humor_level")}
+								/>
 							)}
 							{typeof comm.empathy_level === "number" && (
-								<ScoreBarSimple value={comm.empathy_level} label={t("me.comm_empathy_level")} />
+								<ScoreBarSimple
+									value={comm.empathy_level}
+									label={t("me.comm_empathy_level")}
+								/>
 							)}
 							{typeof comm.question_ratio === "number" && (
-								<ScoreBarSimple value={comm.question_ratio} label={t("me.comm_question_ratio")} />
+								<ScoreBarSimple
+									value={comm.question_ratio}
+									label={t("me.comm_question_ratio")}
+								/>
 							)}
 							{typeof comm.message_length === "string" && (
 								<div className="flex gap-2 text-xs">
-									<span className="text-muted-foreground">{t("me.comm_message_length")}:</span>
-									<Badge className="bg-accent/50 text-foreground border-accent text-xs">{comm.message_length}</Badge>
+									<span className="text-muted-foreground">
+										{t("me.comm_message_length")}:
+									</span>
+									<Badge className="bg-accent/50 text-foreground border-accent text-xs">
+										{comm.message_length}
+									</Badge>
 								</div>
 							)}
 						</div>
@@ -330,30 +374,42 @@ function PersonalityAnalysisCard({
 							{t("me.section_romance")}
 						</span>
 						<div className="grid gap-1.5 text-sm">
-							{typeof romance.ideal_relationship === "string" && romance.ideal_relationship && (
-								<div className="flex gap-2 text-xs">
-									<span className="text-muted-foreground">{t("me.romance_ideal_relationship")}:</span>
-									<span>{romance.ideal_relationship as string}</span>
-								</div>
-							)}
-							{typeof romance.communication_frequency === "string" && romance.communication_frequency && (
-								<div className="flex gap-2 text-xs">
-									<span className="text-muted-foreground">{t("me.romance_communication_frequency")}:</span>
-									<span>{romance.communication_frequency as string}</span>
-								</div>
-							)}
-							{typeof romance.preferred_partner_type === "string" && romance.preferred_partner_type && (
-								<div className="flex gap-2 text-xs">
-									<span className="text-muted-foreground">{t("me.romance_preferred_partner")}:</span>
-									<span>{romance.preferred_partner_type as string}</span>
-								</div>
-							)}
-							{Array.isArray(romance.dealbreakers) && (romance.dealbreakers as string[]).length > 0 && (
-								<div className="flex gap-2 text-xs">
-									<span className="text-muted-foreground">{t("me.romance_dealbreakers")}:</span>
-									<span>{(romance.dealbreakers as string[]).join(", ")}</span>
-								</div>
-							)}
+							{typeof romance.ideal_relationship === "string" &&
+								romance.ideal_relationship && (
+									<div className="flex gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t("me.romance_ideal_relationship")}:
+										</span>
+										<span>{romance.ideal_relationship as string}</span>
+									</div>
+								)}
+							{typeof romance.communication_frequency === "string" &&
+								romance.communication_frequency && (
+									<div className="flex gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t("me.romance_communication_frequency")}:
+										</span>
+										<span>{romance.communication_frequency as string}</span>
+									</div>
+								)}
+							{typeof romance.preferred_partner_type === "string" &&
+								romance.preferred_partner_type && (
+									<div className="flex gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t("me.romance_preferred_partner")}:
+										</span>
+										<span>{romance.preferred_partner_type as string}</span>
+									</div>
+								)}
+							{Array.isArray(romance.dealbreakers) &&
+								(romance.dealbreakers as string[]).length > 0 && (
+									<div className="flex gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t("me.romance_dealbreakers")}:
+										</span>
+										<span>{(romance.dealbreakers as string[]).join(", ")}</span>
+									</div>
+								)}
 						</div>
 					</div>
 				)}
@@ -386,14 +442,15 @@ function PersonalityAnalysisCard({
 							{t("me.section_lifestyle")}
 						</span>
 						<div className="flex flex-wrap gap-1.5">
-							{Array.isArray(lifestyle.weekend_activities) && (lifestyle.weekend_activities as string[]).map((a) => (
-								<Badge
-									key={a}
-									className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs"
-								>
-									{a}
-								</Badge>
-							))}
+							{Array.isArray(lifestyle.weekend_activities) &&
+								(lifestyle.weekend_activities as string[]).map((a) => (
+									<Badge
+										key={a}
+										className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs"
+									>
+										{a}
+									</Badge>
+								))}
 							{typeof lifestyle.diet === "string" && lifestyle.diet && (
 								<Badge className="bg-accent/50 text-foreground border-accent px-2 py-0.5 text-xs">
 									{lifestyle.diet}
@@ -415,21 +472,26 @@ function PersonalityAnalysisCard({
 export function PersonasMe() {
 	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
-	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
+	const myPersona =
+		personasList && personasList.length > 0 ? personasList[0] : null;
 	const { data: authMe } = useAuthMe();
 	const myPersonaDisplayName =
 		myPersona?.persona_type === "wingfox" && authMe?.nickname
 			? `${authMe.nickname.trim()}Fox`
-			: myPersona?.name ?? "";
+			: (myPersona?.name ?? "");
 	const { data: sections } = usePersonaSections(myPersona?.id);
-	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
+	const updateSection = useUpdatePersonaSection(
+		myPersona?.id ?? null,
+		"core_identity",
+	);
 	const { data: profileData } = useProfileMe();
 	const setRandomIcon = useSetRandomPersonaIcon(myPersona?.id ?? null);
 	const [isIconGenerating, setIsIconGenerating] = useState(false);
 	const iconGenerateStartRef = useRef<number>(0);
 	const MIN_ICON_GENERATING_MS = 7000;
 	const { data: quizQuestions } = useQuizQuestions();
-	const { data: quizAnswersData, isLoading: quizAnswersLoading } = useQuizAnswers();
+	const { data: quizAnswersData, isLoading: quizAnswersLoading } =
+		useQuizAnswers();
 	const submitQuiz = useSubmitQuizAnswers();
 
 	const sortedQuestions = useMemo(
@@ -442,13 +504,10 @@ export function PersonasMe() {
 
 	const answersMap = useMemo(() => {
 		const arr = Array.isArray(quizAnswersData) ? quizAnswersData : [];
-		return arr.reduce<Record<string, string[]>>(
-			(acc, row) => {
-				acc[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
-				return acc;
-			},
-			{},
-		);
+		return arr.reduce<Record<string, string[]>>((acc, row) => {
+			acc[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
+			return acc;
+		}, {});
 	}, [quizAnswersData]);
 
 	const [isEditing, setIsEditing] = useState(false);
@@ -462,7 +521,8 @@ export function PersonasMe() {
 		if (myPersona) {
 			setFormData({
 				profile_text:
-					sections?.find((s) => s.section_id === "core_identity")?.content ?? "",
+					sections?.find((s) => s.section_id === "core_identity")?.content ??
+					"",
 			});
 		}
 	}, [myPersona, sections]);
@@ -592,10 +652,11 @@ export function PersonasMe() {
 						<div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-500/20" />
 					</div>
 
-					<motion.div
+					<m.div
 						initial={{ scale: 0.9, opacity: 0 }}
 						animate={{
-							scale: setRandomIcon.isPending || isIconGenerating ? [1, 1.02, 1] : 1,
+							scale:
+								setRandomIcon.isPending || isIconGenerating ? [1, 1.02, 1] : 1,
 							opacity: 1,
 						}}
 						transition={
@@ -605,8 +666,14 @@ export function PersonasMe() {
 						}
 						className="relative"
 					>
-						<div className={cn("w-40 h-40 overflow-hidden rounded-lg", (setRandomIcon.isPending || isIconGenerating) && "animate-pulse bg-muted")}>
-							{(setRandomIcon.isPending || isIconGenerating) ? (
+						<div
+							className={cn(
+								"w-40 h-40 overflow-hidden rounded-lg",
+								(setRandomIcon.isPending || isIconGenerating) &&
+									"animate-pulse bg-muted",
+							)}
+						>
+							{setRandomIcon.isPending || isIconGenerating ? (
 								<div className="flex h-full w-full items-center justify-center bg-muted">
 									<Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
 								</div>
@@ -622,7 +689,7 @@ export function PersonasMe() {
 						<div className="absolute bottom-0 right-0 bg-secondary text-secondary-foreground p-2 rounded-full border-4 border-background">
 							<Zap className="w-5 h-5 fill-current" />
 						</div>
-					</motion.div>
+					</m.div>
 
 					<div className="space-y-2 w-full">
 						<div>
@@ -658,7 +725,10 @@ export function PersonasMe() {
 								setRandomIcon.mutate(undefined, {
 									onSuccess: () => {
 										const elapsed = Date.now() - iconGenerateStartRef.current;
-										const remain = Math.max(0, MIN_ICON_GENERATING_MS - elapsed);
+										const remain = Math.max(
+											0,
+											MIN_ICON_GENERATING_MS - elapsed,
+										);
 										setTimeout(() => {
 											setIsIconGenerating(false);
 											toast.success(t("me.icon_random_success"));
@@ -671,7 +741,7 @@ export function PersonasMe() {
 								});
 							}}
 						>
-							{(setRandomIcon.isPending || isIconGenerating) ? (
+							{setRandomIcon.isPending || isIconGenerating ? (
 								<>
 									<Loader2 className="w-4 h-4 mr-2 animate-spin" />
 									{t("me.icon_random_loading")}
@@ -720,16 +790,21 @@ export function PersonasMe() {
 
 					<Card className="col-span-1 md:col-span-2 p-6">
 						{(() => {
-							const interactionStyle = profileData?.interaction_style as InteractionStyleWithDna | undefined;
+							const interactionStyle = profileData?.interaction_style as
+								| InteractionStyleWithDna
+								| undefined;
 							const dnaScores = interactionStyle?.dna_scores;
-							const hasDna = dnaScores != null && Object.keys(dnaScores).length > 0;
+							const hasDna =
+								dnaScores != null && Object.keys(dnaScores).length > 0;
 
 							if (hasDna && dnaScores) {
 								return (
 									<>
 										<div className="flex items-center gap-2 mb-4">
 											<Zap className="w-5 h-5 text-secondary" />
-											<h3 className="font-bold text-lg">{t("me.interaction_dna_title")}</h3>
+											<h3 className="font-bold text-lg">
+												{t("me.interaction_dna_title")}
+											</h3>
 										</div>
 										{interactionStyle?.overall_signature && (
 											<p className="text-sm italic text-muted-foreground mb-4">
@@ -750,7 +825,9 @@ export function PersonasMe() {
 								<>
 									<div className="flex items-center gap-2 mb-4">
 										<Tag className="w-5 h-5 text-tertiary" />
-										<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
+										<h3 className="font-bold text-lg">
+											{t("me.traits_title")}
+										</h3>
 									</div>
 									<div className="flex flex-wrap gap-2">
 										{tags && tags.length > 0 ? (
@@ -778,29 +855,34 @@ export function PersonasMe() {
 							<div className="flex items-center gap-2">
 								<ClipboardList className="w-5 h-5 text-secondary" />
 								<div>
-									<h3 className="font-bold text-lg">{t("me.quiz_results_title")}</h3>
+									<h3 className="font-bold text-lg">
+										{t("me.quiz_results_title")}
+									</h3>
 									<p className="text-xs text-muted-foreground mt-0.5">
 										{t("me.quiz_results_description")}
 									</p>
 								</div>
 							</div>
-							{!quizEditMode && Array.isArray(quizAnswersData) && quizAnswersData.length > 0 && (
-								<Button
-									variant="outline"
-									onClick={() => setQuizEditMode(true)}
-									className="text-xs h-9 px-3"
-								>
-									<Edit2 className="w-3 h-3 mr-1" />
-									{t("me.quiz_results_edit")}
-								</Button>
-							)}
+							{!quizEditMode &&
+								Array.isArray(quizAnswersData) &&
+								quizAnswersData.length > 0 && (
+									<Button
+										variant="outline"
+										onClick={() => setQuizEditMode(true)}
+										className="text-xs h-9 px-3"
+									>
+										<Edit2 className="w-3 h-3 mr-1" />
+										{t("me.quiz_results_edit")}
+									</Button>
+								)}
 						</div>
 
 						{quizAnswersLoading ? (
 							<div className="flex items-center justify-center py-8 text-muted-foreground">
 								<Loader2 className="w-6 h-6 animate-spin" />
 							</div>
-						) : Array.isArray(quizAnswersData) && quizAnswersData.length === 0 ? (
+						) : Array.isArray(quizAnswersData) &&
+							quizAnswersData.length === 0 ? (
 							<div className="space-y-3">
 								<p className="text-sm text-muted-foreground">
 									{t("me.quiz_results_empty")}
@@ -824,7 +906,9 @@ export function PersonasMe() {
 									return (
 										<div key={q.id} className="space-y-2">
 											<span className="text-xs font-medium text-muted-foreground">
-												{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+												{t(`quiz.categories.${q.category}`, {
+													ns: "onboarding",
+												})}
 											</span>
 											<p className="text-sm font-medium">
 												{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
@@ -832,7 +916,9 @@ export function PersonasMe() {
 											<div
 												className={cn(
 													"grid gap-2",
-													q.allow_multiple ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
+													q.allow_multiple
+														? "grid-cols-1"
+														: "grid-cols-1 sm:grid-cols-2",
 												)}
 											>
 												{options.map((opt) => {
@@ -863,7 +949,10 @@ export function PersonasMe() {
 									);
 								})}
 								<div className="flex items-center gap-2 pt-2">
-									<Button variant="ghost" onClick={() => setQuizEditMode(false)}>
+									<Button
+										variant="ghost"
+										onClick={() => setQuizEditMode(false)}
+									>
 										{t("me.quiz_results_cancel")}
 									</Button>
 									<Button
@@ -896,11 +985,18 @@ export function PersonasMe() {
 										.map((v) => options.find((o) => o.value === v)?.label ?? v)
 										.filter(Boolean);
 									return (
-										<div key={q.id} className="border-b border-border pb-3 last:border-0 last:pb-0">
+										<div
+											key={q.id}
+											className="border-b border-border pb-3 last:border-0 last:pb-0"
+										>
 											<p className="text-xs text-muted-foreground mb-0.5">
-												{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+												{t(`quiz.categories.${q.category}`, {
+													ns: "onboarding",
+												})}
 											</p>
-											<p className="text-sm font-medium">{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}</p>
+											<p className="text-sm font-medium">
+												{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
+											</p>
 											<p className="text-sm text-muted-foreground mt-1">
 												{labels.length > 0 ? labels.join(" / ") : "—"}
 											</p>

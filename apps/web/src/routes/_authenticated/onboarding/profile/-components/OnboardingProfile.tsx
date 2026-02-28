@@ -1,6 +1,6 @@
+import { OnboardingStepLabel } from "@/components/onboarding/OnboardingContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OnboardingStepLabel } from "@/components/onboarding/OnboardingContainer";
 import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -36,9 +36,7 @@ export function OnboardingProfile() {
 	useEffect(() => {
 		if (authMe) {
 			setNickname(authMe.nickname ?? "");
-			setBirthYear(
-				authMe.birth_year != null ? String(authMe.birth_year) : "",
-			);
+			setBirthYear(authMe.birth_year != null ? String(authMe.birth_year) : "");
 			setGender(authMe.gender ?? "");
 		}
 	}, [authMe]);
@@ -94,11 +92,7 @@ export function OnboardingProfile() {
 
 		const nicknameTrimmed = nickname.trim();
 		const birthYearNum = birthYear.trim() ? Number(birthYear.trim()) : null;
-		const genderValue = gender as
-			| "male"
-			| "female"
-			| "other"
-			| "undisclosed";
+		const genderValue = gender as "male" | "female" | "other" | "undisclosed";
 
 		try {
 			await updateAuthMe.mutateAsync({
@@ -112,15 +106,7 @@ export function OnboardingProfile() {
 			console.error(err);
 			toast.error(t("profile.submit_error"));
 		}
-	}, [
-		nickname,
-		birthYear,
-		gender,
-		updateAuthMe,
-		t,
-		navigate,
-		validateForm,
-	]);
+	}, [nickname, birthYear, gender, updateAuthMe, t, navigate, validateForm]);
 
 	if (loadingMe) {
 		return (
@@ -163,7 +149,10 @@ export function OnboardingProfile() {
 							}}
 							placeholder={t("profile.nickname_placeholder")}
 							autoComplete="nickname"
-							className={cn("rounded-lg", errors.nickname && "border-destructive")}
+							className={cn(
+								"rounded-lg",
+								errors.nickname && "border-destructive",
+							)}
 						/>
 						{errors.nickname && (
 							<p className="text-sm text-destructive">{errors.nickname}</p>
@@ -189,7 +178,10 @@ export function OnboardingProfile() {
 								}
 							}}
 							placeholder={t("profile.birth_year_placeholder")}
-							className={cn("rounded-lg", errors.birthYear && "border-destructive")}
+							className={cn(
+								"rounded-lg",
+								errors.birthYear && "border-destructive",
+							)}
 						/>
 						{errors.birthYear && (
 							<p className="text-sm text-destructive">{errors.birthYear}</p>

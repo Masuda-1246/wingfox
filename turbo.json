@@ -20,6 +20,10 @@
     "check": {
       "dependsOn": ["^build"]
     },
+    "check:fix": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]

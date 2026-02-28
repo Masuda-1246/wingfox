@@ -1,3 +1,5 @@
+import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
+import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -6,21 +8,30 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { ApiError } from "@/lib/api";
 import { useAuthMe } from "@/lib/hooks/useAuthMe";
+import {
+	useGenerateWingfoxPersona,
+	usePersonasList,
+} from "@/lib/hooks/usePersonasApi";
 import {
 	useConfirmProfile,
 	useGenerateProfile,
 	useProfileMe,
 	useResetProfile,
 } from "@/lib/hooks/useProfile";
-import { useGenerateWingfoxPersona, usePersonasList } from "@/lib/hooks/usePersonasApi";
-import { ApiError } from "@/lib/api";
-import { useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
-import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
 import type { InteractionStyleWithDna } from "@/lib/types";
-import { ChevronRight, Loader2, Pause, Play, RotateCcw, Send, Sparkles } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import {
+	ChevronRight,
+	Loader2,
+	Pause,
+	Play,
+	RotateCcw,
+	Send,
+	Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -70,12 +81,20 @@ export function OnboardingReview() {
 
 	const status = authMe?.onboarding_status ?? "not_started";
 	const needsGeneration =
-		status === "speed_dating_completed" && !generationDone && !generateProfile.isSuccess;
+		status === "speed_dating_completed" &&
+		!generationDone &&
+		!generateProfile.isSuccess;
 
 	useEffect(() => {
-		if (status !== "speed_dating_completed" || generationDone || generating || generationFailed) return;
+		if (
+			status !== "speed_dating_completed" ||
+			generationDone ||
+			generating ||
+			generationFailed
+		)
+			return;
 		if (!autoGenerateEnabled) return; // Respect user's choice to disable auto-generation
-		
+
 		let cancelled = false;
 		(async () => {
 			setGenerating(true);
@@ -89,7 +108,8 @@ export function OnboardingReview() {
 				if (!cancelled) setGenerationFailed(true);
 				const err = e as ApiError;
 				const message =
-					err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
+					err?.code === "CONFLICT" &&
+					err?.message?.includes("Profile not generated")
 						? t("review.profile_not_generated")
 						: err?.message
 							? `${t("review.confirm_error")}: ${err.message}`
@@ -103,7 +123,16 @@ export function OnboardingReview() {
 		return () => {
 			cancelled = true;
 		};
-	}, [status, generationDone, generating, generationFailed, autoGenerateEnabled, generateProfile, generateWingfox, t]);
+	}, [
+		status,
+		generationDone,
+		generating,
+		generationFailed,
+		autoGenerateEnabled,
+		generateProfile,
+		generateWingfox,
+		t,
+	]);
 
 	const handleConfirm = async () => {
 		try {
@@ -115,12 +144,19 @@ export function OnboardingReview() {
 			navigate({ to: "/personas/me" });
 		} catch (e) {
 			const err = e as ApiError;
-			if (err?.code === "CONFLICT" && err?.message?.includes("Wingfox persona not generated")) {
+			if (
+				err?.code === "CONFLICT" &&
+				err?.message?.includes("Wingfox persona not generated")
+			) {
 				toast.error(t("review.wingfox_not_ready"));
 				return;
 			}
 			console.error(e);
-			toast.error(err?.message ? `${t("review.confirm_failed")}: ${err.message}` : t("review.confirm_error"));
+			toast.error(
+				err?.message
+					? `${t("review.confirm_failed")}: ${err.message}`
+					: t("review.confirm_error"),
+			);
 		}
 	};
 
@@ -136,7 +172,8 @@ export function OnboardingReview() {
 			setGenerationFailed(true);
 			const err = e as ApiError;
 			const message =
-				err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
+				err?.code === "CONFLICT" &&
+				err?.message?.includes("Profile not generated")
 					? t("review.profile_not_generated")
 					: err?.message
 						? `${t("review.confirm_error")}: ${err.message}`
@@ -156,9 +193,10 @@ export function OnboardingReview() {
 		} catch (e) {
 			const err = e as ApiError;
 			const msg =
-				err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
+				err?.code === "CONFLICT" &&
+				err?.message?.includes("Profile not generated")
 					? t("review.profile_needs_generation")
-					: err?.message ?? t("review.wingfox_gen_failed");
+					: (err?.message ?? t("review.wingfox_gen_failed"));
 			console.error(e);
 			toast.error(msg);
 		}
@@ -176,18 +214,22 @@ export function OnboardingReview() {
 	};
 
 	const profile = profileMe.data;
-	const wingfox = personasList && personasList.length > 0 ? personasList[0] : null;
+	const wingfox =
+		personasList && personasList.length > 0 ? personasList[0] : null;
 	const isLoading =
 		profileMe.isLoading ||
 		(needsGeneration && generating) ||
 		(needsGeneration && generateProfile.isPending);
-	const reviewVisible =
-		!isLoading && !(needsGeneration && !generationDone);
+	const reviewVisible = !isLoading && !(needsGeneration && !generationDone);
 	const isReady =
 		reviewVisible && (wingfox != null || generateWingfox.isSuccess);
 
-	const interactionStyle = profile?.interaction_style as InteractionStyleWithDna | undefined;
-	const hasDnaScores = interactionStyle?.dna_scores != null && Object.keys(interactionStyle.dna_scores).length > 0;
+	const interactionStyle = profile?.interaction_style as
+		| InteractionStyleWithDna
+		| undefined;
+	const hasDnaScores =
+		interactionStyle?.dna_scores != null &&
+		Object.keys(interactionStyle.dna_scores).length > 0;
 	const basicInfoLabelMap: Record<string, string> = {
 		location: t("review.location"),
 		age_range: t("review.age_range"),
@@ -213,7 +255,9 @@ export function OnboardingReview() {
 					</>
 				) : (
 					<>
-						<h3 className="text-xl font-bold">{t("review.profile_needs_generation")}</h3>
+						<h3 className="text-xl font-bold">
+							{t("review.profile_needs_generation")}
+						</h3>
 						<p className="text-sm text-muted-foreground text-center max-w-md">
 							{t("review.profile_not_generated")}
 						</p>
@@ -250,7 +294,7 @@ export function OnboardingReview() {
 						)}
 					</>
 				)}
-				</div>
+			</div>
 		);
 	}
 
@@ -264,21 +308,24 @@ export function OnboardingReview() {
 				<CardContent className="space-y-6">
 					{profile && (
 						<div className="space-y-4">
-							<h4 className="text-sm font-semibold">{t("review.profile_summary")}</h4>
+							<h4 className="text-sm font-semibold">
+								{t("review.profile_summary")}
+							</h4>
 							<div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-4">
 								{/* Personality traits */}
-								{profile.personality_tags && profile.personality_tags.length > 0 && (
-									<div className="space-y-2">
-										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-											{t("review.personality_traits")}
-										</span>
-										<div className="flex flex-wrap gap-1.5">
-											{profile.personality_tags.map((tag: string) => (
-												<TagBadge key={tag} label={tag} />
-											))}
+								{profile.personality_tags &&
+									profile.personality_tags.length > 0 && (
+										<div className="space-y-2">
+											<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+												{t("review.personality_traits")}
+											</span>
+											<div className="flex flex-wrap gap-1.5">
+												{profile.personality_tags.map((tag: string) => (
+													<TagBadge key={tag} label={tag} />
+												))}
+											</div>
 										</div>
-									</div>
-								)}
+									)}
 
 								{/* Basic info */}
 								{profile.basic_info &&
@@ -289,22 +336,28 @@ export function OnboardingReview() {
 												{t("review.basic_info")}
 											</span>
 											<ul className="space-y-0.5 text-sm">
-												{Object.entries(profile.basic_info).map(([key, value]) => {
-													if (value == null || value === "") return null;
-													const label = basicInfoLabelMap[key] ?? key;
-													return (
-														<li key={key} className="flex gap-2">
-															<span className="text-muted-foreground">{label}:</span>
-															<span>{String(value)}</span>
-														</li>
-													);
-												})}
+												{Object.entries(profile.basic_info).map(
+													([key, value]) => {
+														if (value == null || value === "") return null;
+														const label = basicInfoLabelMap[key] ?? key;
+														return (
+															<li key={key} className="flex gap-2">
+																<span className="text-muted-foreground">
+																	{label}:
+																</span>
+																<span>{String(value)}</span>
+															</li>
+														);
+													},
+												)}
 											</ul>
 										</div>
 									)}
 
 								{/* Interaction style — DNA radar or fallback ScoreBar */}
-								{interactionStyle && hasDnaScores && interactionStyle.dna_scores ? (
+								{interactionStyle &&
+								hasDnaScores &&
+								interactionStyle.dna_scores ? (
 									<div className="space-y-3">
 										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 											{t("review.interaction_dna")}
@@ -315,54 +368,92 @@ export function OnboardingReview() {
 											</p>
 										)}
 										<div className="flex justify-center">
-											<InteractionDnaRadar scores={interactionStyle.dna_scores} size={280} />
+											<InteractionDnaRadar
+												scores={interactionStyle.dna_scores}
+												size={280}
+											/>
 										</div>
-										<InteractionDnaDetails scores={interactionStyle.dna_scores} />
+										<InteractionDnaDetails
+											scores={interactionStyle.dna_scores}
+										/>
 									</div>
-								) : interactionStyle && Object.keys(interactionStyle).length > 0 ? (
+								) : interactionStyle &&
+									Object.keys(interactionStyle).length > 0 ? (
 									<div className="space-y-3">
 										<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 											{t("review.interaction_style")}
 										</span>
 										<div className="grid gap-2">
 											{typeof interactionStyle.warmup_speed === "number" && (
-												<ScoreBar value={interactionStyle.warmup_speed} label={t("review.warmup_speed")} />
+												<ScoreBar
+													value={interactionStyle.warmup_speed}
+													label={t("review.warmup_speed")}
+												/>
 											)}
-											{typeof interactionStyle.humor_responsiveness === "number" && (
-												<ScoreBar value={interactionStyle.humor_responsiveness} label={t("review.humor_responsiveness")} />
+											{typeof interactionStyle.humor_responsiveness ===
+												"number" && (
+												<ScoreBar
+													value={interactionStyle.humor_responsiveness}
+													label={t("review.humor_responsiveness")}
+												/>
 											)}
-											{typeof interactionStyle.self_disclosure_depth === "number" && (
-												<ScoreBar value={interactionStyle.self_disclosure_depth} label={t("review.self_disclosure_depth")} />
+											{typeof interactionStyle.self_disclosure_depth ===
+												"number" && (
+												<ScoreBar
+													value={interactionStyle.self_disclosure_depth}
+													label={t("review.self_disclosure_depth")}
+												/>
 											)}
-											{typeof interactionStyle.emotional_responsiveness === "number" && (
-												<ScoreBar value={interactionStyle.emotional_responsiveness} label={t("review.emotional_responsiveness")} />
+											{typeof interactionStyle.emotional_responsiveness ===
+												"number" && (
+												<ScoreBar
+													value={interactionStyle.emotional_responsiveness}
+													label={t("review.emotional_responsiveness")}
+												/>
 											)}
-											{typeof interactionStyle.mirroring_tendency === "number" && (
-												<ScoreBar value={interactionStyle.mirroring_tendency} label={t("review.mirroring_tendency")} />
+											{typeof interactionStyle.mirroring_tendency ===
+												"number" && (
+												<ScoreBar
+													value={interactionStyle.mirroring_tendency}
+													label={t("review.mirroring_tendency")}
+												/>
 											)}
 											{typeof interactionStyle.conflict_style === "string" && (
 												<div className="flex gap-2 text-xs">
-													<span className="text-muted-foreground">{t("review.conflict_style")}:</span>
+													<span className="text-muted-foreground">
+														{t("review.conflict_style")}:
+													</span>
 													<TagBadge label={interactionStyle.conflict_style} />
 												</div>
 											)}
-											{typeof interactionStyle.attachment_tendency === "string" && (
+											{typeof interactionStyle.attachment_tendency ===
+												"string" && (
 												<div className="flex gap-2 text-xs">
-													<span className="text-muted-foreground">{t("review.attachment_tendency")}:</span>
-													<TagBadge label={interactionStyle.attachment_tendency} />
+													<span className="text-muted-foreground">
+														{t("review.attachment_tendency")}:
+													</span>
+													<TagBadge
+														label={interactionStyle.attachment_tendency}
+													/>
 												</div>
 											)}
-											{typeof interactionStyle.rhythm_preference === "string" && (
+											{typeof interactionStyle.rhythm_preference ===
+												"string" && (
 												<div className="flex gap-2 text-xs">
-													<span className="text-muted-foreground">{t("review.rhythm_preference")}:</span>
-													<TagBadge label={interactionStyle.rhythm_preference} />
+													<span className="text-muted-foreground">
+														{t("review.rhythm_preference")}:
+													</span>
+													<TagBadge
+														label={interactionStyle.rhythm_preference}
+													/>
 												</div>
 											)}
 										</div>
 									</div>
 								) : null}
 
-								{(!profile.personality_tags || profile.personality_tags.length === 0) &&
+								{(!profile.personality_tags ||
+									profile.personality_tags.length === 0) &&
 									(!profile.basic_info ||
 										typeof profile.basic_info !== "object" ||
 										Object.keys(profile.basic_info).length === 0) && (

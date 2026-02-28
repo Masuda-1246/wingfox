@@ -30,3 +30,9 @@
 
    - Web: http://localhost:3000
    - API: See each app's configuration
+
+## CI と PR マージブロック
+
+- **pre-commit**: コミット前に `pnpm format` と `pnpm build` が自動で実行されます。
+- **CI**: PR を `main` / `develop` に向けると、`.github/workflows/ci.yml` で format check・build・lint が実行されます。
+- マージをブロックするには、GitHub のブランチ保護で「CI の status check を必須」にしてください。手順は [.github/REQUIRE_CI_FOR_MERGE.md](.github/REQUIRE_CI_FOR_MERGE.md) を参照してください。

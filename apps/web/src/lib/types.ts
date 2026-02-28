@@ -56,7 +56,11 @@ export interface Reports {
 export interface MatchResultItem {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
+	partner: {
+		nickname: string;
+		avatar_url: string | null;
+		persona_icon_url?: string | null;
+	} | null;
 	final_score: number | null;
 	profile_score: number | null;
 	conversation_score: number | null;
@@ -70,7 +74,11 @@ export interface MatchResultItem {
 export interface MatchResultDetail {
 	id: string;
 	partner_id: string;
-	partner: { nickname: string; avatar_url: string | null; persona_icon_url?: string | null } | null;
+	partner: {
+		nickname: string;
+		avatar_url: string | null;
+		persona_icon_url?: string | null;
+	} | null;
 	profile_score: number | null;
 	conversation_score: number | null;
 	final_score: number | null;
