@@ -110,6 +110,7 @@ matching.get("/results/:id", requireAuth, async (c) => {
 		conversation_score: match.conversation_score,
 		final_score: match.final_score,
 		score_details: match.score_details,
+		layer_scores: match.layer_scores,
 		fox_summary: (match.score_details as Record<string, string>)?.summary ?? "",
 		status: match.status,
 		fox_conversation_id: fc?.id ?? null,

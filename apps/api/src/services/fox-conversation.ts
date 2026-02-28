@@ -36,7 +36,7 @@ const ConversationScoreSchema = z.object({
 			percentage: z.number(),
 		}),
 	),
-	feature_scores: FeatureScoresSchema.optional(),
+	feature_scores: FeatureScoresSchema,
 });
 
 // Map from LLM feature key to feature_id
@@ -172,11 +172,34 @@ export async function runFoxConversation(
 		}
 	} catch (e) {
 		console.warn("[runFoxConversation] Score computation failed, using default score(50):", e);
+		// Fallback: generate default feature scores so fox_feature_scores is always populated
+		if (conversationFeatureScores.length === 0) {
+			for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
+				conversationFeatureScores.push({
+					featureId: mapping.id,
+					featureName: mapping.nameJa,
+					rawScore: 0.5,
+					normalizedScore: 0.5,
+					confidence: 0.3,
+					evidence: { source: "fox_conversation_fallback", conversation_id: conversationId },
+					sourcePhase: "fox_conversation",
+				});
+			}
+		}
 	}
 
 	// ─── 3-layer compatibility scoring (graceful: skips if interaction_dna_scores table missing) ───
 	let finalScore: number;
 	let layerData: Record<string, unknown> = {};
+
+	// Build fox_feature_scores (0-100) for frontend display
+	const foxFeatureScores: Record<string, number> = {};
+	for (const fs of conversationFeatureScores) {
+		const entry = Object.entries(CONVERSATION_FEATURE_MAP).find(([, v]) => v.id === fs.featureId);
+		if (entry) {
+			foxFeatureScores[entry[0]] = Math.round(fs.normalizedScore * 100);
+		}
+	}
 
 	try {
 		// Save conversation feature scores to interaction_dna_scores
@@ -206,6 +229,7 @@ export async function runFoxConversation(
 			score_details: {
 				...existingDetails,
 				conversation_analysis: analysis,
+				fox_feature_scores: foxFeatureScores,
 				layer1: Math.round(layerScores.layer1 * 100),
 				layer2: Math.round(layerScores.layer2 * 100),
 				layer3: Math.round(layerScores.layer3 * 100),
@@ -229,6 +253,7 @@ export async function runFoxConversation(
 			score_details: {
 				...existingDetails,
 				conversation_analysis: analysis,
+				fox_feature_scores: foxFeatureScores,
 			} as Json,
 		};
 	}

@@ -155,7 +155,7 @@ export async function executeMatching(supabase: SupabaseClient<Database>, topN: 
 		user_a_id: string;
 		user_b_id: string;
 		profile_score: number;
-		final_score: number;
+		final_score: number | null;
 		score_details: Json;
 		layer_scores: Json;
 	}[] = [];
@@ -171,7 +171,7 @@ export async function executeMatching(supabase: SupabaseClient<Database>, topN: 
 			user_a_id: aId,
 			user_b_id: bId,
 			profile_score: s.result.score,
-			final_score: s.result.score,
+			final_score: null,
 			score_details: s.result.details as Json,
 			layer_scores: {
 				layer1: s.result.layerScores.layer1,

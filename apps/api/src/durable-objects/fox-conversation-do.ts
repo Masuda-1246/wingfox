@@ -301,7 +301,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				topic_distribution: z.array(
 					z.object({ topic: z.string(), percentage: z.number() }),
 				),
-				feature_scores: FeatureScoresSchema.optional(),
+				feature_scores: FeatureScoresSchema,
 			});
 
 			const CONVERSATION_FEATURE_MAP: Record<string, { id: number; nameJa: string }> = {
@@ -350,6 +350,20 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				}
 			} catch (e) {
 				console.warn("[FoxConversationDO] Score computation failed, using default score(50):", e);
+				// Fallback: generate default feature scores so fox_feature_scores is always populated
+				if (conversationFeatureScores.length === 0) {
+					for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
+						conversationFeatureScores.push({
+							featureId: mapping.id,
+							featureName: mapping.nameJa,
+							rawScore: 0.5,
+							normalizedScore: 0.5,
+							confidence: 0.3,
+							evidence: { source: "fox_conversation_fallback", conversation_id: state.conversationId },
+							sourcePhase: "fox_conversation",
+						});
+					}
+				}
 			}
 
 			// ─── 3-layer compatibility scoring (graceful fallback) ───
@@ -361,6 +375,15 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.select("profile_score, score_details")
 				.eq("id", state.matchId)
 				.single();
+
+			// Build fox_feature_scores (0-100) for frontend display
+			const foxFeatureScores: Record<string, number> = {};
+			for (const fs of conversationFeatureScores) {
+				const entry = Object.entries(CONVERSATION_FEATURE_MAP).find(([, v]) => v.id === fs.featureId);
+				if (entry) {
+					foxFeatureScores[entry[0]] = Math.round(fs.normalizedScore * 100);
+				}
+			}
 
 			try {
 				// Save conversation feature scores
@@ -392,6 +415,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					score_details: {
 						...existingDetails,
 						conversation_analysis: analysis,
+						fox_feature_scores: foxFeatureScores,
 						layer1: Math.round(layerScores.layer1 * 100),
 						layer2: Math.round(layerScores.layer2 * 100),
 						layer3: Math.round(layerScores.layer3 * 100),
@@ -414,6 +438,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					score_details: {
 						...existingDetails,
 						conversation_analysis: analysis,
+						fox_feature_scores: foxFeatureScores,
 					} as Json,
 				};
 			}
