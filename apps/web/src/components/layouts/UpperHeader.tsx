@@ -13,6 +13,7 @@ import {
 	UserCircle2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 const CURRENT_USER = {
@@ -61,6 +62,7 @@ function Button({
 }
 
 export function UpperHeader() {
+	const { t } = useTranslation("common");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,7 +93,7 @@ export function UpperHeader() {
 		localStorage.removeItem("isAuthenticated");
 		setIsAuthenticated(false);
 		setIsUserMenuOpen(false);
-		toast.success("Signed out successfully");
+		toast.success(t("signed_out_success"));
 		navigate({ to: "/login" });
 	};
 
@@ -121,7 +123,7 @@ export function UpperHeader() {
 						</div>
 						<input
 							type="text"
-							placeholder="Search personas, users, or topics..."
+							placeholder={t("search_placeholder")}
 							className={cn(
 								"flex h-10 w-full rounded-full border border-input bg-muted/30 px-10 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none transition-all",
 								isSearchFocused && "bg-background border-secondary/50",
@@ -182,7 +184,7 @@ export function UpperHeader() {
 											className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-border bg-card text-card-foreground z-50 overflow-hidden p-1.5"
 										>
 											<div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-												Navigation
+												{t("navigation")}
 											</div>
 
 											<Link
@@ -196,7 +198,7 @@ export function UpperHeader() {
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												<UserCircle2 className="h-4 w-4 shrink-0" />
-												<span className="font-medium">My Persona</span>
+												<span className="font-medium">{t("my_persona")}</span>
 											</Link>
 
 											<Link
@@ -210,13 +212,13 @@ export function UpperHeader() {
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												<MessageSquare className="h-4 w-4 shrink-0" />
-												<span className="font-medium">Chat</span>
+												<span className="font-medium">{t("chat")}</span>
 											</Link>
 
 											<div className="h-px bg-border my-1.5 mx-2" />
 
 											<div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-												System
+												{t("system")}
 											</div>
 
 											<Link
@@ -230,7 +232,7 @@ export function UpperHeader() {
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												<Settings className="h-4 w-4 shrink-0" />
-												<span className="font-medium">Settings</span>
+												<span className="font-medium">{t("settings")}</span>
 											</Link>
 
 											<Link
@@ -244,7 +246,7 @@ export function UpperHeader() {
 												onClick={() => setIsUserMenuOpen(false)}
 											>
 												<HelpCircle className="h-4 w-4 shrink-0" />
-												<span className="font-medium">Reports & Help</span>
+												<span className="font-medium">{t("reports_help")}</span>
 											</Link>
 
 											<div className="h-px bg-border my-1.5 mx-2" />
@@ -256,7 +258,7 @@ export function UpperHeader() {
 											>
 												<LogOut className="h-4 w-4 shrink-0" />
 												<span className="font-medium uppercase tracking-tight">
-													Sign out
+													{t("sign_out")}
 												</span>
 											</button>
 										</motion.div>
@@ -267,7 +269,7 @@ export function UpperHeader() {
 					) : (
 						<Link to="/login">
 							<Button variant="secondary" size="sm" className="font-bold px-6">
-								LOG IN
+								{t("log_in")}
 							</Button>
 						</Link>
 					)}

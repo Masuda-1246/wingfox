@@ -1,3 +1,4 @@
+import { formatTime } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -13,6 +14,7 @@ import {
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 interface Message {
@@ -117,6 +119,7 @@ const labelData = [
 ];
 
 export function Chat() {
+	const { t } = useTranslation("chat");
 	const [sessions, setSessions] = useState<ChatSession[]>(INITIAL_SESSIONS);
 	const [activeSessionId, setActiveSessionId] = useState<string>("session-1");
 	const [inputValue, setInputValue] = useState("");
@@ -183,7 +186,7 @@ export function Chat() {
 				return s;
 			}),
 		);
-		toast.success("AI提案を承認し送信しました");
+		toast.success(t("suggestion_approved"));
 	};
 
 	const handleRejectSuggestion = () => {
@@ -195,12 +198,12 @@ export function Chat() {
 				return s;
 			}),
 		);
-		toast.info("提案を破棄しました");
+		toast.info(t("suggestion_discarded"));
 	};
 
 	const handleReport = () => {
 		setShowReportModal(false);
-		toast.error("この会話を通報し、運営に報告しました。");
+		toast.error(t("reported_toast"));
 	};
 
 	return (
@@ -225,9 +228,9 @@ export function Chat() {
 						</button>
 					)}
 					<div className="flex items-center justify-between mb-2 shrink-0">
-						<h2 className="text-2xl font-black tracking-tight">CHATS</h2>
+						<h2 className="text-2xl font-black tracking-tight">{t("title")}</h2>
 						<div className="text-[10px] font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full border border-secondary/20 uppercase">
-							Active
+							{t("active")}
 						</div>
 					</div>
 					<div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
@@ -289,7 +292,7 @@ export function Chat() {
 									{activeSession.partnerName}
 								</h3>
 								<span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">
-									Persona Sync: Active
+									{t("persona_sync_active")}
 								</span>
 							</div>
 						</div>
@@ -348,11 +351,7 @@ export function Chat() {
 											{msg.text}
 										</div>
 										<span className="text-[10px] text-muted-foreground mt-1 px-1 uppercase font-bold tracking-tighter">
-											{msg.senderName} &bull;{" "}
-											{msg.timestamp.toLocaleTimeString([], {
-												hour: "2-digit",
-												minute: "2-digit",
-											})}
+											{msg.senderName} &bull; {formatTime(msg.timestamp)}
 										</span>
 									</div>
 								</motion.div>
@@ -371,7 +370,7 @@ export function Chat() {
 										<div className="flex items-center gap-2 mb-3 text-secondary">
 											<Sparkles className="w-4 h-4" />
 											<span className="text-[10px] font-black uppercase tracking-widest">
-												AI Wingman Suggestion
+												{t("ai_suggestion")}
 											</span>
 										</div>
 										<div className="bg-background border border-border rounded-xl p-4 mb-4 text-sm font-medium italic">
@@ -383,14 +382,14 @@ export function Chat() {
 												onClick={handleRejectSuggestion}
 												className="px-4 py-2 text-[10px] font-black uppercase border border-border rounded-full hover:bg-muted"
 											>
-												Discard
+												{t("discard")}
 											</button>
 											<button
 												type="button"
 												onClick={handleApproveSuggestion}
 												className="px-6 py-2 text-[10px] font-black uppercase bg-secondary text-white rounded-full hover:bg-secondary/90"
 											>
-												Approve & Send
+												{t("approve_send")}
 											</button>
 										</div>
 									</div>
@@ -409,7 +408,7 @@ export function Chat() {
 								onKeyDown={(e) =>
 									e.key === "Enter" && handleSendMessage(inputValue)
 								}
-								placeholder="Ask your persona to reply..."
+								placeholder={t("input_placeholder")}
 								className="flex-1 bg-transparent border-none outline-none text-sm h-10"
 							/>
 							<button
@@ -429,7 +428,7 @@ export function Chat() {
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col relative overflow-hidden shrink-0">
 						<div className="flex items-center justify-between mb-6">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-								Compatibility
+								{t("compatibility")}
 							</span>
 							<Target className="w-3.5 h-3.5 text-secondary/60" />
 						</div>
@@ -438,7 +437,7 @@ export function Chat() {
 								{activeSession.compatibilityScore}
 							</span>
 							<span className="text-xs font-black text-secondary uppercase mb-2">
-								% Sync
+								{t("sync")}
 							</span>
 						</div>
 						<div className="h-1 w-full bg-muted rounded-full overflow-hidden mb-4">
@@ -452,27 +451,26 @@ export function Chat() {
 							/>
 						</div>
 						<p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
-							Persona traits show high alignment. Communication flow remains
-							stable.
+							{t("compatibility_description")}
 						</p>
 					</div>
 
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col shrink-0">
 						<div className="flex items-center justify-between mb-4">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-								Trait Synergy
+								{t("trait_synergy")}
 							</span>
 							<div className="flex items-center gap-3">
 								<div className="flex items-center gap-1.5">
 									<div className="w-1.5 h-1.5 rounded-full bg-foreground" />
 									<span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">
-										My
+										{t("my")}
 									</span>
 								</div>
 								<div className="flex items-center gap-1.5">
 									<div className="w-1.5 h-1.5 rounded-full bg-secondary" />
 									<span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter">
-										Partner
+										{t("partner")}
 									</span>
 								</div>
 							</div>
@@ -562,19 +560,19 @@ export function Chat() {
 						<div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-1">
 							<div className="flex flex-col">
 								<span className="text-[8px] font-black text-muted-foreground uppercase">
-									Peak
+									{t("peak")}
 								</span>
 								<span className="text-xs font-black truncate">HUMOR</span>
 							</div>
 							<div className="flex flex-col items-center">
 								<span className="text-[8px] font-black text-secondary uppercase tracking-tighter">
-									Overlap
+									{t("overlap")}
 								</span>
 								<span className="text-xs font-black">81.4%</span>
 							</div>
 							<div className="flex flex-col items-end">
 								<span className="text-[8px] font-black text-muted-foreground uppercase">
-									Avg
+									{t("avg")}
 								</span>
 								<span className="text-xs font-black">74.1%</span>
 							</div>
@@ -584,28 +582,28 @@ export function Chat() {
 					<div className="bg-card border border-border rounded-2xl p-6 flex flex-col shrink-0">
 						<div className="flex items-center justify-between mb-6">
 							<span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-								Topic Distribution
+								{t("topic_distribution")}
 							</span>
 							<PieChart className="w-3.5 h-3.5 text-secondary/60" />
 						</div>
 						<div className="flex flex-col gap-5">
 							{[
 								{
-									label: "Entertainment",
+									label: t("entertainment"),
 									pct: 45,
 									color: "bg-secondary",
 								},
 								{
-									label: "Lifestyle",
+									label: t("lifestyle"),
 									pct: 30,
 									color: "bg-foreground",
 								},
 								{
-									label: "Ideology",
+									label: t("ideology"),
 									pct: 15,
 									color: "bg-muted-foreground",
 								},
-								{ label: "Other", pct: 10, color: "bg-muted" },
+								{ label: t("other"), pct: 10, color: "bg-muted" },
 							].map((topic) => (
 								<div key={topic.label} className="flex items-center gap-3">
 									<div
@@ -638,9 +636,11 @@ export function Chat() {
 								<div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
 									<AlertTriangle className="w-8 h-8" />
 								</div>
-								<h3 className="text-xl font-black mb-2">Report Conversation</h3>
+								<h3 className="text-xl font-black mb-2">
+									{t("report_conversation")}
+								</h3>
 								<p className="text-sm text-muted-foreground">
-									Is there an issue with this persona or session?
+									{t("report_question")}
 								</p>
 								<div className="mt-6 space-y-2">
 									<button
@@ -648,14 +648,14 @@ export function Chat() {
 										onClick={handleReport}
 										className="w-full py-3 bg-red-600 text-white text-[10px] font-black uppercase rounded-full hover:bg-red-700"
 									>
-										Confirm Report
+										{t("confirm_report")}
 									</button>
 									<button
 										type="button"
 										onClick={() => setShowReportModal(false)}
 										className="w-full py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground"
 									>
-										Cancel
+										{t("cancel")}
 									</button>
 								</div>
 							</div>

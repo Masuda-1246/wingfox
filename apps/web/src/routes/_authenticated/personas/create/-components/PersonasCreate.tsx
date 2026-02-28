@@ -9,6 +9,7 @@ import {
 	Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
 	useSpeedDate,
@@ -73,6 +74,7 @@ function TranscriptBubble({ entry }: { entry: TranscriptEntry }) {
 }
 
 export function PersonasCreate() {
+	const { t } = useTranslation("personas");
 	const navigate = useNavigate();
 	const [step, setStep] = useState<
 		"initial" | "speed-date" | "review" | "creating"
@@ -131,7 +133,7 @@ export function PersonasCreate() {
 
 	const startSpeedDate = () => {
 		if (!draft.name || !draft.gender) {
-			toast.error("基本情報を入力してください");
+			toast.error(t("create.error_basic_info"));
 			return;
 		}
 		setStep("speed-date");
@@ -154,10 +156,10 @@ export function PersonasCreate() {
 							<div>
 								<h1 className="text-3xl font-black tracking-tighter flex items-center gap-3 italic">
 									<Users className="w-8 h-8 text-secondary" />
-									THE LOUNGE
+									{t("create.lounge_title")}
 								</h1>
 								<p className="text-muted-foreground mt-2">
-									交流イベントへの準備。まずはあなたの簡単なプロフィールを設定しましょう。
+									{t("create.lounge_subtitle")}
 								</p>
 							</div>
 						</div>
@@ -168,11 +170,11 @@ export function PersonasCreate() {
 									<div className="space-y-6">
 										<label className="space-y-2 block">
 											<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-												Display Name
+												{t("create.display_name")}
 											</span>
 											<input
 												type="text"
-												placeholder="あなたの名前"
+												placeholder={t("create.name_placeholder")}
 												value={draft.name}
 												onChange={(e) =>
 													handleDraftChange("name", e.target.value)
@@ -183,7 +185,7 @@ export function PersonasCreate() {
 										<div className="grid grid-cols-2 gap-4">
 											<label className="space-y-2 block">
 												<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-													Gender
+													{t("create.gender")}
 												</span>
 												<select
 													value={draft.gender}
@@ -192,17 +194,23 @@ export function PersonasCreate() {
 													}
 													className="w-full bg-input/50 border border-border rounded-lg p-2 text-sm"
 												>
-													<option value="">選択</option>
-													<option value="男性">男性</option>
-													<option value="女性">女性</option>
-													<option value="その他">その他</option>
+													<option value="">{t("create.gender_select")}</option>
+													<option value="男性">
+														{t("create.gender_male")}
+													</option>
+													<option value="女性">
+														{t("create.gender_female")}
+													</option>
+													<option value="その他">
+														{t("create.gender_other")}
+													</option>
 												</select>
 											</label>
 										</div>
 									</div>
 									<div className="space-y-4">
 										<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-											Your Interests
+											{t("create.interests")}
 										</span>
 										<div className="flex flex-wrap gap-2">
 											{[
@@ -234,17 +242,18 @@ export function PersonasCreate() {
 										disabled={!draft.name || !draft.gender}
 										className="px-10 py-4 bg-foreground text-background rounded-full font-black text-xs tracking-widest hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-30 shadow-xl shadow-black/10"
 									>
-										ENTER SPEED DATE <ArrowRight className="w-4 h-4" />
+										{t("create.enter_speed_date")}{" "}
+										<ArrowRight className="w-4 h-4" />
 									</button>
 								</div>
 							</div>
 							<div className="col-span-12 md:col-span-4 bg-secondary/5 rounded-2xl p-6 border border-secondary/10 flex flex-col justify-center space-y-4">
 								<Users className="w-10 h-10 text-secondary" />
 								<h3 className="font-black text-xs uppercase tracking-tighter italic">
-									Tonight&apos;s Experience
+									{t("create.tonights_experience")}
 								</h3>
 								<p className="text-xs text-muted-foreground leading-relaxed">
-									複数のゲストと短い会話を交わし、あなたの「個性」を抽出します。特定の相手との関係ではなく、交流のリズムそのものが、あなたのペルソナ（分身）の基盤となります。
+									{t("create.tonights_experience_desc")}
 								</p>
 							</div>
 						</div>
@@ -440,14 +449,14 @@ export function PersonasCreate() {
 								<div className="inline-flex items-center gap-2 px-4 py-1.5 bg-secondary/20 text-secondary rounded-full">
 									<Sparkles className="w-4 h-4" />
 									<span className="text-[10px] font-black uppercase tracking-widest">
-										Ready to materialize
+										{t("create.ready_to_materialize")}
 									</span>
 								</div>
 								<h3 className="text-3xl font-black italic tracking-tighter">
-									SYNC COMPLETE.
+									{t("create.sync_complete")}
 								</h3>
 								<p className="text-zinc-400 text-sm max-w-md">
-									交流のリズムが解析されました。このデータから、あなたを最もよく表現する「ペルソナ」を生成します。
+									{t("create.sync_description")}
 								</p>
 							</div>
 							<button
@@ -464,7 +473,8 @@ export function PersonasCreate() {
 								}}
 								className="px-12 py-5 bg-white text-zinc-900 rounded-full font-black text-xs tracking-widest uppercase hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
 							>
-								Finalize Persona <ChevronRight className="w-4 h-4" />
+								{t("create.finalize_persona")}{" "}
+								<ChevronRight className="w-4 h-4" />
 							</button>
 						</div>
 					</motion.div>
@@ -485,10 +495,10 @@ export function PersonasCreate() {
 						</div>
 						<div className="text-center space-y-4">
 							<h3 className="text-2xl font-black tracking-tighter italic">
-								EMBEDDING PERSONALITY...
+								{t("create.embedding_personality")}
 							</h3>
 							<p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
-								Encoding patterns from voice dialogue
+								{t("create.encoding_patterns")}
 							</p>
 						</div>
 					</motion.div>
