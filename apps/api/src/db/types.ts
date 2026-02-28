@@ -238,6 +238,7 @@ export type Database = {
 					conversation_score: number | null;
 					final_score: number | null;
 					score_details: Json;
+					layer_scores: Json;
 					status: string;
 					created_at: string;
 					updated_at: string;
@@ -250,11 +251,40 @@ export type Database = {
 					conversation_score?: number | null;
 					final_score?: number | null;
 					score_details?: Json;
+					layer_scores?: Json;
 					status?: string;
 					created_at?: string;
 					updated_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["matches"]["Insert"]>;
+				Relationships: [];
+			};
+			interaction_dna_scores: {
+				Row: {
+					id: string;
+					match_id: string;
+					feature_id: number;
+					feature_name: string;
+					raw_score: number;
+					normalized_score: number;
+					confidence: number;
+					evidence: Json;
+					source_phase: string;
+					computed_at: string;
+				};
+				Insert: {
+					id?: string;
+					match_id: string;
+					feature_id: number;
+					feature_name: string;
+					raw_score: number;
+					normalized_score: number;
+					confidence?: number;
+					evidence?: Json;
+					source_phase: string;
+					computed_at?: string;
+				};
+				Update: Partial<Database["public"]["Tables"]["interaction_dna_scores"]["Insert"]>;
 				Relationships: [];
 			};
 			fox_conversations: {

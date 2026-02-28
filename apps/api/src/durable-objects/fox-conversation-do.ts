@@ -11,6 +11,13 @@ import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
 } from "../services/matching";
+import {
+	saveFeatureScores,
+	loadFeatureScores,
+	calculateLayerScores,
+	detectDealbreakers,
+	type FeatureScore,
+} from "../services/compatibility";
 import type {
 	ServerMessage,
 	ClientMessage,
@@ -74,9 +81,10 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 	// ── /init: Initialize conversation and start alarm chain ──
 
 	private async handleInit(request: Request): Promise<Response> {
-		const { conversationId, matchId } = (await request.json()) as {
+		const { conversationId, matchId, staggerDelayMs } = (await request.json()) as {
 			conversationId: string;
 			matchId: string;
+			staggerDelayMs?: number;
 		};
 
 		const supabase = this.getSupabase();
@@ -114,7 +122,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.eq("id", conversationId);
 			await supabase
 				.from("matches")
-				.update({ status: "pending" })
+				.update({ status: "fox_conversation_failed" })
 				.eq("id", matchId);
 			return new Response("Persona not found", { status: 400 });
 		}
@@ -140,8 +148,12 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		};
 		await this.ctx.storage.put("state", state);
 
-		// Start alarm immediately
-		await this.ctx.storage.setAlarm(Date.now());
+		// Start alarm with optional stagger delay
+		const delay = staggerDelayMs ?? 0;
+		await this.ctx.storage.setAlarm(Date.now() + delay);
+		if (delay > 0) {
+			console.log(`[FoxConversationDO] ${conversationId} stagger delay: ${delay}ms`);
+		}
 
 		return new Response("OK", { status: 200 });
 	}
@@ -222,8 +234,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			await this.ctx.storage.put("state", state);
 
 			if (nextRound < TOTAL_ROUNDS) {
-				// Schedule next round
-				await this.ctx.storage.setAlarm(Date.now() + 500);
+				// Schedule next round with jitter to desynchronize multiple DOs
+				const jitter = Math.floor(Math.random() * 500);
+				await this.ctx.storage.setAlarm(Date.now() + 500 + jitter);
 			} else {
 				// Final round — compute scores
 				await this.computeScores(supabase, apiKey, state);
@@ -234,7 +247,19 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				await this.failConversation(supabase, state, `Max retries exceeded: ${err}`);
 			} else {
 				await this.ctx.storage.put("state", state);
-				const delay = 2000 * state.retryCount;
+				// 429 rate limit errors get longer backoff than other errors
+				const is429 = err instanceof Error && (
+					err.message.includes("429") ||
+					err.message.includes("rate") ||
+					err.message.includes("Too Many Requests")
+				);
+				const jitter = Math.floor(Math.random() * 2000);
+				const delay = is429
+					? 5000 * state.retryCount + jitter
+					: 2000 * state.retryCount + jitter;
+				if (is429) {
+					console.warn(`[FoxConversationDO] 429 rate limit hit, retry ${state.retryCount} in ${delay}ms`);
+				}
 				await this.ctx.storage.setAlarm(Date.now() + delay);
 			}
 		}
@@ -259,6 +284,15 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				)
 				.join("\n");
 
+			const FeatureScoresSchema = z.object({
+				reciprocity: z.number().min(0).max(1),
+				humor_sharing: z.number().min(0).max(1),
+				self_disclosure: z.number().min(0).max(1),
+				emotional_responsiveness: z.number().min(0).max(1),
+				self_esteem: z.number().min(0).max(1),
+				conflict_resolution: z.number().min(0).max(1),
+			});
+
 			const ConversationScoreSchema = z.object({
 				score: z.number().min(0).max(100),
 				excitement_level: z.number().min(0).max(1),
@@ -267,10 +301,21 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				topic_distribution: z.array(
 					z.object({ topic: z.string(), percentage: z.number() }),
 				),
+				feature_scores: FeatureScoresSchema.optional(),
 			});
+
+			const CONVERSATION_FEATURE_MAP: Record<string, { id: number; nameJa: string }> = {
+				reciprocity: { id: 4, nameJa: "好意の返報性" },
+				humor_sharing: { id: 6, nameJa: "ユーモア共有" },
+				self_disclosure: { id: 7, nameJa: "自己開示" },
+				emotional_responsiveness: { id: 9, nameJa: "感情的応答性" },
+				self_esteem: { id: 11, nameJa: "自己肯定感" },
+				conflict_resolution: { id: 14, nameJa: "葛藤解決スタイル" },
+			};
 
 			let conversationScore = 50;
 			let analysis: Record<string, unknown> = {};
+			let conversationFeatureScores: FeatureScore[] = [];
 			try {
 				const scorePrompt = buildConversationScorePrompt(logText);
 				const scoreRaw = await chatComplete(
@@ -286,43 +331,99 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					mutual_interest: parsed.mutual_interest,
 					topic_distribution: parsed.topic_distribution,
 				};
+
+				// Extract per-feature scores from LLM response
+				if (parsed.feature_scores) {
+					for (const [key, value] of Object.entries(parsed.feature_scores)) {
+						const mapping = CONVERSATION_FEATURE_MAP[key];
+						if (!mapping) continue;
+						conversationFeatureScores.push({
+							featureId: mapping.id,
+							featureName: mapping.nameJa,
+							rawScore: value,
+							normalizedScore: value,
+							confidence: 0.7,
+							evidence: { source: "fox_conversation", conversation_id: state.conversationId },
+							sourcePhase: "fox_conversation",
+						});
+					}
+				}
 			} catch (e) {
 				console.warn("[FoxConversationDO] Score computation failed, using default score(50):", e);
 			}
 
-			// Update match scores
+			// ─── 3-layer compatibility scoring (graceful fallback) ───
+			let finalScore: number;
+			let layerData: Record<string, unknown> = {};
+
 			const { data: matchRow } = await supabase
 				.from("matches")
 				.select("profile_score, score_details")
 				.eq("id", state.matchId)
 				.single();
 
-			let profileScore = (matchRow?.profile_score as number) ?? 50;
-			let existingDetails =
-				(matchRow?.score_details as Record<string, unknown>) ?? {};
-			// 特性シナジーが無い場合は会話完了時に profiles から計算してマージ（トピック分布と両方出るようにする）
-			if (!hasTraitScores(existingDetails)) {
-				const computed = await getProfileScoreDetailsForUsers(
-					supabase,
-					state.userA,
-					state.userB,
-				);
-				if (computed) {
-					profileScore = computed.profile_score;
-					existingDetails = { ...computed.score_details, ...existingDetails };
+			try {
+				// Save conversation feature scores
+				if (conversationFeatureScores.length > 0) {
+					await saveFeatureScores(supabase, state.matchId, conversationFeatureScores);
 				}
+
+				let existingDetails =
+					(matchRow?.score_details as Record<string, unknown>) ?? {};
+
+				if (!hasTraitScores(existingDetails)) {
+					const computed = await getProfileScoreDetailsForUsers(
+						supabase,
+						state.userA,
+						state.userB,
+					);
+					if (computed) {
+						await saveFeatureScores(supabase, state.matchId, computed.featureScores);
+						existingDetails = { ...computed.score_details, ...existingDetails };
+					}
+				}
+
+				const allFeatureScores = await loadFeatureScores(supabase, state.matchId);
+				const layerScores = calculateLayerScores(allFeatureScores);
+				const dealbreakers = detectDealbreakers(allFeatureScores);
+
+				finalScore = dealbreakers.triggered ? 0 : layerScores.finalScore;
+				layerData = {
+					score_details: {
+						...existingDetails,
+						conversation_analysis: analysis,
+						layer1: Math.round(layerScores.layer1 * 100),
+						layer2: Math.round(layerScores.layer2 * 100),
+						layer3: Math.round(layerScores.layer3 * 100),
+					} as Json,
+					layer_scores: {
+						layer1: layerScores.layer1,
+						layer2: layerScores.layer2,
+						layer3: layerScores.layer3,
+						feature_scores: layerScores.featureScores,
+						dealbreakers: dealbreakers.triggered ? dealbreakers.features : [],
+					} as Json,
+				};
+			} catch (e) {
+				console.warn("[FoxConversationDO] 3-layer scoring failed, falling back to simple scoring:", e);
+				const profileScore = (matchRow?.profile_score as number) ?? 50;
+				const existingDetails =
+					(matchRow?.score_details as Record<string, unknown>) ?? {};
+				finalScore = profileScore * 0.4 + conversationScore * 0.6;
+				layerData = {
+					score_details: {
+						...existingDetails,
+						conversation_analysis: analysis,
+					} as Json,
+				};
 			}
-			const finalScore = profileScore * 0.4 + conversationScore * 0.6;
 
 			await supabase
 				.from("matches")
 				.update({
 					conversation_score: conversationScore,
 					final_score: finalScore,
-					score_details: {
-						...existingDetails,
-						conversation_analysis: analysis,
-					} as Json,
+					...layerData,
 					status: "fox_conversation_completed",
 					updated_at: new Date().toISOString(),
 				})
@@ -372,7 +473,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 
 		await supabase
 			.from("matches")
-			.update({ status: "pending" })
+			.update({ status: "fox_conversation_failed" })
 			.eq("id", state.matchId);
 
 		this.broadcast({ type: "error", message: reason });

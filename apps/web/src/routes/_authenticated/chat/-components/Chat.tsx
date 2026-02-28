@@ -47,6 +47,7 @@ interface ChatSession {
 	lastMessage: string;
 	compatibilityScore: number;
 	status: "active" | "archived";
+	matchStatus: string;
 	messages: Message[];
 	suggestion?: Message;
 }
@@ -100,7 +101,7 @@ export function Chat() {
 	const { user } = useAuth();
 	const queryClient = useQueryClient();
 	const { data: matchingData, isLoading } = useMatchingResults(
-		{ status: "fox_conversation_in_progress,fox_conversation_completed,partner_chat_started,direct_chat_requested,direct_chat_active" },
+		{ status: "fox_conversation_in_progress,fox_conversation_completed,fox_conversation_failed,partner_chat_started,direct_chat_requested,direct_chat_active,chat_request_expired,chat_request_declined" },
 		{ enabled: !!user },
 	);
 	const matches = matchingData?.data ?? [];
@@ -112,6 +113,7 @@ export function Chat() {
 		lastMessage: "",
 		compatibilityScore: m.final_score ?? m.profile_score ?? 0,
 		status: "active" as const,
+		matchStatus: m.status,
 		messages: [],
 	}));
 
@@ -190,6 +192,7 @@ export function Chat() {
 				lastMessage: "",
 				compatibilityScore: detail?.final_score ?? detail?.profile_score ?? 0,
 				status: "active",
+				matchStatus: detail?.status ?? "",
 				messages: activeMessages,
 			} as ChatSession;
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -495,6 +498,27 @@ export function Chat() {
 										{(() => {
 											const foxConvId = activeFoxConvMap[session.id];
 											if (!foxConvId) {
+												if (session.matchStatus === "fox_conversation_failed") {
+													return (
+														<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+															{t("match_status_fox_failed", "会話失敗")}
+														</span>
+													);
+												}
+												if (session.matchStatus === "chat_request_expired") {
+													return (
+														<span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-2 py-0.5 rounded-full">
+															{t("match_status_request_expired", "リクエスト期限切れ")}
+														</span>
+													);
+												}
+												if (session.matchStatus === "chat_request_declined") {
+													return (
+														<span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+															{t("match_status_request_declined", "リクエスト辞退")}
+														</span>
+													);
+												}
 												return (
 													<p className="text-xs text-muted-foreground truncate line-clamp-1">
 														{session.lastMessage}

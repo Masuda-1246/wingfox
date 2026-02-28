@@ -51,9 +51,13 @@ foxSearch.post("/start", requireAuth, async (c) => {
 
 	// Run fox conversations: prefer Durable Object (Cloudflare Workers),
 	// fall back to waitUntil / detached promise (Node.js dev server).
-	for (const result of results) {
-		try {
-			if (c.env.FOX_CONVERSATION) {
+	// DOs: stagger init with 3s delay between each to avoid Mistral rate limits.
+	// Non-DO: run sequentially in background to avoid rate limits.
+	if (c.env.FOX_CONVERSATION) {
+		const STAGGER_INTERVAL_MS = 3000;
+		for (let i = 0; i < results.length; i++) {
+			const result = results[i];
+			try {
 				const doId = c.env.FOX_CONVERSATION.idFromName(result.fox_conversation_id);
 				const stub = c.env.FOX_CONVERSATION.get(doId);
 				await stub.fetch(
@@ -62,33 +66,36 @@ foxSearch.post("/start", requireAuth, async (c) => {
 						body: JSON.stringify({
 							conversationId: result.fox_conversation_id,
 							matchId: result.match_id,
+							staggerDelayMs: i * STAGGER_INTERVAL_MS,
 						}),
 					}),
 				);
-			} else {
-				const convId = result.fox_conversation_id;
-				const matchId = result.match_id;
-				const bgTask = runFoxConversation(supabase, apiKey, convId).catch(
-					async (err) => {
-						console.error("Fox conversation failed:", err);
-						await supabase
-							.from("fox_conversations")
-							.update({ status: "failed" })
-							.eq("id", convId);
-						await supabase
-							.from("matches")
-							.update({ status: "pending" })
-							.eq("id", matchId);
-					},
-				);
+			} catch (err) {
+				console.error(`Failed to start DO for ${result.fox_conversation_id}:`, err);
+			}
+		}
+	} else {
+		const bgTask = (async () => {
+			for (const result of results) {
 				try {
-					c.executionCtx.waitUntil(bgTask);
-				} catch {
-					// Node.js dev server — promise runs detached
+					await runFoxConversation(supabase, apiKey, result.fox_conversation_id);
+				} catch (err) {
+					console.error(`Fox conversation failed (${result.fox_conversation_id}):`, err);
+					await supabase
+						.from("fox_conversations")
+						.update({ status: "failed" })
+						.eq("id", result.fox_conversation_id);
+					await supabase
+						.from("matches")
+						.update({ status: "fox_conversation_failed" })
+						.eq("id", result.match_id);
 				}
 			}
-		} catch (err) {
-			console.error(`Failed to start DO/fallback for ${result.fox_conversation_id}:`, err);
+		})();
+		try {
+			c.executionCtx.waitUntil(bgTask);
+		} catch {
+			// Node.js dev server — promise runs detached
 		}
 	}
 
