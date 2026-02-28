@@ -16,7 +16,7 @@ import {
 	useQuizQuestions,
 	useSubmitQuizAnswers,
 } from "@/lib/hooks/useQuiz";
-import type { InteractionStyleWithDna } from "@/lib/types";
+import type { InteractionStyleWithDna, PersonaSection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { m } from "framer-motion";
@@ -38,8 +38,8 @@ import {
 import {
 	forwardRef,
 	useCallback,
-	useEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -469,6 +469,499 @@ function PersonalityAnalysisCard({
 	);
 }
 
+// --- Form state (profile edit) ---
+type FormState = { isEditing: boolean; profileText: string };
+type FormAction =
+	| { type: "SET_EDITING"; payload: boolean }
+	| { type: "SET_PROFILE_TEXT"; payload: string }
+	| { type: "SYNC_FROM_SECTIONS"; payload: string };
+
+function formReducer(state: FormState, action: FormAction): FormState {
+	switch (action.type) {
+		case "SET_EDITING":
+			return { ...state, isEditing: action.payload };
+		case "SET_PROFILE_TEXT":
+			return { ...state, profileText: action.payload };
+		case "SYNC_FROM_SECTIONS":
+			return { ...state, profileText: action.payload };
+		default:
+			return state;
+	}
+}
+
+// --- Quiz edit state ---
+type QuizEditState = { editMode: boolean; answers: Record<string, string[]> };
+type QuizEditAction =
+	| { type: "OPEN_EDIT"; payload: Record<string, string[]> }
+	| { type: "CLOSE_EDIT" }
+	| {
+			type: "SET_ANSWER";
+			questionId: string;
+			value: string;
+			allowMultiple: boolean;
+	  }
+	| { type: "SET_ANSWERS"; payload: Record<string, string[]> };
+
+function quizEditReducer(
+	state: QuizEditState,
+	action: QuizEditAction,
+): QuizEditState {
+	switch (action.type) {
+		case "OPEN_EDIT":
+			return { editMode: true, answers: action.payload };
+		case "CLOSE_EDIT":
+			return { ...state, editMode: false };
+		case "SET_ANSWER": {
+			const next = { ...state.answers };
+			const arr = next[action.questionId] ?? [];
+			if (action.allowMultiple) {
+				if (arr.includes(action.value)) {
+					next[action.questionId] = arr.filter((v) => v !== action.value);
+				} else {
+					next[action.questionId] = [...arr, action.value];
+				}
+			} else {
+				next[action.questionId] = [action.value];
+			}
+			return { ...state, answers: next };
+		}
+		case "SET_ANSWERS":
+			return { ...state, answers: action.payload };
+		default:
+			return state;
+	}
+}
+
+function PersonasMeHeader({
+	t,
+	lastUpdated,
+	isEditing,
+	onCancelEdit,
+	onStartEdit,
+	onSave,
+}: {
+	t: (key: string, opts?: Record<string, unknown>) => string;
+	lastUpdated: string;
+	isEditing: boolean;
+	onCancelEdit: () => void;
+	onStartEdit: () => void;
+	onSave: () => void;
+}) {
+	return (
+		<header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+			<div>
+				<h1 className="text-2xl font-bold tracking-tight">{t("me.title")}</h1>
+				<p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
+					<RefreshCw className="w-3 h-3" />
+					{t("me.last_updated", { date: lastUpdated })}
+				</p>
+			</div>
+			<div className="flex items-center gap-2">
+				{isEditing ? (
+					<div className="flex items-center gap-2">
+						<Button variant="ghost" onClick={onCancelEdit}>
+							{t("me.cancel")}
+						</Button>
+						<Button onClick={onSave} variant="primary">
+							<Save className="w-4 h-4 mr-2" />
+							{t("me.save")}
+						</Button>
+					</div>
+				) : (
+					<div className="flex items-center gap-2">
+						<Button variant="outline" onClick={onStartEdit}>
+							<Edit2 className="w-4 h-4 mr-2" />
+							{t("me.edit")}
+						</Button>
+						<Link to="/onboarding/speed-dating">
+							<Button variant="outline">
+								<RefreshCw className="w-4 h-4 mr-2" />
+								{t("me.regenerate")}
+							</Button>
+						</Link>
+					</div>
+				)}
+			</div>
+		</header>
+	);
+}
+
+function PersonasMeAvatarCard({
+	myPersona,
+	displayName,
+	t,
+	isIconLoading,
+	onRandomIcon,
+}: {
+	myPersona: { id: string; icon_url?: string | null };
+	displayName: string;
+	t: (key: string) => string;
+	isIconLoading: boolean;
+	onRandomIcon: () => void;
+}) {
+	const generating = isIconLoading;
+
+	return (
+		<Card className="col-span-1 md:col-span-4 p-6 flex flex-col items-center text-center space-y-6 relative group">
+			<div className="absolute top-4 right-4">
+				<div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-500/20" />
+			</div>
+			<m.div
+				initial={{ scale: 0.9, opacity: 0 }}
+				animate={{
+					scale: generating ? [1, 1.02, 1] : 1,
+					opacity: 1,
+				}}
+				transition={
+					generating
+						? { scale: { repeat: Number.POSITIVE_INFINITY, duration: 1.5 } }
+						: { duration: 0.5 }
+				}
+				className="relative"
+			>
+				<div
+					className={cn(
+						"w-40 h-40 overflow-hidden rounded-lg",
+						generating && "animate-pulse bg-muted",
+					)}
+				>
+					{generating ? (
+						<div className="flex h-full w-full items-center justify-center bg-muted">
+							<Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+						</div>
+					) : (
+						<FoxAvatar
+							key={myPersona.icon_url ?? "default"}
+							seed={myPersona.id}
+							iconUrl={myPersona.icon_url}
+							className="w-full h-full"
+						/>
+					)}
+				</div>
+				<div className="absolute bottom-0 right-0 bg-secondary text-secondary-foreground p-2 rounded-full border-4 border-background">
+					<Zap className="w-5 h-5 fill-current" />
+				</div>
+			</m.div>
+			<div className="space-y-2 w-full">
+				<h2 className="text-3xl font-black tracking-tight text-foreground">
+					{displayName}
+				</h2>
+				<p className="text-sm text-muted-foreground">
+					AI Persona ID: {myPersona.id.slice(0, 8)}
+				</p>
+			</div>
+			<div className="w-full pt-4 border-t border-border">
+				<Link to="/chat" className="w-full">
+					<Button
+						variant="secondary"
+						className="w-full h-12 text-base shadow-lg shadow-secondary/20 hover:shadow-secondary/40 transition-all"
+					>
+						<MessageSquare className="w-5 h-5 mr-2" />
+						{t("me.enter_talk_room")}
+					</Button>
+				</Link>
+				<p className="text-xs text-muted-foreground mt-2 mb-3">
+					{t("me.icon_random_notice")}
+				</p>
+				<Button
+					variant="outline"
+					className="w-full"
+					disabled={generating}
+					onClick={onRandomIcon}
+				>
+					{generating ? (
+						<>
+							<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							{t("me.icon_random_loading")}
+						</>
+					) : (
+						<>
+							<ImageIcon className="w-4 h-4 mr-2" />
+							{t("me.icon_random")}
+						</>
+					)}
+				</Button>
+			</div>
+		</Card>
+	);
+}
+
+function PersonasMeBioCard({
+	t,
+	profileText,
+	isEditing,
+	onProfileTextChange,
+	placeholder,
+	noProfileLabel,
+}: {
+	t: (key: string) => string;
+	profileText: string;
+	isEditing: boolean;
+	onProfileTextChange: (value: string) => void;
+	placeholder: string;
+	noProfileLabel: string;
+}) {
+	return (
+		<Card className="col-span-1 md:col-span-2 p-6 flex flex-col h-full">
+			<div className="flex items-center gap-2 mb-4">
+				<User className="w-5 h-5 text-secondary" />
+				<h3 className="font-bold text-lg">{t("me.bio_title")}</h3>
+			</div>
+			{isEditing ? (
+				<Textarea
+					value={profileText}
+					onChange={(e) => onProfileTextChange(e.target.value)}
+					className="min-h-[150px] text-base leading-relaxed resize-none bg-accent/10"
+					placeholder={placeholder}
+				/>
+			) : (
+				<div className="prose prose-sm max-w-none">
+					<p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
+						{profileText || noProfileLabel}
+					</p>
+				</div>
+			)}
+		</Card>
+	);
+}
+
+function PersonasMeInteractionCard({
+	profileData,
+	t,
+}: {
+	profileData: {
+		interaction_style?: InteractionStyleWithDna;
+		personality_tags?: string[];
+	} | null;
+	t: (key: string) => string;
+}) {
+	const interactionStyle = profileData?.interaction_style;
+	const dnaScores = interactionStyle?.dna_scores;
+	const hasDna = dnaScores != null && Object.keys(dnaScores).length > 0;
+
+	if (hasDna && dnaScores) {
+		return (
+			<Card className="col-span-1 md:col-span-2 p-6">
+				<div className="flex items-center gap-2 mb-4">
+					<Zap className="w-5 h-5 text-secondary" />
+					<h3 className="font-bold text-lg">{t("me.interaction_dna_title")}</h3>
+				</div>
+				{interactionStyle?.overall_signature && (
+					<p className="text-sm italic text-muted-foreground mb-4">
+						"{interactionStyle.overall_signature}"
+					</p>
+				)}
+				<div className="flex justify-center mb-4">
+					<InteractionDnaRadar scores={dnaScores} size={260} />
+				</div>
+				<InteractionDnaDetails scores={dnaScores} compact />
+			</Card>
+		);
+	}
+
+	const tags = profileData?.personality_tags;
+	return (
+		<Card className="col-span-1 md:col-span-2 p-6">
+			<div className="flex items-center gap-2 mb-4">
+				<Tag className="w-5 h-5 text-tertiary" />
+				<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
+			</div>
+			<div className="flex flex-wrap gap-2">
+				{tags && tags.length > 0 ? (
+					tags.map((tag) => (
+						<Badge
+							key={tag}
+							className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
+						>
+							{tag}
+						</Badge>
+					))
+				) : (
+					<p className="text-sm text-muted-foreground">
+						{t("me.no_interaction_data")}
+					</p>
+				)}
+			</div>
+		</Card>
+	);
+}
+
+function PersonasMeQuizCard({
+	t,
+	quizAnswersData,
+	quizAnswersLoading,
+	quizEditMode,
+	quizAnswers,
+	sortedQuestions,
+	answersMap,
+	onOpenEdit,
+	onQuizSelect,
+	onQuizSave,
+	onQuizCancel,
+	submitPending,
+}: {
+	t: (key: string, opts?: Record<string, unknown>) => string;
+	quizAnswersData: unknown;
+	quizAnswersLoading: boolean;
+	quizEditMode: boolean;
+	quizAnswers: Record<string, string[]>;
+	sortedQuestions: QuizQuestion[];
+	answersMap: Record<string, string[]>;
+	onOpenEdit: () => void;
+	onQuizSelect: (q: QuizQuestion, value: string) => void;
+	onQuizSave: () => void;
+	onQuizCancel: () => void;
+	submitPending: boolean;
+}) {
+	const hasSavedAnswers =
+		Array.isArray(quizAnswersData) && quizAnswersData.length > 0;
+
+	return (
+		<Card className="col-span-1 md:col-span-2 p-6">
+			<div className="flex items-center justify-between gap-2 mb-4">
+				<div className="flex items-center gap-2">
+					<ClipboardList className="w-5 h-5 text-secondary" />
+					<div>
+						<h3 className="font-bold text-lg">{t("me.quiz_results_title")}</h3>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{t("me.quiz_results_description")}
+						</p>
+					</div>
+				</div>
+				{!quizEditMode && hasSavedAnswers && (
+					<Button
+						variant="outline"
+						onClick={onOpenEdit}
+						className="text-xs h-9 px-3"
+					>
+						<Edit2 className="w-3 h-3 mr-1" />
+						{t("me.quiz_results_edit")}
+					</Button>
+				)}
+			</div>
+
+			{quizAnswersLoading ? (
+				<div className="flex items-center justify-center py-8 text-muted-foreground">
+					<Loader2 className="w-6 h-6 animate-spin" />
+				</div>
+			) : !hasSavedAnswers ? (
+				<div className="space-y-3">
+					<p className="text-sm text-muted-foreground">
+						{t("me.quiz_results_empty")}
+					</p>
+					<Link to="/onboarding/quiz">
+						<Button variant="secondary" className="text-sm">
+							{t("me.quiz_button")}
+						</Button>
+					</Link>
+				</div>
+			) : quizEditMode ? (
+				<div className="space-y-6">
+					{sortedQuestions.map((q) => {
+						const options = normalizeQuizOptions(
+							t(`quiz.questions.${q.id}.options`, {
+								ns: "onboarding",
+								returnObjects: true,
+							}) as unknown as string[] | Record<string, unknown>,
+						);
+						const selected = quizAnswers[q.id] ?? [];
+						return (
+							<div key={q.id} className="space-y-2">
+								<span className="text-xs font-medium text-muted-foreground">
+									{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+								</span>
+								<p className="text-sm font-medium">
+									{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
+								</p>
+								<div
+									className={cn(
+										"grid gap-2",
+										q.allow_multiple
+											? "grid-cols-1"
+											: "grid-cols-1 sm:grid-cols-2",
+									)}
+								>
+									{options.map((opt) => {
+										const isSelected = selected.includes(opt.value);
+										return (
+											<button
+												key={opt.value}
+												type="button"
+												onClick={() => onQuizSelect(q, opt.value)}
+												className={cn(
+													"rounded-lg border-2 px-3 py-2 text-left text-sm font-medium transition-colors",
+													isSelected
+														? "border-primary bg-primary/10 text-primary"
+														: "border-border bg-card hover:bg-accent/50",
+												)}
+											>
+												{q.allow_multiple && (
+													<span className="mr-2">{isSelected ? "☑" : "☐"}</span>
+												)}
+												{opt.label}
+											</button>
+										);
+									})}
+								</div>
+							</div>
+						);
+					})}
+					<div className="flex items-center gap-2 pt-2">
+						<Button variant="ghost" onClick={onQuizCancel}>
+							{t("me.quiz_results_cancel")}
+						</Button>
+						<Button
+							variant="primary"
+							onClick={onQuizSave}
+							disabled={submitPending}
+						>
+							{submitPending ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<>
+									<Save className="w-4 h-4 mr-2" />
+									{t("me.quiz_results_save")}
+								</>
+							)}
+						</Button>
+					</div>
+				</div>
+			) : (
+				<div className="space-y-4">
+					{sortedQuestions.map((q) => {
+						const options = normalizeQuizOptions(
+							t(`quiz.questions.${q.id}.options`, {
+								ns: "onboarding",
+								returnObjects: true,
+							}) as unknown as string[] | Record<string, unknown>,
+						);
+						const selectedValues = answersMap[q.id] ?? [];
+						const labels = selectedValues
+							.map((v) => options.find((o) => o.value === v)?.label ?? v)
+							.filter(Boolean);
+						return (
+							<div
+								key={q.id}
+								className="border-b border-border pb-3 last:border-0 last:pb-0"
+							>
+								<p className="text-xs text-muted-foreground mb-0.5">
+									{t(`quiz.categories.${q.category}`, { ns: "onboarding" })}
+								</p>
+								<p className="text-sm font-medium">
+									{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
+								</p>
+								<p className="text-sm text-muted-foreground mt-1">
+									{labels.length > 0 ? labels.join(" / ") : "—"}
+								</p>
+							</div>
+						);
+					})}
+				</div>
+			)}
+		</Card>
+	);
+}
+
 export function PersonasMe() {
 	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
@@ -494,6 +987,15 @@ export function PersonasMe() {
 		useQuizAnswers();
 	const submitQuiz = useSubmitQuizAnswers();
 
+	const [formState, formDispatch] = useReducer(formReducer, {
+		isEditing: false,
+		profileText: "",
+	});
+	const [quizState, quizDispatch] = useReducer(quizEditReducer, {
+		editMode: false,
+		answers: {},
+	});
+
 	const sortedQuestions = useMemo(
 		() =>
 			[...(quizQuestions ?? [])].sort(
@@ -510,70 +1012,52 @@ export function PersonasMe() {
 		}, {});
 	}, [quizAnswersData]);
 
-	const [isEditing, setIsEditing] = useState(false);
-	const [quizEditMode, setQuizEditMode] = useState(false);
-	const [quizAnswers, setQuizAnswers] = useState<Record<string, string[]>>({});
-	const [formData, setFormData] = useState({
-		profile_text: "",
-	});
+	const coreContent =
+		sections?.find((s: PersonaSection) => s.section_id === "core_identity")
+			?.content ?? "";
 
-	useEffect(() => {
-		if (myPersona) {
-			setFormData({
-				profile_text:
-					sections?.find((s) => s.section_id === "core_identity")?.content ??
-					"",
-			});
-		}
-	}, [myPersona, sections]);
+	const startEdit = useCallback(() => {
+		formDispatch({ type: "SYNC_FROM_SECTIONS", payload: coreContent });
+		formDispatch({ type: "SET_EDITING", payload: true });
+	}, [coreContent]);
 
-	useEffect(() => {
-		if (quizEditMode && sortedQuestions.length > 0) {
-			const initial: Record<string, string[]> = {};
-			for (const q of sortedQuestions) {
-				initial[q.id] = answersMap[q.id] ?? [];
-			}
-			setQuizAnswers(initial);
+	const openQuizEdit = useCallback(() => {
+		const initial: Record<string, string[]> = {};
+		for (const q of sortedQuestions) {
+			initial[q.id] = answersMap[q.id] ?? [];
 		}
-	}, [quizEditMode, sortedQuestions, answersMap]);
+		quizDispatch({ type: "OPEN_EDIT", payload: initial });
+	}, [sortedQuestions, answersMap]);
 
 	const handleQuizSelect = useCallback((q: QuizQuestion, value: string) => {
-		setQuizAnswers((prev) => {
-			const next = { ...prev };
-			const arr = next[q.id] ?? [];
-			if (q.allow_multiple) {
-				if (arr.includes(value)) {
-					next[q.id] = arr.filter((v) => v !== value);
-				} else {
-					next[q.id] = [...arr, value];
-				}
-			} else {
-				next[q.id] = [value];
-			}
-			return next;
+		quizDispatch({
+			type: "SET_ANSWER",
+			questionId: q.id,
+			value,
+			allowMultiple: q.allow_multiple ?? false,
 		});
 	}, []);
 
 	const handleQuizSave = useCallback(async () => {
 		const payload = sortedQuestions.map((q) => ({
 			question_id: q.id,
-			selected: quizAnswers[q.id] ?? [],
+			selected: quizState.answers[q.id] ?? [],
 		}));
 		try {
 			await submitQuiz.mutateAsync(payload);
-			setQuizEditMode(false);
+			quizDispatch({ type: "CLOSE_EDIT" });
 			toast.success(t("me.quiz_results_updated_toast"));
 		} catch (e) {
 			console.error(e);
 			toast.error(t("me.quiz_results_update_error"));
 		}
-	}, [sortedQuestions, quizAnswers, submitQuiz, t]);
+	}, [sortedQuestions, quizState.answers, submitQuiz, t]);
 
 	const handleSave = async () => {
 		if (!myPersona) return;
 		try {
-			await updateSection.mutateAsync(formData.profile_text);
-			setIsEditing(false);
+			await updateSection.mutateAsync(formState.profileText);
+			formDispatch({ type: "SET_EDITING", payload: false });
 			toast.success(t("me.updated_toast"));
 		} catch (error) {
 			console.error(error);
@@ -605,407 +1089,81 @@ export function PersonasMe() {
 
 	return (
 		<div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-8 pb-20">
-			<header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-				<div>
-					<h1 className="text-2xl font-bold tracking-tight">{t("me.title")}</h1>
-					<p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
-						<RefreshCw className="w-3 h-3" />
-						{t("me.last_updated", {
-							date: myPersona.updated_at
-								? formatDateTime(new Date(myPersona.updated_at))
-								: "—",
-						})}
-					</p>
-				</div>
-
-				<div className="flex items-center gap-2">
-					{isEditing ? (
-						<div className="flex items-center gap-2">
-							<Button variant="ghost" onClick={() => setIsEditing(false)}>
-								{t("me.cancel")}
-							</Button>
-							<Button onClick={handleSave} variant="primary">
-								<Save className="w-4 h-4 mr-2" />
-								{t("me.save")}
-							</Button>
-						</div>
-					) : (
-						<div className="flex items-center gap-2">
-							<Button variant="outline" onClick={() => setIsEditing(true)}>
-								<Edit2 className="w-4 h-4 mr-2" />
-								{t("me.edit")}
-							</Button>
-							<Link to="/onboarding/speed-dating">
-								<Button variant="outline">
-									<RefreshCw className="w-4 h-4 mr-2" />
-									{t("me.regenerate")}
-								</Button>
-							</Link>
-						</div>
-					)}
-				</div>
-			</header>
+			<PersonasMeHeader
+				t={t}
+				lastUpdated={
+					myPersona.updated_at
+						? formatDateTime(new Date(myPersona.updated_at))
+						: "—"
+				}
+				isEditing={formState.isEditing}
+				onCancelEdit={() =>
+					formDispatch({ type: "SET_EDITING", payload: false })
+				}
+				onStartEdit={startEdit}
+				onSave={handleSave}
+			/>
 
 			<div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-				<Card className="col-span-1 md:col-span-4 p-6 flex flex-col items-center text-center space-y-6 relative group">
-					<div className="absolute top-4 right-4">
-						<div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-500/20" />
-					</div>
-
-					<m.div
-						initial={{ scale: 0.9, opacity: 0 }}
-						animate={{
-							scale:
-								setRandomIcon.isPending || isIconGenerating ? [1, 1.02, 1] : 1,
-							opacity: 1,
-						}}
-						transition={
-							setRandomIcon.isPending || isIconGenerating
-								? { scale: { repeat: Number.POSITIVE_INFINITY, duration: 1.5 } }
-								: { duration: 0.5 }
-						}
-						className="relative"
-					>
-						<div
-							className={cn(
-								"w-40 h-40 overflow-hidden rounded-lg",
-								(setRandomIcon.isPending || isIconGenerating) &&
-									"animate-pulse bg-muted",
-							)}
-						>
-							{setRandomIcon.isPending || isIconGenerating ? (
-								<div className="flex h-full w-full items-center justify-center bg-muted">
-									<Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-								</div>
-							) : (
-								<FoxAvatar
-									key={myPersona.icon_url ?? "default"}
-									seed={myPersona.id}
-									iconUrl={myPersona.icon_url}
-									className="w-full h-full"
-								/>
-							)}
-						</div>
-						<div className="absolute bottom-0 right-0 bg-secondary text-secondary-foreground p-2 rounded-full border-4 border-background">
-							<Zap className="w-5 h-5 fill-current" />
-						</div>
-					</m.div>
-
-					<div className="space-y-2 w-full">
-						<div>
-							<h2 className="text-3xl font-black tracking-tight text-foreground">
-								{myPersonaDisplayName}
-							</h2>
-							<p className="text-sm text-muted-foreground">
-								AI Persona ID: {myPersona.id.slice(0, 8)}
-							</p>
-						</div>
-					</div>
-
-					<div className="w-full pt-4 border-t border-border">
-						<Link to="/chat" className="w-full">
-							<Button
-								variant="secondary"
-								className="w-full h-12 text-base shadow-lg shadow-secondary/20 hover:shadow-secondary/40 transition-all"
-							>
-								<MessageSquare className="w-5 h-5 mr-2" />
-								{t("me.enter_talk_room")}
-							</Button>
-						</Link>
-						<p className="text-xs text-muted-foreground mt-2 mb-3">
-							{t("me.icon_random_notice")}
-						</p>
-						<Button
-							variant="outline"
-							className="w-full"
-							disabled={setRandomIcon.isPending || isIconGenerating}
-							onClick={() => {
-								iconGenerateStartRef.current = Date.now();
-								setIsIconGenerating(true);
-								setRandomIcon.mutate(undefined, {
-									onSuccess: () => {
-										const elapsed = Date.now() - iconGenerateStartRef.current;
-										const remain = Math.max(
-											0,
-											MIN_ICON_GENERATING_MS - elapsed,
-										);
-										setTimeout(() => {
-											setIsIconGenerating(false);
-											toast.success(t("me.icon_random_success"));
-										}, remain);
-									},
-									onError: () => {
-										setIsIconGenerating(false);
-										toast.error(t("me.icon_random_error"));
-									},
-								});
-							}}
-						>
-							{setRandomIcon.isPending || isIconGenerating ? (
-								<>
-									<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-									{t("me.icon_random_loading")}
-								</>
-							) : (
-								<>
-									<ImageIcon className="w-4 h-4 mr-2" />
-									{t("me.icon_random")}
-								</>
-							)}
-						</Button>
-					</div>
-				</Card>
+				<PersonasMeAvatarCard
+					myPersona={myPersona}
+					displayName={myPersonaDisplayName}
+					t={t}
+					isIconLoading={setRandomIcon.isPending || isIconGenerating}
+					onRandomIcon={() => {
+						iconGenerateStartRef.current = Date.now();
+						setIsIconGenerating(true);
+						setRandomIcon.mutate(undefined, {
+							onSuccess: () => {
+								const elapsed = Date.now() - iconGenerateStartRef.current;
+								const remain = Math.max(0, MIN_ICON_GENERATING_MS - elapsed);
+								setTimeout(() => {
+									setIsIconGenerating(false);
+									toast.success(t("me.icon_random_success"));
+								}, remain);
+							},
+							onError: () => {
+								setIsIconGenerating(false);
+								toast.error(t("me.icon_random_error"));
+							},
+						});
+					}}
+				/>
 
 				<div className="col-span-1 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
-					<Card className="col-span-1 md:col-span-2 p-6 flex flex-col h-full">
-						<div className="flex items-center gap-2 mb-4">
-							<User className="w-5 h-5 text-secondary" />
-							<h3 className="font-bold text-lg">{t("me.bio_title")}</h3>
-						</div>
-
-						{isEditing ? (
-							<Textarea
-								value={formData.profile_text}
-								onChange={(e) =>
-									setFormData({
-										...formData,
-										profile_text: e.target.value,
-									})
-								}
-								className="min-h-[150px] text-base leading-relaxed resize-none bg-accent/10"
-								placeholder={t("me.bio_placeholder")}
-							/>
-						) : (
-							<div className="prose prose-sm max-w-none">
-								<p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-									{formData.profile_text || t("me.no_profile")}
-								</p>
-							</div>
-						)}
-					</Card>
+					<PersonasMeBioCard
+						t={t}
+						profileText={
+							formState.isEditing ? formState.profileText : coreContent
+						}
+						isEditing={formState.isEditing}
+						onProfileTextChange={(value) =>
+							formDispatch({ type: "SET_PROFILE_TEXT", payload: value })
+						}
+						placeholder={t("me.bio_placeholder")}
+						noProfileLabel={t("me.no_profile")}
+					/>
 
 					{profileData && (
 						<PersonalityAnalysisCard profile={profileData} t={t} />
 					)}
 
-					<Card className="col-span-1 md:col-span-2 p-6">
-						{(() => {
-							const interactionStyle = profileData?.interaction_style as
-								| InteractionStyleWithDna
-								| undefined;
-							const dnaScores = interactionStyle?.dna_scores;
-							const hasDna =
-								dnaScores != null && Object.keys(dnaScores).length > 0;
+					<PersonasMeInteractionCard profileData={profileData ?? null} t={t} />
 
-							if (hasDna && dnaScores) {
-								return (
-									<>
-										<div className="flex items-center gap-2 mb-4">
-											<Zap className="w-5 h-5 text-secondary" />
-											<h3 className="font-bold text-lg">
-												{t("me.interaction_dna_title")}
-											</h3>
-										</div>
-										{interactionStyle?.overall_signature && (
-											<p className="text-sm italic text-muted-foreground mb-4">
-												"{interactionStyle.overall_signature}"
-											</p>
-										)}
-										<div className="flex justify-center mb-4">
-											<InteractionDnaRadar scores={dnaScores} size={260} />
-										</div>
-										<InteractionDnaDetails scores={dnaScores} compact />
-									</>
-								);
-							}
-
-							// Fallback: show personality tags from profile
-							const tags = profileData?.personality_tags;
-							return (
-								<>
-									<div className="flex items-center gap-2 mb-4">
-										<Tag className="w-5 h-5 text-tertiary" />
-										<h3 className="font-bold text-lg">
-											{t("me.traits_title")}
-										</h3>
-									</div>
-									<div className="flex flex-wrap gap-2">
-										{tags && tags.length > 0 ? (
-											tags.map((tag) => (
-												<Badge
-													key={tag}
-													className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
-												>
-													{tag}
-												</Badge>
-											))
-										) : (
-											<p className="text-sm text-muted-foreground">
-												{t("me.no_interaction_data")}
-											</p>
-										)}
-									</div>
-								</>
-							);
-						})()}
-					</Card>
-
-					<Card className="col-span-1 md:col-span-2 p-6">
-						<div className="flex items-center justify-between gap-2 mb-4">
-							<div className="flex items-center gap-2">
-								<ClipboardList className="w-5 h-5 text-secondary" />
-								<div>
-									<h3 className="font-bold text-lg">
-										{t("me.quiz_results_title")}
-									</h3>
-									<p className="text-xs text-muted-foreground mt-0.5">
-										{t("me.quiz_results_description")}
-									</p>
-								</div>
-							</div>
-							{!quizEditMode &&
-								Array.isArray(quizAnswersData) &&
-								quizAnswersData.length > 0 && (
-									<Button
-										variant="outline"
-										onClick={() => setQuizEditMode(true)}
-										className="text-xs h-9 px-3"
-									>
-										<Edit2 className="w-3 h-3 mr-1" />
-										{t("me.quiz_results_edit")}
-									</Button>
-								)}
-						</div>
-
-						{quizAnswersLoading ? (
-							<div className="flex items-center justify-center py-8 text-muted-foreground">
-								<Loader2 className="w-6 h-6 animate-spin" />
-							</div>
-						) : Array.isArray(quizAnswersData) &&
-							quizAnswersData.length === 0 ? (
-							<div className="space-y-3">
-								<p className="text-sm text-muted-foreground">
-									{t("me.quiz_results_empty")}
-								</p>
-								<Link to="/onboarding/quiz">
-									<Button variant="secondary" className="text-sm">
-										{t("me.quiz_button")}
-									</Button>
-								</Link>
-							</div>
-						) : quizEditMode ? (
-							<div className="space-y-6">
-								{sortedQuestions.map((q) => {
-									const options = normalizeQuizOptions(
-										t(`quiz.questions.${q.id}.options`, {
-											ns: "onboarding",
-											returnObjects: true,
-										}) as string[] | Record<string, unknown>,
-									);
-									const selected = quizAnswers[q.id] ?? [];
-									return (
-										<div key={q.id} className="space-y-2">
-											<span className="text-xs font-medium text-muted-foreground">
-												{t(`quiz.categories.${q.category}`, {
-													ns: "onboarding",
-												})}
-											</span>
-											<p className="text-sm font-medium">
-												{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
-											</p>
-											<div
-												className={cn(
-													"grid gap-2",
-													q.allow_multiple
-														? "grid-cols-1"
-														: "grid-cols-1 sm:grid-cols-2",
-												)}
-											>
-												{options.map((opt) => {
-													const isSelected = selected.includes(opt.value);
-													return (
-														<button
-															key={opt.value}
-															type="button"
-															onClick={() => handleQuizSelect(q, opt.value)}
-															className={cn(
-																"rounded-lg border-2 px-3 py-2 text-left text-sm font-medium transition-colors",
-																isSelected
-																	? "border-primary bg-primary/10 text-primary"
-																	: "border-border bg-card hover:bg-accent/50",
-															)}
-														>
-															{q.allow_multiple && (
-																<span className="mr-2">
-																	{isSelected ? "☑" : "☐"}
-																</span>
-															)}
-															{opt.label}
-														</button>
-													);
-												})}
-											</div>
-										</div>
-									);
-								})}
-								<div className="flex items-center gap-2 pt-2">
-									<Button
-										variant="ghost"
-										onClick={() => setQuizEditMode(false)}
-									>
-										{t("me.quiz_results_cancel")}
-									</Button>
-									<Button
-										variant="primary"
-										onClick={handleQuizSave}
-										disabled={submitQuiz.isPending}
-									>
-										{submitQuiz.isPending ? (
-											<Loader2 className="w-4 h-4 animate-spin" />
-										) : (
-											<>
-												<Save className="w-4 h-4 mr-2" />
-												{t("me.quiz_results_save")}
-											</>
-										)}
-									</Button>
-								</div>
-							</div>
-						) : (
-							<div className="space-y-4">
-								{sortedQuestions.map((q) => {
-									const options = normalizeQuizOptions(
-										t(`quiz.questions.${q.id}.options`, {
-											ns: "onboarding",
-											returnObjects: true,
-										}) as string[] | Record<string, unknown>,
-									);
-									const selectedValues = answersMap[q.id] ?? [];
-									const labels = selectedValues
-										.map((v) => options.find((o) => o.value === v)?.label ?? v)
-										.filter(Boolean);
-									return (
-										<div
-											key={q.id}
-											className="border-b border-border pb-3 last:border-0 last:pb-0"
-										>
-											<p className="text-xs text-muted-foreground mb-0.5">
-												{t(`quiz.categories.${q.category}`, {
-													ns: "onboarding",
-												})}
-											</p>
-											<p className="text-sm font-medium">
-												{t(`quiz.questions.${q.id}.text`, { ns: "onboarding" })}
-											</p>
-											<p className="text-sm text-muted-foreground mt-1">
-												{labels.length > 0 ? labels.join(" / ") : "—"}
-											</p>
-										</div>
-									);
-								})}
-							</div>
-						)}
-					</Card>
+					<PersonasMeQuizCard
+						t={t}
+						quizAnswersData={quizAnswersData}
+						quizAnswersLoading={quizAnswersLoading}
+						quizEditMode={quizState.editMode}
+						quizAnswers={quizState.answers}
+						sortedQuestions={sortedQuestions}
+						answersMap={answersMap}
+						onOpenEdit={openQuizEdit}
+						onQuizSelect={handleQuizSelect}
+						onQuizSave={handleQuizSave}
+						onQuizCancel={() => quizDispatch({ type: "CLOSE_EDIT" })}
+						submitPending={submitQuiz.isPending}
+					/>
 				</div>
 			</div>
 		</div>
