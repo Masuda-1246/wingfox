@@ -75,5 +75,8 @@
 	"direct_chat_decline": "辞退",
 	"direct_chat_accepted": "チャットリクエストを承認しました",
 	"direct_chat_declined": "チャットリクエストを辞退しました",
-	"direct_chat_request_error": "チャットリクエストに失敗しました"
+	"direct_chat_request_error": "チャットリクエストに失敗しました",
+	"fox_retry_button": "再試行",
+	"fox_retry_started": "Fox会話を再開しました",
+	"fox_retry_error": "再試行に失敗しました"
 }

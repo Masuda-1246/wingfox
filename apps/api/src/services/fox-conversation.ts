@@ -143,6 +143,11 @@ export async function runFoxConversation(
 			.eq("id", conversationId);
 		history.push({ speaker: currentSpeaker, content });
 		currentSpeaker = currentSpeaker === "A" ? "B" : "A";
+
+		// Rate-limit guard: delay between rounds to avoid Mistral 429 errors
+		if (round < TOTAL_ROUNDS_LOCAL) {
+			await new Promise((resolve) => setTimeout(resolve, 500 + Math.floor(Math.random() * 500)));
+		}
 	}
 
 	// ─── Score computation ─────────────────────────────────────────────

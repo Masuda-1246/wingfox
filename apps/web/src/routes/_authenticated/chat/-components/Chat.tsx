@@ -170,6 +170,20 @@ export function Chat() {
 	const retryFoxConversation = useRetryFoxConversation();
 	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
 
+	// Restore activeFoxConvMap from server data on mount/reload
+	useEffect(() => {
+		if (Object.keys(activeFoxConvMap).length > 0) return;
+		const restoredMap: Record<string, string> = {};
+		for (const m of matches) {
+			if (m.status === "fox_conversation_in_progress" && m.fox_conversation_id) {
+				restoredMap[m.id] = m.fox_conversation_id;
+			}
+		}
+		if (Object.keys(restoredMap).length > 0) {
+			setActiveFoxConvMap(restoredMap);
+		}
+	}, [matches]);
+
 	// Refetch match list when fox conversations complete
 	const completedIdsRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
@@ -380,15 +394,13 @@ export function Chat() {
 
 	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
+		setInputValue("");
 		try {
 			if (activeTab === "direct" && directChatRoomId) {
 				await sendDirect.mutateAsync(text);
 			} else if (activeTab === "partner_fox" && partnerFoxChatId) {
 				await sendPartnerFox.mutateAsync(text);
-			} else {
-				return;
 			}
-			setInputValue("");
 		} catch (e) {
 			console.error(e);
 			toast.error(t("send_failed"));
@@ -438,6 +450,21 @@ export function Chat() {
 				console.error(e);
 				toast.error(t("fox_search_error"));
 			}
+		}
+	};
+
+	const handleRetryFoxConversation = async (matchId: string) => {
+		try {
+			const result = await retryFoxConversation.mutateAsync(matchId);
+			setActiveFoxConvMap((prev) => ({
+				...prev,
+				[result.match_id]: result.fox_conversation_id,
+			}));
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+			toast.success(t("fox_retry_started"));
+		} catch (e) {
+			console.error(e);
+			toast.error(t("fox_retry_error"));
 		}
 	};
 
@@ -644,18 +671,9 @@ export function Chat() {
 															</span>
 															<button
 																type="button"
-																onClick={async (e) => {
+																onClick={(e) => {
 																	e.stopPropagation();
-																	try {
-																		const result = await retryFoxConversation.mutateAsync(session.id);
-																		setActiveFoxConvMap((prev) => ({ ...prev, [result.match_id]: result.fox_conversation_id }));
-																		setActiveSessionId(session.id);
-																		if (isMobile) setMobileView("chat");
-																		toast.success(t("retry_measurement_started", "再測定を開始しました"));
-																	} catch (err) {
-																		console.error(err);
-																		toast.error(t("fox_search_error"));
-																	}
+																	handleRetryFoxConversation(session.id);
 																}}
 																disabled={retryFoxConversation.isPending}
 																className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
@@ -674,18 +692,9 @@ export function Chat() {
 														<div className="flex items-center gap-2 mt-1 min-h-[24px]">
 															<button
 																type="button"
-																onClick={async (e) => {
+																onClick={(e) => {
 																	e.stopPropagation();
-																	try {
-																		const result = await retryFoxConversation.mutateAsync(session.id);
-																		setActiveFoxConvMap((prev) => ({ ...prev, [result.match_id]: result.fox_conversation_id }));
-																		setActiveSessionId(session.id);
-																		if (isMobile) setMobileView("chat");
-																		toast.success(t("retry_measurement_started", "再測定を開始しました"));
-																	} catch (err) {
-																		console.error(err);
-																		toast.error(t("fox_search_error"));
-																	}
+																	handleRetryFoxConversation(session.id);
 																}}
 																disabled={retryFoxConversation.isPending}
 																className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
@@ -789,17 +798,13 @@ export function Chat() {
 								<h3 className="font-black text-base uppercase tracking-tight">
 									{displaySession.partnerName}
 								</h3>
-								{isFoxConvLive ? (
+								{isFoxConvLive && (
 									<span className="text-[10px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
 										<span className="relative flex h-2 w-2">
 											<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75" />
 											<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
 										</span>
 										{t("fox_chat_active")}
-									</span>
-								) : (
-									<span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">
-										{t("persona_sync_active")}
 									</span>
 								)}
 							</div>

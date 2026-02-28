@@ -77,6 +77,41 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 			});
 			return unwrapApiResponse(res);
 		},
+		onMutate: async (content) => {
+			const queryKey = ["direct-chats", roomId, "messages"];
+			await queryClient.cancelQueries({ queryKey });
+			const previous = queryClient.getQueryData(queryKey);
+			queryClient.setQueryData(queryKey, (old: any) => {
+				if (!old?.pages) return old;
+				const firstPage = old.pages[0];
+				return {
+					...old,
+					pages: [
+						{
+							...firstPage,
+							data: [
+								{
+									id: `optimistic-${Date.now()}`,
+									sender_id: "me",
+									is_mine: true,
+									content,
+									is_read: false,
+									created_at: new Date().toISOString(),
+								},
+								...firstPage.data,
+							],
+						},
+						...old.pages.slice(1),
+					],
+				};
+			});
+			return { previous };
+		},
+		onError: (_err, _content, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(["direct-chats", roomId, "messages"], context.previous);
+			}
+		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["direct-chats", roomId, "messages"] });
 			queryClient.invalidateQueries({ queryKey: ["direct-chats"] });
