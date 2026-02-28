@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/date";
 import { useReports } from "@/lib/hooks/useReports";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -15,6 +16,7 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import { forwardRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 function Card({
@@ -122,6 +124,7 @@ function ReportFormSection({
 	onSubmit: (data: Record<string, string>) => void;
 	isSubmitting: boolean;
 }) {
+	const { t } = useTranslation("reports");
 	const [targetId, setTargetId] = useState("");
 	const [reason, setReason] = useState("offensive_language");
 	const [details, setDetails] = useState("");
@@ -129,7 +132,7 @@ function ReportFormSection({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!targetId || !details) {
-			toast.error("必須項目を入力してください");
+			toast.error(t("required_error"));
 			return;
 		}
 		onSubmit({ target_persona_id: targetId, reason, details });
@@ -143,28 +146,30 @@ function ReportFormSection({
 			<div className="space-y-2">
 				<div className="flex items-center gap-2 text-secondary">
 					<ShieldAlert className="w-5 h-5" />
-					<h2 className="text-lg font-bold tracking-tight">Report Issue</h2>
+					<h2 className="text-lg font-bold tracking-tight">
+						{t("report_title")}
+					</h2>
 				</div>
 				<p className="text-muted-foreground text-sm">
-					不適切なペルソナや会話を発見した場合は、こちらからご報告ください。
+					{t("report_description")}
 					<br />
-					コミュニティガイドラインに基づき、迅速に対応いたします。
+					{t("report_description_2")}
 				</p>
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-4 flex-1">
 				<div className="space-y-2">
-					<Label htmlFor="target-id">対象ペルソナID / チャットID</Label>
+					<Label htmlFor="target-id">{t("target_label")}</Label>
 					<Input
 						id="target-id"
-						placeholder="例: persona-xyz-123"
+						placeholder={t("target_placeholder")}
 						value={targetId}
 						onChange={(e) => setTargetId(e.target.value)}
 					/>
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="reason">通報理由</Label>
+					<Label htmlFor="reason">{t("reason_label")}</Label>
 					<div className="relative">
 						<select
 							id="reason"
@@ -172,21 +177,23 @@ function ReportFormSection({
 							value={reason}
 							onChange={(e) => setReason(e.target.value)}
 						>
-							<option value="offensive_language">不適切な言葉遣い・暴言</option>
-							<option value="spam">スパム・宣伝行為</option>
-							<option value="harassment">ハラスメント・嫌がらせ</option>
-							<option value="privacy">プライバシー侵害</option>
-							<option value="other">その他</option>
+							<option value="offensive_language">
+								{t("reason_offensive")}
+							</option>
+							<option value="spam">{t("reason_spam")}</option>
+							<option value="harassment">{t("reason_harassment")}</option>
+							<option value="privacy">{t("reason_privacy")}</option>
+							<option value="other">{t("reason_other")}</option>
 						</select>
 						<ChevronDown className="absolute right-3 top-3 h-4 w-4 opacity-50 pointer-events-none" />
 					</div>
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="details">詳細な状況</Label>
+					<Label htmlFor="details">{t("details_label")}</Label>
 					<Textarea
 						id="details"
-						placeholder="具体的な状況や、問題のある会話の内容を記述してください..."
+						placeholder={t("details_placeholder")}
 						className="min-h-[120px] resize-none"
 						value={details}
 						onChange={(e) => setDetails(e.target.value)}
@@ -200,7 +207,7 @@ function ReportFormSection({
 						disabled={isSubmitting}
 					>
 						<Send className="w-4 h-4" />
-						{isSubmitting ? "Sending..." : "通報を送信"}
+						{isSubmitting ? t("submitting") : t("submit")}
 					</Button>
 				</div>
 			</form>
@@ -245,21 +252,19 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 }
 
 function FaqSection() {
+	const { t } = useTranslation("reports");
 	const faqs = [
 		{
-			question: "AIペルソナが意図しない発言をしました",
-			answer:
-				"AIは学習データに基づき応答しますが、稀に不適切な発言をする場合があります。会話画面の「フラグ」アイコンから即時にフィードバックを送るか、このフォームから詳細を通報してください。互換性スコアへの影響はありません。",
+			question: t("faq_q1"),
+			answer: t("faq_a1"),
 		},
 		{
-			question: "特定のユーザーをブロックできますか？",
-			answer:
-				"はい。チャット画面またはユーザープロフィールからブロック可能です。ブロックすると、そのユーザーおよび関連するすべてのペルソナとのマッチングが停止されます。",
+			question: t("faq_q2"),
+			answer: t("faq_a2"),
 		},
 		{
-			question: "通報後のプロセスについて教えてください",
-			answer:
-				"提出された通報は、モデレーションチームおよびAI監視システムによって24時間以内にレビューされます。違反が確認された場合、対象アカウントの警告または停止措置が取られます。",
+			question: t("faq_q3"),
+			answer: t("faq_a3"),
 		},
 	];
 
@@ -267,7 +272,7 @@ function FaqSection() {
 		<Card className="col-span-12 md:col-span-5 p-6 h-full flex flex-col">
 			<div className="flex items-center gap-2 mb-4 text-secondary">
 				<HelpCircle className="w-5 h-5" />
-				<h2 className="text-lg font-bold tracking-tight">Help & FAQ</h2>
+				<h2 className="text-lg font-bold tracking-tight">{t("faq_title")}</h2>
 			</div>
 			<div className="flex-1">
 				{faqs.map((faq) => (
@@ -278,10 +283,10 @@ function FaqSection() {
 				<div className="rounded-lg bg-muted/50 p-4">
 					<h4 className="font-medium text-sm mb-2 flex items-center gap-2">
 						<Mail className="w-4 h-4" />
-						サポートへ問い合わせ
+						{t("support_title")}
 					</h4>
 					<p className="text-xs text-muted-foreground mb-3">
-						解決しない場合は、サポートチームへ直接ご連絡ください。
+						{t("support_description")}
 					</p>
 					<a
 						href="mailto:support@foxxmatch.com"
@@ -298,12 +303,15 @@ function FaqSection() {
 function HistorySection({
 	reports,
 }: { reports: Array<Record<string, unknown>> }) {
+	const { t } = useTranslation("reports");
 	return (
 		<Card className="col-span-12 p-6">
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-2">
 					<History className="w-5 h-5 text-muted-foreground" />
-					<h2 className="text-lg font-bold tracking-tight">Report History</h2>
+					<h2 className="text-lg font-bold tracking-tight">
+						{t("history_title")}
+					</h2>
 				</div>
 				<span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-full">
 					Total: {reports.length}
@@ -313,7 +321,7 @@ function HistorySection({
 			<div className="overflow-x-auto">
 				{reports.length === 0 ? (
 					<div className="text-center py-12 text-muted-foreground text-sm">
-						通報履歴はありません。
+						{t("no_reports")}
 					</div>
 				) : (
 					<table className="w-full text-sm text-left">
@@ -337,7 +345,7 @@ function HistorySection({
 									</td>
 									<td className="px-4 py-3 text-muted-foreground">
 										{report.created_at instanceof Date
-											? (report.created_at as Date).toLocaleDateString()
+											? formatDate(report.created_at as Date)
 											: String(report.created_at)}
 									</td>
 									<td className="px-4 py-3 font-medium">
@@ -350,7 +358,7 @@ function HistorySection({
 										{(report.target_persona_id as string) || "-"}
 									</td>
 									<td className="px-4 py-3">
-										<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+										<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
 											<CheckCircle2 className="w-3 h-3" />
 											Received
 										</span>
@@ -366,6 +374,7 @@ function HistorySection({
 }
 
 function HeroCard() {
+	const { t } = useTranslation("reports");
 	return (
 		<Card className="col-span-12 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white p-8 md:p-10 relative overflow-hidden border-none">
 			<div className="absolute top-0 right-0 w-64 h-64 bg-secondary/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -373,18 +382,16 @@ function HeroCard() {
 				<div className="flex items-center gap-2 mb-4 text-secondary">
 					<AlertTriangle className="w-6 h-6" />
 					<span className="text-sm font-bold tracking-wider uppercase">
-						Support Center
+						{t("hero_badge")}
 					</span>
 				</div>
 				<h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4 leading-tight">
-					安全で快適な
+					{t("hero_title_1")}
 					<br />
-					マッチング体験のために。
+					{t("hero_title_2")}
 				</h1>
 				<p className="text-zinc-300 text-base md:text-lg leading-relaxed max-w-lg">
-					foxx
-					matchは、ユーザーの皆様が安心して利用できる環境づくりを最優先に考えています。
-					トラブルや懸念事項があれば、些細なことでもお知らせください。
+					{t("hero_description")}
 				</p>
 			</div>
 		</Card>
@@ -392,6 +399,7 @@ function HeroCard() {
 }
 
 export function Reports() {
+	const { t } = useTranslation("reports");
 	const { reports, isLoading, add } = useReports();
 
 	const handleReportSubmit = async (data: Record<string, string>) => {
@@ -403,11 +411,11 @@ export function Reports() {
 				reason: data.reason,
 				created_at: new Date(),
 			});
-			toast.success("通報を受け付けました", {
-				description: "確認後、必要に応じて対応を行います。",
+			toast.success(t("submit_success"), {
+				description: t("submit_success_desc"),
 			});
 		} catch (error) {
-			toast.error("送信に失敗しました");
+			toast.error(t("submit_error"));
 		}
 	};
 
@@ -427,9 +435,9 @@ export function Reports() {
 
 			<div className="text-center py-8">
 				<p className="text-xs text-muted-foreground">
-					通報の際に提供された情報は、
-					<span className="underline">プライバシーポリシー</span>
-					に基づいて厳重に管理されます。
+					{t("privacy_notice")}
+					<span className="underline">{t("privacy_policy")}</span>
+					{t("privacy_notice_suffix")}
 				</p>
 			</div>
 		</div>
