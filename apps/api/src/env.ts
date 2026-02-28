@@ -1,9 +1,16 @@
+/** Minimal DO namespace interface so env.ts compiles without @cloudflare/workers-types */
+interface DONamespace {
+	idFromName(name: string): unknown;
+	get(id: unknown): { fetch(req: Request): Promise<Response> };
+}
+
 export type Env = {
 	Bindings: {
 		SUPABASE_URL: string;
 		SUPABASE_SERVICE_ROLE_KEY: string;
 		SUPABASE_ANON_KEY?: string;
 		MISTRAL_API_KEY?: string;
+		FOX_CONVERSATION?: DONamespace;
 	};
 	Variables: {
 		user_id: string; // user_profiles.id

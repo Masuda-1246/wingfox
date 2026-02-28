@@ -5,3 +5,11 @@ compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "../web/dist"
+
+[[durable_objects.bindings]]
+name = "FOX_CONVERSATION"
+class_name = "FoxConversationDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["FoxConversationDO"]

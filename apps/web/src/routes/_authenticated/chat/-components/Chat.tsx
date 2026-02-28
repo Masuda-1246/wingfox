@@ -4,7 +4,7 @@ import { useMatchingResults } from "@/lib/hooks/useMatchingResults";
 import { useMatchingResult } from "@/lib/hooks/useMatchingResults";
 import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
-import { useStartFoxSearch, useFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
+import { useStartFoxSearch, useMultipleFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -118,17 +118,17 @@ export function Chat() {
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showUnmatchModal, setShowUnmatchModal] = useState(false);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-	const [activeFoxConvId, setActiveFoxConvId] = useState<string | null>(null);
+	const [activeFoxConvIds, setActiveFoxConvIds] = useState<string[]>([]);
 	const blockUser = useBlockUser();
 	const startFoxSearch = useStartFoxSearch();
-	const foxConvStatus = useFoxConversationStatus(activeFoxConvId);
+	const multiStatus = useMultipleFoxConversationStatus(activeFoxConvIds);
 
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
-	// Use activeFoxConvId (available immediately after search start) or fall back to match detail
-	const foxConversationId = activeFoxConvId ?? detail?.fox_conversation_id ?? null;
-	const isFoxConvLive = Boolean(activeFoxConvId);
+	// Use first activeFoxConvId (available immediately after search start) or fall back to match detail
+	const foxConversationId = (activeFoxConvIds.length > 0 ? activeFoxConvIds[0] : null) ?? detail?.fox_conversation_id ?? null;
+	const isFoxConvLive = activeFoxConvIds.length > 0;
 	const partnerId = detail?.partner_id ?? null;
 	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
 
@@ -212,11 +212,14 @@ export function Chat() {
 	const handleStartFoxSearch = async () => {
 		try {
 			const result = await startFoxSearch.mutateAsync();
-			setActiveFoxConvId(result.fox_conversation_id);
-			// Auto-select the new match and refresh sidebar
-			setActiveSessionId(result.match_id);
+			const convIds = result.conversations.map((c) => c.fox_conversation_id);
+			setActiveFoxConvIds(convIds);
+			// Auto-select the first new match and refresh sidebar
+			if (result.conversations.length > 0) {
+				setActiveSessionId(result.conversations[0].match_id);
+			}
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
-			toast.success(t("fox_search_started"));
+			toast.success(t("fox_search_started_multiple", { count: result.conversations.length }));
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : "";
 			if (msg.includes("already in progress")) {
@@ -236,18 +239,25 @@ export function Chat() {
 		toast.info("提案を破棄しました");
 	};
 
-	// When fox conversation completes, refresh matches and clear the polling state
+	// Aggregate progress from multiple conversations
+	const foxProgress =
+		activeFoxConvIds.length > 0 && multiStatus.totalRounds > 0
+			? { current_round: multiStatus.currentRounds, total_rounds: multiStatus.totalRounds, completed: multiStatus.completedCount, total: multiStatus.total }
+			: null;
+
+	// When all fox conversations are terminal, refresh matches and clear state
 	useEffect(() => {
-		if (foxConvStatus.data?.status === "completed") {
+		if (activeFoxConvIds.length > 0 && multiStatus.allTerminal) {
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
-			setActiveFoxConvId(null);
-			toast.success(t("fox_search_completed"));
+			setActiveFoxConvIds([]);
+			if (multiStatus.completedCount > 0) {
+				toast.success(t("fox_search_completed_multiple", { count: multiStatus.completedCount }));
+			}
+			if (multiStatus.failedCount > 0) {
+				toast.error(t("fox_search_failed_multiple", { count: multiStatus.failedCount }));
+			}
 		}
-		if (foxConvStatus.data?.status === "failed") {
-			setActiveFoxConvId(null);
-			toast.error(t("fox_search_failed"));
-		}
-	}, [foxConvStatus.data?.status, queryClient, t]);
+	}, [activeFoxConvIds.length, multiStatus.allTerminal, multiStatus.completedCount, multiStatus.failedCount, queryClient, t]);
 
 	// Set first match as active when matches load or current session is removed
 	useEffect(() => {
@@ -308,7 +318,7 @@ export function Chat() {
 						<button
 							type="button"
 							onClick={handleStartFoxSearch}
-							disabled={startFoxSearch.isPending || !!activeFoxConvId}
+							disabled={startFoxSearch.isPending || activeFoxConvIds.length > 0}
 							className="w-full py-3 rounded-2xl border-2 border-dashed border-secondary/50 bg-secondary/5 text-sm font-bold hover:bg-secondary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
 						>
 							{startFoxSearch.isPending ? (
@@ -318,23 +328,23 @@ export function Chat() {
 							)}
 							{startFoxSearch.isPending
 								? t("fox_search_searching")
-								: activeFoxConvId
+								: activeFoxConvIds.length > 0
 									? t("fox_search_in_progress")
 									: t("fox_search_button")}
 						</button>
-						{activeFoxConvId && foxConvStatus.data && (
+						{activeFoxConvIds.length > 0 && foxProgress && (
 							<div className="mt-2 px-2">
 								<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground mb-1">
-									<span>{t("fox_search_progress")}</span>
+									<span>{t("fox_search_progress")} ({foxProgress.completed}/{foxProgress.total})</span>
 									<span>
-										{foxConvStatus.data.current_round}/{foxConvStatus.data.total_rounds}
+										{foxProgress.current_round}/{foxProgress.total_rounds}
 									</span>
 								</div>
 								<div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
 									<motion.div
 										initial={{ width: 0 }}
 										animate={{
-											width: `${(foxConvStatus.data.current_round / foxConvStatus.data.total_rounds) * 100}%`,
+											width: `${(foxProgress.current_round / foxProgress.total_rounds) * 100}%`,
 										}}
 										transition={{ duration: 0.5, ease: "easeOut" }}
 										className="h-full bg-secondary rounded-full"
