@@ -13,6 +13,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+const QUIZ_STORAGE_KEY = "onboarding_quiz_answers_draft";
+
 type OptionItem = { value: string; label: string };
 
 function normalizeOptions(
@@ -40,6 +42,7 @@ export function OnboardingQuiz() {
 	const submit = useSubmitQuizAnswers();
 	const [step, setStep] = useState(0);
 	const [answers, setAnswers] = useState<Record<string, string[]>>({});
+	const [isLoaded, setIsLoaded] = useState(false);
 	const hasInitializedAnswers = useRef(false);
 
 	const sortedQuestions = useMemo(
@@ -50,6 +53,32 @@ export function OnboardingQuiz() {
 		[questions],
 	);
 
+	// Load from localStorage on initial render
+	useEffect(() => {
+		try {
+			const saved = localStorage.getItem(QUIZ_STORAGE_KEY);
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				if (typeof parsed === "object" && parsed !== null) {
+					setAnswers(parsed);
+				}
+			}
+		} catch (err) {
+			console.error("Failed to load quiz draft:", err);
+		}
+	}, []);
+
+	// Save to localStorage whenever answers change
+	useEffect(() => {
+		if (isLoaded) {
+			try {
+				localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(answers));
+			} catch (err) {
+				console.error("Failed to save quiz draft:", err);
+			}
+		}
+	}, [answers, isLoaded]);
+
 	// DBに既存の回答がある場合やセクションに戻ったときに表示
 	useEffect(() => {
 		if (hasInitializedAnswers.current || !sortedQuestions.length) return;
@@ -59,9 +88,20 @@ export function OnboardingQuiz() {
 		for (const row of data) {
 			initial[row.question_id] = Array.isArray(row.selected) ? row.selected : [];
 		}
-		setAnswers((prev) => (Object.keys(prev).length > 0 ? prev : initial));
+		setAnswers((prev) => {
+			const result = Object.keys(prev).length > 0 ? prev : initial;
+			setIsLoaded(true);
+			return result;
+		});
 		hasInitializedAnswers.current = true;
 	}, [quizAnswersData, sortedQuestions.length]);
+
+	// Mark as loaded when questions are available
+	useEffect(() => {
+		if (sortedQuestions.length > 0 && !isLoaded) {
+			setIsLoaded(true);
+		}
+	}, [sortedQuestions.length, isLoaded]);
 
 	const current = sortedQuestions[step];
 	const options = current
@@ -111,6 +151,12 @@ export function OnboardingQuiz() {
 		try {
 			await submit.mutateAsync(payload);
 			toast.success(t("quiz.submit_success"));
+			// Clear localStorage after successful submission
+			try {
+				localStorage.removeItem(QUIZ_STORAGE_KEY);
+			} catch (err) {
+				console.error("Failed to clear quiz draft:", err);
+			}
 			navigate({ to: "/onboarding/speed-dating" });
 		} catch (e) {
 			console.error(e);

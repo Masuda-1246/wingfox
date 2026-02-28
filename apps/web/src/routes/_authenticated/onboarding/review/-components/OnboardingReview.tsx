@@ -20,7 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
 import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
 import type { InteractionStyleWithDna } from "@/lib/types";
-import { ChevronRight, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronRight, Loader2, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -66,6 +66,7 @@ export function OnboardingReview() {
 	const [generating, setGenerating] = useState(false);
 	const [generationDone, setGenerationDone] = useState(false);
 	const [generationFailed, setGenerationFailed] = useState(false);
+	const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true); // User control for auto-generation
 
 	const status = authMe?.onboarding_status ?? "not_started";
 	const needsGeneration =
@@ -73,6 +74,8 @@ export function OnboardingReview() {
 
 	useEffect(() => {
 		if (status !== "speed_dating_completed" || generationDone || generating || generationFailed) return;
+		if (!autoGenerateEnabled) return; // Respect user's choice to disable auto-generation
+		
 		let cancelled = false;
 		(async () => {
 			setGenerating(true);
@@ -100,7 +103,7 @@ export function OnboardingReview() {
 		return () => {
 			cancelled = true;
 		};
-	}, [status, generationDone, generating, generationFailed]);
+	}, [status, generationDone, generating, generationFailed, autoGenerateEnabled, generateProfile, generateWingfox, t]);
 
 	const handleConfirm = async () => {
 		try {
@@ -118,6 +121,30 @@ export function OnboardingReview() {
 			}
 			console.error(e);
 			toast.error(err?.message ? `${t("review.confirm_failed")}: ${err.message}` : t("review.confirm_error"));
+		}
+	};
+
+	const handleManualGenerate = async () => {
+		setGenerating(true);
+		setGenerationFailed(false);
+		try {
+			await generateProfile.mutateAsync();
+			await generateWingfox.mutateAsync();
+			setGenerationDone(true);
+			toast.success(t("review.profile_ready"));
+		} catch (e) {
+			setGenerationFailed(true);
+			const err = e as ApiError;
+			const message =
+				err?.code === "CONFLICT" && err?.message?.includes("Profile not generated")
+					? t("review.profile_not_generated")
+					: err?.message
+						? `${t("review.confirm_error")}: ${err.message}`
+						: t("review.confirm_error");
+			console.error(e);
+			toast.error(message);
+		} finally {
+			setGenerating(false);
 		}
 	};
 
@@ -171,17 +198,59 @@ export function OnboardingReview() {
 	if (isLoading || (needsGeneration && !generationDone)) {
 		return (
 			<div className="p-4 md:p-6 w-full max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] space-y-6">
-				<div className="relative w-24 h-24">
-					<div className="absolute inset-0 border-[6px] border-secondary/10 border-t-secondary rounded-full animate-spin" />
-					<div className="absolute inset-0 flex items-center justify-center">
-						<Sparkles className="w-10 h-10 text-secondary" />
-					</div>
+				{generating ? (
+					<>
+						<div className="relative w-24 h-24">
+							<div className="absolute inset-0 border-[6px] border-secondary/10 border-t-secondary rounded-full animate-spin" />
+							<div className="absolute inset-0 flex items-center justify-center">
+								<Sparkles className="w-10 h-10 text-secondary" />
+							</div>
+						</div>
+						<h3 className="text-xl font-bold">{t("speed_dating.creating")}</h3>
+						<p className="text-sm text-muted-foreground">
+							{t("speed_dating.sync_description")}
+						</p>
+					</>
+				) : (
+					<>
+						<h3 className="text-xl font-bold">{t("review.profile_needs_generation")}</h3>
+						<p className="text-sm text-muted-foreground text-center max-w-md">
+							{t("review.profile_not_generated")}
+						</p>
+						<div className="flex gap-3">
+							<button
+								onClick={handleManualGenerate}
+								disabled={generating}
+								className="px-6 py-2 bg-secondary text-secondary-foreground rounded-full font-medium hover:bg-secondary/90 transition-colors flex items-center gap-2"
+							>
+								<Send className="w-4 h-4" />
+								{t("review.confirm")}
+							</button>
+							<button
+								onClick={() => setAutoGenerateEnabled(!autoGenerateEnabled)}
+								className="px-4 py-2 border border-border rounded-full text-sm hover:bg-muted transition-colors flex items-center gap-2"
+							>
+								{autoGenerateEnabled ? (
+									<>
+										<Pause className="w-3 h-3" />
+										{t("review.disable_auto")}
+									</>
+								) : (
+									<>
+										<Play className="w-3 h-3" />
+										{t("review.enable_auto")}
+									</>
+								)}
+							</button>
+						</div>
+						{generationFailed && (
+							<div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-sm text-destructive max-w-md text-center">
+								{t("review.generation_failed_title")}
+							</div>
+						)}
+					</>
+				)}
 				</div>
-				<h3 className="text-xl font-bold">{t("speed_dating.creating")}</h3>
-				<p className="text-sm text-muted-foreground">
-					{t("speed_dating.sync_description")}
-				</p>
-			</div>
 		);
 	}
 

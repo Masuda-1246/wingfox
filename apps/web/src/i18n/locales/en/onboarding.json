@@ -16,7 +16,10 @@
     "submit_success": "Saved",
     "submit_error": "Failed to save",
     "error_nickname": "Please enter your nickname",
+    "error_nickname_too_long": "Nickname must be 50 characters or less",
     "error_birth_year": "Please enter a birth year between 1900 and 2100",
+    "error_birth_year_invalid": "Please enter a valid year",
+    "error_birth_year_range": "Year must be between 1900 and 2100",
     "error_gender": "Please select your gender"
   },
   "quiz": {
@@ -360,6 +363,9 @@
     "confirm_failed": "Confirmation failed",
     "wingfox_not_ready": "WingFox is not ready yet. Start over or wait and try again.",
     "interaction_dna": "Interaction DNA",
+    "disable_auto": "Disable auto-generation",
+    "enable_auto": "Enable auto-generation",
+    "generation_failed_title": "Generation failed. Please try again or refresh the page.",
     "dna_layer1": "Meeting Affinity",
     "dna_layer2": "Psychological Sync",
     "dna_layer3": "Future Compatibility",

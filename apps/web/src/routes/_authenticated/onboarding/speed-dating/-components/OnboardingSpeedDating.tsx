@@ -7,7 +7,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -46,6 +46,8 @@ export function OnboardingSpeedDating() {
 	const [isStarting, setIsStarting] = useState(false);
 	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [previewPersonas, setPreviewPersonas] = useState<VirtualPersonaSummary[]>([]);
+	const [generationError, setGenerationError] = useState<string | null>(null);
+	const [startError, setStartError] = useState<string | null>(null);
 	const prefetchedFirstRef = useRef<{ sessionId: string; personaId: string } | null>(null);
 	const prefetchingFirstRef = useRef(false);
 
@@ -76,15 +78,24 @@ export function OnboardingSpeedDating() {
 		if (cachedPersonas === undefined) return;
 		if (cachedPersonas?.length >= 3) return;
 		if (generatePersonas.isPending) return;
+		if (generationError) return; // Don't retry if there was an error
+
 		generatePersonas.mutateAsync().then((result) => {
 			const personas = Array.isArray(result) ? result : [];
-			if (personas.length > 0) setPreviewPersonas(personas.map((p: SpeedDatingPersona) => personaToSummary(p)));
-		}).catch((err) => console.error("[SpeedDate] Auto-generation failed:", err));
-	}, [cachedPersonas]); // eslint-disable-line react-hooks/exhaustive-deps
+			if (personas.length > 0) {
+				setPreviewPersonas(personas.map((p: SpeedDatingPersona) => personaToSummary(p)));
+				setGenerationError(null); // Clear any previous errors
+			}
+		}).catch((err) => {
+			console.error("[SpeedDate] Auto-generation failed:", err);
+			setGenerationError(t("speed_dating.error_guest_failed"));
+		});
+	}, [cachedPersonas, generationError]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const regenerateDates = async () => {
 		if (isRegenerating || isStarting) return;
 		setIsRegenerating(true);
+		setGenerationError(null); // Clear previous errors
 		prefetchedFirstRef.current = null;
 		try {
 			const personasResult = await generatePersonas.mutateAsync();
@@ -97,7 +108,9 @@ export function OnboardingSpeedDating() {
 			toast.success(t("speed_dating.regen_success"));
 		} catch (e) {
 			const err = e as ApiError;
-			toast.error(`${t("speed_dating.error_regen_failed")}: ${err?.message ?? ""}`);
+			const errorMessage = err?.message ? `${t("speed_dating.error_regen_failed")}: ${err.message}` : t("speed_dating.error_regen_failed");
+			toast.error(errorMessage);
+			setGenerationError(errorMessage);
 		} finally {
 			setIsRegenerating(false);
 		}
@@ -106,6 +119,7 @@ export function OnboardingSpeedDating() {
 	const startSpeedDate = async () => {
 		if (isStarting) return;
 		setIsStarting(true);
+		setStartError(null); // Clear previous errors
 		try {
 			let personas: VirtualPersonaSummary[];
 			if (previewPersonas.length >= 3) {
@@ -118,6 +132,7 @@ export function OnboardingSpeedDating() {
 			}
 			if (personas.length === 0) {
 				toast.error(t("speed_dating.error_guest_failed"));
+				setStartError(t("speed_dating.error_guest_failed"));
 				return;
 			}
 			setPreviewPersonas(personas);
@@ -140,7 +155,9 @@ export function OnboardingSpeedDating() {
 			navigate({ to: "/onboarding/speed-dating-session" });
 		} catch (e) {
 			console.error("[SpeedDate] startSpeedDate", e);
-			toast.error(t("speed_dating.error_start_failed"));
+			const errorMessage = t("speed_dating.error_start_failed");
+			toast.error(errorMessage);
+			setStartError(errorMessage);
 		} finally {
 			setIsStarting(false);
 		}
@@ -157,6 +174,21 @@ export function OnboardingSpeedDating() {
 					<h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
 						{t("speed_dating.lounge_title")}
 					</h1>
+					{(generationError || startError) && (
+						<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+							<AlertTriangle className="inline w-4 h-4 mr-2 -translate-y-px" />
+							{generationError || startError}
+							<button
+								onClick={() => {
+									setGenerationError(null);
+									setStartError(null);
+								}}
+								className="ml-3 text-destructive/70 hover:text-destructive"
+							>
+								×
+							</button>
+						</div>
+					)}
 				</div>
 
 				<div className="grid grid-cols-12 gap-6">
