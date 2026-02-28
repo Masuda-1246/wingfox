@@ -76,3 +76,22 @@ export function useGenerateWingfoxPersona() {
 		},
 	});
 }
+
+export function useSetRandomPersonaIcon(personaId: string | undefined | null) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (): Promise<{ icon_url: string }> => {
+			if (!personaId) throw new Error("Persona id required");
+			const res = await client.api.personas[":personaId"].icon.$post({
+				param: { personaId },
+			});
+			return unwrapApiResponse(res);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["personas"] });
+			if (personaId) {
+				queryClient.invalidateQueries({ queryKey: ["personas", personaId] });
+			}
+		},
+	});
+}
