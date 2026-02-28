@@ -33,6 +33,13 @@ export async function chatComplete(
 		temperature: options?.temperature,
 		...(options?.responseFormat && { responseFormat: options.responseFormat }),
 	});
-	const content = response.choices?.[0]?.message?.content;
+	const choice = response.choices?.[0];
+	if (choice?.finishReason === "length") {
+		console.warn(`[chatComplete] finish_reason=length: output may be truncated (maxTokens=${options?.maxTokens ?? 1024})`);
+	}
+	const content = choice?.message?.content;
+	if (!content) {
+		console.warn("[chatComplete] Empty response from model");
+	}
 	return typeof content === "string" ? content : "";
 }
