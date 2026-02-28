@@ -1006,26 +1006,6 @@ export function PersonasMe() {
 							</div>
 						)}
 					</Card>
-
-					<Card className="col-span-1 md:col-span-2 mt-4">
-						<div className="bg-gradient-to-r from-secondary/10 to-tertiary/10 border border-secondary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-							<div className="space-y-1">
-								<h3 className="font-bold text-lg">{t("me.retrain_title")}</h3>
-								<p className="text-sm text-muted-foreground">
-									{t("me.retrain_description")}
-								</p>
-							</div>
-							<Link to="/onboarding/speed-dating">
-								<Button
-									variant="outline"
-									className="bg-background border-secondary/30 hover:bg-secondary hover:text-white transition-all whitespace-nowrap"
-								>
-									<Sparkles className="w-4 h-4 mr-2" />
-									{t("me.retrain_button")}
-								</Button>
-							</Link>
-						</div>
-					</Card>
 				</div>
 			</div>
 		</div>
