@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
-import { getProfileScoreDetailsForUsers } from "./matching";
+import { getProfileScoreDetailsForUsers, isOppositeOrCompatibleGender } from "./matching";
 
 export async function searchAndStartFoxConversation(
 	supabase: SupabaseClient<Database>,
@@ -45,8 +45,26 @@ export async function searchAndStartFoxConversation(
 		.eq("persona_type", "wingfox")
 		.neq("user_id", userId);
 
+	// 異性のみ候補にする: 自分の性別と候補の性別を取得
+	const { data: myProfile } = await supabase
+		.from("user_profiles")
+		.select("gender")
+		.eq("id", userId)
+		.single();
+	const candidateIds = [...new Set((candidates ?? []).map((c) => c.user_id))];
+	const { data: candidateProfiles } = candidateIds.length
+		? await supabase.from("user_profiles").select("id, gender").in("id", candidateIds)
+		: { data: [] };
+	const genderByCandidateId = new Map(
+		(candidateProfiles ?? []).map((p) => [p.id, p.gender]),
+	);
+	const myGender = myProfile?.gender ?? null;
+
 	const eligible = (candidates ?? []).filter(
-		(c) => !matchedUserIds.has(c.user_id) && !blockedIds.has(c.user_id),
+		(c) =>
+			!matchedUserIds.has(c.user_id) &&
+			!blockedIds.has(c.user_id) &&
+			isOppositeOrCompatibleGender(myGender, genderByCandidateId.get(c.user_id) ?? null),
 	);
 	if (eligible.length === 0) {
 		throw new Error("NO_CANDIDATES_FOUND");
@@ -157,8 +175,26 @@ export async function searchAndStartMultipleFoxConversations(
 		.eq("persona_type", "wingfox")
 		.neq("user_id", userId);
 
+	// 異性のみ候補にする: 自分の性別と候補の性別を取得
+	const { data: myProfileMulti } = await supabase
+		.from("user_profiles")
+		.select("gender")
+		.eq("id", userId)
+		.single();
+	const candidateIdsForGender = [...new Set((candidates ?? []).map((c) => c.user_id))];
+	const { data: candidateProfilesForGender } = candidateIdsForGender.length
+		? await supabase.from("user_profiles").select("id, gender").in("id", candidateIdsForGender)
+		: { data: [] };
+	const genderByCandidateIdMulti = new Map(
+		(candidateProfilesForGender ?? []).map((p) => [p.id, p.gender]),
+	);
+	const myGenderMulti = myProfileMulti?.gender ?? null;
+
 	const eligible = (candidates ?? []).filter(
-		(c) => !matchedUserIds.has(c.user_id) && !blockedIds.has(c.user_id),
+		(c) =>
+			!matchedUserIds.has(c.user_id) &&
+			!blockedIds.has(c.user_id) &&
+			isOppositeOrCompatibleGender(myGenderMulti, genderByCandidateIdMulti.get(c.user_id) ?? null),
 	);
 	if (eligible.length === 0) {
 		throw new Error("NO_CANDIDATES_FOUND");

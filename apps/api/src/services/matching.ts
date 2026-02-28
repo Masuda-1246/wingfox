@@ -12,6 +12,18 @@ import {
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
+/** 異性または other/undisclosed 同士はマッチ可。同性（male-male, female-female）はマッチ不可。 */
+export function isOppositeOrCompatibleGender(
+	genderA: string | null | undefined,
+	genderB: string | null | undefined,
+): boolean {
+	const a = (genderA ?? "").toLowerCase();
+	const b = (genderB ?? "").toLowerCase();
+	if (a === "male" && b === "male") return false;
+	if (a === "female" && b === "female") return false;
+	return true;
+}
+
 // ─── Legacy 5-axis scoring (kept for backward compat in score_details) ──
 
 function getPersonalityScore(a: ProfileRow, b: ProfileRow): number {
@@ -126,6 +138,17 @@ export function computeMatchScore(
 export async function executeMatching(supabase: SupabaseClient<Database>, topN: number = 10): Promise<number> {
 	const { data: profiles } = await supabase.from("profiles").select("*").eq("status", "confirmed");
 	if (!profiles?.length) return 0;
+
+	// 異性マッチ用: user_profiles の性別を取得
+	const userIds = [...new Set(profiles.map((p) => p.user_id))];
+	const { data: userProfiles } = await supabase
+		.from("user_profiles")
+		.select("id, gender")
+		.in("id", userIds);
+	const genderByUserId = new Map<string, string | null>(
+		(userProfiles ?? []).map((u) => [u.id, u.gender]),
+	);
+
 	const { data: blocks } = await supabase.from("blocks").select("blocker_id, blocked_id");
 	const blockSet = new Set((blocks ?? []).map((b) => `${b.blocker_id}:${b.blocked_id}`));
 	const isBlocked = (a: string, b: string) => blockSet.has(`${a}:${b}`) || blockSet.has(`${b}:${a}`);
@@ -140,6 +163,8 @@ export async function executeMatching(supabase: SupabaseClient<Database>, topN: 
 			const idA = profiles[i].user_id;
 			const idB = profiles[j].user_id;
 			if (idA === idB || isBlocked(idA, idB)) continue;
+			// 異性のみマッチ（同性はスキップ）
+			if (!isOppositeOrCompatibleGender(genderByUserId.get(idA) ?? null, genderByUserId.get(idB) ?? null)) continue;
 			const key = idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
 			if (existingSet.has(key)) continue;
 			const result = computeMatchScore(profiles[i], profiles[j]);

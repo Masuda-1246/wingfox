@@ -1,5 +1,18 @@
 # Scripts
 
+## register-all-test-accounts.sh
+
+`TEST_ACCOUNTS.md` に記載の全 40 アカウントを一括で登録するスクリプト。共通パスワードは `testpass123`。内部で `create-user-with-fox.sh` を 1 件ずつ呼び出します。
+
+```bash
+./scripts/register-all-test-accounts.sh
+```
+
+- 既に存在するメールのユーザーはエラーになるが、スクリプトは続行する（他ユーザーの登録は継続）。
+- 前提条件は `create-user-with-fox.sh` と同じ（`curl` / `jq`、`.mise.local.toml` の Supabase 設定）。
+
+---
+
 ## create-user-with-fox.sh
 
 オンボーディング完了済みのユーザー + FOX（ウィングフォックス）を DB に直接作成するスクリプト。

@@ -7,6 +7,9 @@ import { parseLimit, parseCursor } from "../lib/pagination";
 
 const matching = new Hono<Env>();
 
+/** in_progress のマッチで、created_at からこの分数を超えていたら stuck とみなし failed に落とす */
+const STUCK_MATCH_MINUTES = 3;
+
 /** GET /api/matching/results */
 matching.get("/results", requireAuth, async (c) => {
 	const userId = c.get("user_id");
@@ -56,11 +59,47 @@ matching.get("/results", requireAuth, async (c) => {
 		.in("user_id", partnerIds);
 	const personaIconMap = new Map((partnerPersonas ?? []).map((p) => [p.user_id, p.icon_url]));
 	const matchIds = list.map((x) => x.id);
-	const { data: foxConvs } = await supabase.from("fox_conversations").select("match_id, status").in("match_id", matchIds);
-	const fcMap = new Map((foxConvs ?? []).map((f) => [f.match_id, f.status]));
+	const { data: foxConvs } = await supabase
+		.from("fox_conversations")
+		.select("match_id, status")
+		.in("match_id", matchIds);
+	const fcMap = new Map(
+		(foxConvs ?? []).map((f) => [f.match_id, { status: f.status }]),
+	);
+
+	// バックエンドで完了/失敗しているのに matches が in_progress のままのものを同期する（DO が match を更新し損ねた場合の自己修復）
+	const resolvedStatus = new Map<string, string>();
+	const stuckCutoff = new Date(Date.now() - STUCK_MATCH_MINUTES * 60 * 1000).toISOString();
+	for (const m of list) {
+		if (m.status !== "fox_conversation_in_progress") continue;
+		const fc = fcMap.get(m.id);
+		if (fc?.status === "completed") {
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_completed", updated_at: new Date().toISOString() })
+				.eq("id", m.id);
+			resolvedStatus.set(m.id, "fox_conversation_completed");
+		} else if (fc?.status === "failed") {
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
+				.eq("id", m.id);
+			resolvedStatus.set(m.id, "fox_conversation_failed");
+		} else if (m.created_at < stuckCutoff) {
+			// created_at から STUCK_MATCH_MINUTES 分を超えていたら stuck とみなす
+			await supabase.from("fox_conversations").update({ status: "failed" }).eq("match_id", m.id);
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
+				.eq("id", m.id);
+			resolvedStatus.set(m.id, "fox_conversation_failed");
+		}
+	}
+
 	const results = list.map((m) => {
 		const pid = partnerId(m as { user_a_id: string; user_b_id: string });
 		const partner = profileMap.get(pid);
+		const status = resolvedStatus.get(m.id) ?? m.status;
 		return {
 			id: m.id,
 			partner_id: pid,
@@ -73,8 +112,8 @@ matching.get("/results", requireAuth, async (c) => {
 			profile_score: m.profile_score,
 			conversation_score: m.conversation_score,
 			common_tags: [] as string[],
-			status: m.status,
-			fox_conversation_status: fcMap.get(m.id) ?? null,
+			status,
+			fox_conversation_status: fcMap.get(m.id)?.status ?? null,
 			created_at: m.created_at,
 		};
 	});
@@ -115,25 +154,67 @@ matching.get("/results/:id", requireAuth, async (c) => {
 		.eq("user_id", partnerId)
 		.eq("persona_type", "wingfox")
 		.maybeSingle();
-	const { data: fc } = await supabase.from("fox_conversations").select("id, status").eq("match_id", id).single();
+	const { data: fc } = await supabase
+		.from("fox_conversations")
+		.select("id, status")
+		.eq("match_id", id)
+		.single();
+
+	// 一覧と同様: in_progress のままになっている場合は fc の状態に合わせて同期。matches.created_at から3分超なら stuck とみなす
+	let status = match.status;
+	let matchData = match;
+	if (match.status === "fox_conversation_in_progress" && fc) {
+		const stuckCutoff = new Date(Date.now() - STUCK_MATCH_MINUTES * 60 * 1000).toISOString();
+		if (fc.status === "completed") {
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_completed", updated_at: new Date().toISOString() })
+				.eq("id", id);
+			status = "fox_conversation_completed";
+		} else if (fc.status === "failed") {
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
+				.eq("id", id);
+			status = "fox_conversation_failed";
+		} else if (match.created_at < stuckCutoff) {
+			await supabase.from("fox_conversations").update({ status: "failed" }).eq("match_id", id);
+			await supabase
+				.from("matches")
+				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
+				.eq("id", id);
+			status = "fox_conversation_failed";
+		}
+		// 更新した場合は match を再取得してスコア等を返す（completed で DO が既に書いていればその値が入る）
+		if (status !== match.status) {
+			const { data: updated } = await supabase
+				.from("matches")
+				.select("*")
+				.eq("id", id)
+				.single();
+			if (updated) matchData = updated;
+		}
+	}
+
 	const { data: pfc } = await supabase.from("partner_fox_chats").select("id").eq("match_id", id).eq("user_id", userId).single();
 	const { data: cr } = await supabase.from("chat_requests").select("status").eq("match_id", id).single();
 	const { data: room } = await supabase.from("direct_chat_rooms").select("id").eq("match_id", id).single();
+
 	return jsonData(c, {
-		id: match.id,
+		id: matchData.id,
 		partner_id: partnerId,
 		partner: partner ? {
 			nickname: partner.nickname,
 			avatar_url: partner.avatar_url,
 			persona_icon_url: partnerPersona?.icon_url ?? null,
 		} : null,
-		profile_score: match.profile_score,
-		conversation_score: match.conversation_score,
-		final_score: match.final_score,
-		score_details: match.score_details,
-		layer_scores: match.layer_scores,
-		fox_summary: (match.score_details as Record<string, string>)?.summary ?? "",
-		status: match.status,
+		profile_score: matchData.profile_score,
+		conversation_score: matchData.conversation_score,
+		final_score: matchData.final_score,
+		score_details: matchData.score_details,
+		layer_scores: matchData.layer_scores,
+		fox_summary: (matchData.score_details as Record<string, string>)?.summary ?? "",
+		status,
 		fox_conversation_id: fc?.id ?? null,
 		partner_fox_chat_id: pfc?.id ?? null,
 		chat_request_status: cr?.status ?? null,

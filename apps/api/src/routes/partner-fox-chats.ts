@@ -46,10 +46,10 @@ partnerFoxChats.post("/", requireAuth, async (c) => {
 		.single();
 	if (error || !chat) return jsonError(c, "INTERNAL_ERROR", "Failed to create chat");
 	await supabase.from("matches").update({ status: "partner_chat_started", updated_at: new Date().toISOString() }).eq("id", parsed.data.match_id);
-	let firstContent = "こんにちは！よろしくお願いします。";
+	let firstContent = "よろしくお願いします。";
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (apiKey && partnerPersona?.compiled_document) {
-		const systemPrompt = `${buildSpeedDatingSystemPrompt(partnerPersona.compiled_document)}\n\n相手のユーザーから直接話しかけられています。${partnerName}さんならこう話すだろう、という形で自然に挨拶してください。`;
+		const systemPrompt = `${buildSpeedDatingSystemPrompt(partnerPersona.compiled_document)}\n\n相手のユーザーから直接話しかけられています。${partnerName}さんならこう話すだろう、という形で自然に挨拶してください。挨拶は短く1文で。『こんにちは』は一度だけか、省略してもよい。`;
 		firstContent = await chatComplete(apiKey, [
 			{ role: "system", content: systemPrompt },
 			{ role: "user", content: "挨拶をしてください。" },

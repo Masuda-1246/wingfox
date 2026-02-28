@@ -26,6 +26,14 @@ export function useMatchingResults(
 			return json as MatchingResultsResponse;
 		},
 		enabled: options?.enabled !== false,
+		// リロード後も「マッチ度測定中」のマッチが完了するまで一覧をポーリングする
+		refetchInterval: (query) => {
+			const data = query.state.data?.data ?? [];
+			const hasInProgress = data.some(
+				(m: MatchResultItem) => m.status === "fox_conversation_in_progress",
+			);
+			return hasInProgress ? 3000 : false;
+		},
 	});
 }
 

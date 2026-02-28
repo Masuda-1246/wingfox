@@ -13,6 +13,7 @@ import {
 	useSetRandomPersonaIcon,
 } from "@/lib/hooks/usePersonasApi";
 import { useProfileMe } from "@/lib/hooks/useProfile";
+import { useAuthMe } from "@/lib/hooks/useAuthMe";
 import { InteractionDnaRadar } from "@/components/InteractionDnaRadar";
 import { InteractionDnaDetails } from "@/components/InteractionDnaDetails";
 import type { InteractionStyleWithDna } from "@/lib/types";
@@ -415,6 +416,11 @@ export function PersonasMe() {
 	const { t } = useTranslation(["personas", "onboarding"]);
 	const { data: personasList, isLoading } = usePersonasList("wingfox");
 	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
+	const { data: authMe } = useAuthMe();
+	const myPersonaDisplayName =
+		myPersona?.persona_type === "wingfox" && authMe?.nickname
+			? `${authMe.nickname.trim()}Fox`
+			: myPersona?.name ?? "";
 	const { data: sections } = usePersonaSections(myPersona?.id);
 	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
 	const { data: profileData } = useProfileMe();
@@ -621,7 +627,7 @@ export function PersonasMe() {
 					<div className="space-y-2 w-full">
 						<div>
 							<h2 className="text-3xl font-black tracking-tight text-foreground">
-								{myPersona.name}
+								{myPersonaDisplayName}
 							</h2>
 							<p className="text-sm text-muted-foreground">
 								AI Persona ID: {myPersona.id.slice(0, 8)}
