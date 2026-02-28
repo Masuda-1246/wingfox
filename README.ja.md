@@ -1,4 +1,4 @@
-# Foxx
+# WingFox
 
 ## セットアップ
 

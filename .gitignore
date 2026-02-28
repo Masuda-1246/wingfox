@@ -145,3 +145,13 @@ dist
 
 # turbo
 .turbo
+
+# Cloudflare
+.dev.vars
+.wrangler/
+
+# mise local (secrets)
+.mise.local.toml
+
+# devision app
+devision-app-*
