@@ -40,8 +40,8 @@ foxConversations.get("/:id/messages", requireAuth, async (c) => {
 		.order("round_number");
 	if (cursor) q = q.lt("created_at", cursor);
 	const { data: rows } = await q.limit(limit + 1);
+	const hasMore = (rows?.length ?? 0) > limit;
 	const list = (rows ?? []).slice(0, limit);
-	const next = list.length > limit ? list[list.length - 1]?.created_at : null;
 	const myId = userId;
 	const formatted = list.map((m) => ({
 		id: m.id,
@@ -52,8 +52,8 @@ foxConversations.get("/:id/messages", requireAuth, async (c) => {
 	}));
 	return c.json({
 		data: formatted,
-		next_cursor: next ?? null,
-		has_more: (rows?.length ?? 0) > limit,
+		next_cursor: hasMore ? list[list.length - 1]?.created_at ?? null : null,
+		has_more: hasMore,
 	});
 });
 
