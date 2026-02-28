@@ -13,9 +13,15 @@ const profiles = new Hono<Env>();
 const MIN_COMPLETED_SESSIONS = 3;
 const MIN_CONVERSATION_MESSAGES = 12;
 
+function detectLangFromHeader(c: { req: { header: (name: string) => string | undefined } }): "ja" | "en" {
+	const accept = c.req.header("accept-language") ?? "";
+	return accept.startsWith("en") ? "en" : "ja";
+}
+
 /** POST /api/profiles/generate */
 profiles.post("/generate", requireAuth, async (c) => {
 	const userId = c.get("user_id");
+	const lang = detectLangFromHeader(c);
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (!apiKey?.trim()) {
 		return jsonError(c, "INTERNAL_ERROR", "Mistral API not configured");
@@ -53,7 +59,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 		return jsonError(c, "CONFLICT", "Not enough conversation data to generate profile");
 	}
 	const quizText = JSON.stringify(answers ?? [], null, 2);
-	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs);
+	const prompt = buildProfileGenerationPrompt(quizText, conversationLogs, lang);
 	const raw = await chatComplete(apiKey, [{ role: "user", content: prompt }], {
 		maxTokens: 1500,
 		responseFormat: { type: "json_object" },
@@ -77,6 +83,7 @@ profiles.post("/generate", requireAuth, async (c) => {
 				basic_info: profileData.basic_info ?? {},
 				personality_tags: profileData.personality_tags ?? [],
 				personality_analysis: profileData.personality_analysis ?? {},
+				interaction_style: profileData.interaction_style ?? {},
 				interests: profileData.interests ?? [],
 				values: profileData.values ?? {},
 				romance_style: profileData.romance_style ?? {},

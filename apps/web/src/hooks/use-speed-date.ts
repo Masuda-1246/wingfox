@@ -17,6 +17,7 @@ export interface SpeedDateConfig {
 		agent?: {
 			prompt?: { prompt: string };
 			firstMessage?: string;
+			language?: string;
 		};
 		tts?: {
 			voiceId?: string;

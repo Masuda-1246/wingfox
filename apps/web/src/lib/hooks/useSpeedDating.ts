@@ -107,7 +107,7 @@ export function useSpeedDatingSignedUrl() {
 			return unwrapApiResponse<{
 				signed_url: string;
 				overrides: {
-					agent: { prompt: { prompt: string }; firstMessage?: string };
+					agent: { prompt: { prompt: string }; firstMessage?: string; language?: string };
 					tts?: { voiceId?: string };
 				};
 				persona: { name: string };

@@ -4,6 +4,7 @@ import {
 	useSpeedDatingPersonas,
 	useSpeedDatingSignedUrl,
 	useSpeedDatingSessions,
+	type SpeedDatingPersona,
 } from "@/lib/hooks/useSpeedDating";
 import { ApiError } from "@/lib/api";
 import { useSpeedDate, type TranscriptEntry } from "@/hooks/use-speed-date";
@@ -31,7 +32,7 @@ type Step = "initial" | "generating" | "connecting" | "speed-date" | "review";
 type SignedUrlData = Awaited<
 	ReturnType<ReturnType<typeof useSpeedDatingSignedUrl>["mutateAsync"]>
 >;
-type VirtualPersonaSummary = { id: string; name: string; persona_type: string };
+type VirtualPersonaSummary = { id: string; name: string; persona_type: string; bio: string };
 
 // Atmospheric backgrounds for each date (Unsplash)
 const DATE_BACKGROUNDS = [
@@ -40,6 +41,17 @@ const DATE_BACKGROUNDS = [
 	"https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1920&q=80&auto=format", // grand library
 ];
 
+const INTEREST_KEYS = [
+	"interest_music",
+	"interest_movies",
+	"interest_tech",
+	"interest_travel",
+	"interest_art",
+	"interest_sports",
+	"interest_cooking",
+	"interest_reading",
+] as const;
+
 function formatTime(ms: number): string {
 	const totalSeconds = Math.ceil(ms / 1000);
 	const minutes = Math.floor(totalSeconds / 60);
@@ -47,11 +59,29 @@ function formatTime(ms: number): string {
 	return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function personaTypeLabel(personaType: string): string {
-	if (personaType === "virtual_similar") return "共感型";
-	if (personaType === "virtual_complementary") return "補完型";
-	if (personaType === "virtual_discovery") return "発見型";
-	return "タイプ";
+/** Extract a short bio from the persona's Core Identity section */
+function extractBio(compiledDocument: string): string {
+	// Try to find Core Identity section (Japanese or English)
+	const coreMatch = compiledDocument.match(
+		/##\s*(?:コアアイデンティティ|Core Identity)\s*\n([\s\S]*?)(?=\n##\s|\n*$)/,
+	);
+	if (coreMatch?.[1]) {
+		// Take first 1-2 sentences, strip markdown
+		const raw = coreMatch[1].trim().replace(/[#*_`]/g, "");
+		const firstSentences = raw.split(/[。.!！\n]/).filter(Boolean).slice(0, 2).join("。");
+		if (firstSentences.length > 80) return `${firstSentences.slice(0, 80)}...`;
+		return firstSentences;
+	}
+	return "";
+}
+
+function personaToSummary(p: SpeedDatingPersona | { id: string; name: string; persona_type: string; compiled_document?: string }): VirtualPersonaSummary {
+	return {
+		id: p.id,
+		name: p.name,
+		persona_type: p.persona_type,
+		bio: "compiled_document" in p && p.compiled_document ? extractBio(p.compiled_document) : "",
+	};
 }
 
 export function OnboardingSpeedDating() {
@@ -96,6 +126,13 @@ export function OnboardingSpeedDating() {
 		signedUrlData: SignedUrlData;
 	} | null>(null);
 	const prefetchingIndexRef = useRef<number | null>(null);
+	const prefetchedFirstRef = useRef<{
+		sessionId: string;
+		signedUrlData: SignedUrlData;
+		personaId: string;
+	} | null>(null);
+	const prefetchingFirstRef = useRef(false);
+	const autoGenTriggeredRef = useRef(false);
 
 	useEffect(() => {
 		transcriptRef.current = transcript;
@@ -109,14 +146,53 @@ export function OnboardingSpeedDating() {
 
 	useEffect(() => {
 		if (!cachedPersonas || cachedPersonas.length === 0) return;
-		setPreviewPersonas(
-			cachedPersonas.map((p) => ({
-				id: p.id,
-				name: p.name,
-				persona_type: p.persona_type,
-			})),
-		);
+		setPreviewPersonas(cachedPersonas.map(personaToSummary));
 	}, [cachedPersonas]);
+
+	// Auto-generate personas on mount if none cached
+	useEffect(() => {
+		if (autoGenTriggeredRef.current) return;
+		if (cachedPersonas === undefined) return; // still loading
+		if (cachedPersonas && cachedPersonas.length >= 3) return; // already cached
+		if (generatePersonas.isPending) return;
+		autoGenTriggeredRef.current = true;
+		console.log("[SpeedDate] Auto-generating personas on mount");
+		generatePersonas.mutateAsync().then((result) => {
+			const personas = Array.isArray(result) ? result : [];
+			if (personas.length > 0) {
+				setPreviewPersonas(personas.map((p: SpeedDatingPersona) => personaToSummary(p)));
+			}
+		}).catch((err) => {
+			console.error("[SpeedDate] Auto-generation failed:", err);
+		});
+	}, [cachedPersonas]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Prefetch first session + signed URL once personas are ready
+	useEffect(() => {
+		if (previewPersonas.length < 3) return;
+		if (prefetchedFirstRef.current?.personaId === previewPersonas[0].id) return;
+		if (prefetchingFirstRef.current) return;
+		if (step !== "initial") return; // only prefetch on initial screen
+
+		prefetchingFirstRef.current = true;
+		console.log("[SpeedDate] Prefetching first session for", previewPersonas[0].name);
+		(async () => {
+			try {
+				const session = (await createSession.mutateAsync(previewPersonas[0].id)) as { session_id: string };
+				const signedUrlData = await getSignedUrl.mutateAsync(session.session_id);
+				prefetchedFirstRef.current = {
+					sessionId: session.session_id,
+					signedUrlData,
+					personaId: previewPersonas[0].id,
+				};
+				console.log("[SpeedDate] Prefetched first session ready");
+			} catch (err) {
+				console.error("[SpeedDate] Prefetch first session failed:", err);
+			} finally {
+				prefetchingFirstRef.current = false;
+			}
+		})();
+	}, [previewPersonas, step]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const prefetchNext = useCallback(
 		async (fromIndex: number) => {
@@ -187,7 +263,7 @@ export function OnboardingSpeedDating() {
 					const nextIndex = currentPersonaIndex + 1;
 					const nextPersona = virtualPersonas[nextIndex];
 					setCurrentPersonaName(nextPersona.name);
-					setLoadingMessage(`${nextPersona.name}との会話を準備しています...`);
+					setLoadingMessage(t("speed_dating.preparing_chat", { name: nextPersona.name }));
 					setStep("connecting");
 					let nextSessionId: string;
 					let signedUrlData: SignedUrlData;
@@ -214,7 +290,7 @@ export function OnboardingSpeedDating() {
 							"[SpeedDate] Failed to persist transcript:",
 							persistErr,
 						);
-						toast.error("セッション保存に失敗しました");
+						toast.error(t("speed_dating.error_session_save_failed"));
 					});
 					await startDate({
 						signedUrl: signedUrlData.signed_url,
@@ -227,7 +303,7 @@ export function OnboardingSpeedDating() {
 				}
 			} catch (e) {
 				console.error(e);
-				toast.error("セッションの完了に失敗しました");
+				toast.error(t("speed_dating.error_complete_failed"));
 				setStep("speed-date");
 			}
 		};
@@ -250,26 +326,21 @@ export function OnboardingSpeedDating() {
 	const regenerateDates = async () => {
 		if (isRegenerating || isStarting) return;
 		setIsRegenerating(true);
+		prefetchedFirstRef.current = null; // invalidate stale prefetch
 		try {
 			const personasResult = await generatePersonas.mutateAsync();
 			const personas = Array.isArray(personasResult) ? personasResult : [];
 			if (personas.length === 0) {
-				toast.error("デート相手の再生成に失敗しました");
+				toast.error(t("speed_dating.error_regen_failed"));
 				return;
 			}
-			setPreviewPersonas(
-				personas.map((p: VirtualPersonaSummary) => ({
-					id: p.id,
-					name: p.name,
-					persona_type: p.persona_type,
-				})),
-			);
-			toast.success("デート相手を再生成しました");
+			setPreviewPersonas(personas.map((p: SpeedDatingPersona) => personaToSummary(p)));
+			toast.success(t("speed_dating.regen_success"));
 		} catch (e) {
 			console.error("[SpeedDate] Failed to regenerate personas:", e);
 			const err = e as ApiError;
-			const message = err?.message ?? "不明なエラー";
-			toast.error(`デート再生成に失敗しました: ${message}`);
+			const message = err?.message ?? "";
+			toast.error(`${t("speed_dating.error_regen_failed")}: ${message}`);
 		} finally {
 			setIsRegenerating(false);
 		}
@@ -277,45 +348,24 @@ export function OnboardingSpeedDating() {
 
 	const startSpeedDate = async () => {
 		if (isStarting) return;
-		console.log(
-			"[SpeedDate] startSpeedDate called, previewPersonas:",
-			previewPersonas?.length,
-		);
 		setIsStarting(true);
-		setStep("generating");
-		setLoadingMessage("今夜のゲストを探しています...");
 		try {
 			let personas: VirtualPersonaSummary[];
 			if (previewPersonas.length >= 3) {
-				console.log(
-					"[SpeedDate] Using preview personas:",
-					previewPersonas.map((p) => p.name),
-				);
 				personas = previewPersonas;
 			} else if (cachedPersonas && cachedPersonas.length >= 3) {
-				console.log(
-					"[SpeedDate] Using cached personas:",
-					cachedPersonas.map((p) => p.name),
-				);
-				personas = cachedPersonas.map((p) => ({
-					id: p.id,
-					name: p.name,
-					persona_type: p.persona_type,
-				}));
+				personas = cachedPersonas.map(personaToSummary);
 			} else {
-				console.log("[SpeedDate] Generating new personas...");
+				// Only show loading state when we actually need to generate
+				setStep("generating");
+				setLoadingMessage(t("speed_dating.finding_guests"));
 				const personasResult = await generatePersonas.mutateAsync();
 				personas = Array.isArray(personasResult)
-					? personasResult.map((p: VirtualPersonaSummary) => ({
-							id: p.id,
-							name: p.name,
-							persona_type: p.persona_type,
-						}))
+					? personasResult.map((p: SpeedDatingPersona) => personaToSummary(p))
 					: [];
-				console.log("[SpeedDate] Generated personas:", personas.length);
 			}
 			if (personas.length === 0) {
-				toast.error("ゲストの準備に失敗しました");
+				toast.error(t("speed_dating.error_guest_failed"));
 				setStep("initial");
 				return;
 			}
@@ -323,38 +373,47 @@ export function OnboardingSpeedDating() {
 			prefetchedNextRef.current = null;
 			prefetchingIndexRef.current = null;
 			setVirtualPersonas(personas);
-
 			setCurrentPersonaName(personas[0].name);
-			setLoadingMessage(`${personas[0].name}との会話を準備しています...`);
 			setCurrentPersonaIndex(0);
-			const firstSession = (await createSession.mutateAsync(
-				personas[0].id,
-			)) as {
-				session_id: string;
-			};
-			setCurrentSessionId(firstSession.session_id);
-			let signedUrlData: Awaited<ReturnType<typeof getSignedUrl.mutateAsync>>;
-			try {
-				signedUrlData = await getSignedUrl.mutateAsync(firstSession.session_id);
-			} catch (urlErr) {
-				console.error("Failed to get signed URL:", urlErr);
-				const message =
-					urlErr instanceof Error
-						? urlErr.message
-						: "音声セッションの準備に失敗しました。もう一度お試しください。";
-				toast.error(message);
-				setStep("initial");
-				return;
+
+			// Check if first session was prefetched
+			const prefetched = prefetchedFirstRef.current;
+			if (prefetched?.personaId === personas[0].id) {
+				console.log("[SpeedDate] Using prefetched first session - instant start");
+				setCurrentSessionId(prefetched.sessionId);
+				prefetchedFirstRef.current = null;
+				setStep("speed-date");
+				await startDate({
+					signedUrl: prefetched.signedUrlData.signed_url,
+					overrides: prefetched.signedUrlData.overrides,
+				});
+			} else {
+				// Fallback: create session + get signed URL
+				setStep("connecting");
+				setLoadingMessage(t("speed_dating.preparing_chat", { name: personas[0].name }));
+				const firstSession = (await createSession.mutateAsync(personas[0].id)) as {
+					session_id: string;
+				};
+				setCurrentSessionId(firstSession.session_id);
+				let signedUrlData: Awaited<ReturnType<typeof getSignedUrl.mutateAsync>>;
+				try {
+					signedUrlData = await getSignedUrl.mutateAsync(firstSession.session_id);
+				} catch (urlErr) {
+					console.error("Failed to get signed URL:", urlErr);
+					toast.error(t("speed_dating.error_voice_failed"));
+					setStep("initial");
+					return;
+				}
+				setStep("speed-date");
+				await startDate({
+					signedUrl: signedUrlData.signed_url,
+					overrides: signedUrlData.overrides,
+				});
 			}
-			setStep("speed-date");
-			await startDate({
-				signedUrl: signedUrlData.signed_url,
-				overrides: signedUrlData.overrides,
-			});
 		} catch (e) {
 			console.error("[SpeedDate] Error in startSpeedDate:", e);
 			toast.error(
-				`Speed Dateの開始に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`,
+				`${t("speed_dating.error_start_failed")}: ${e instanceof Error ? e.message : ""}`,
 				{ duration: 5000 },
 			);
 			setStep("initial");
@@ -407,23 +466,14 @@ export function OnboardingSpeedDating() {
 												{t("speed_dating.interests")}
 											</span>
 											<div className="flex flex-wrap gap-2">
-												{[
-													"音楽",
-													"映画",
-													"テック",
-													"旅",
-													"アート",
-													"スポーツ",
-													"料理",
-													"読書",
-												].map((tag) => (
+												{INTEREST_KEYS.map((key) => (
 													<button
 														type="button"
-														key={tag}
-														onClick={() => toggleInterest(tag)}
-														className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${draft.interests.includes(tag) ? "bg-secondary border-secondary text-white" : "bg-transparent border-border"}`}
+														key={key}
+														onClick={() => toggleInterest(key)}
+														className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${draft.interests.includes(key) ? "bg-secondary border-secondary text-white" : "bg-transparent border-border"}`}
 													>
-														{tag}
+														{t(`speed_dating.${key}`)}
 													</button>
 												))}
 											</div>
@@ -442,7 +492,7 @@ export function OnboardingSpeedDating() {
 												{isStarting ? (
 													<>
 														<Loader2 className="w-4 h-4 animate-spin" />
-														準備中...
+														{t("speed_dating.preparing")}
 													</>
 												) : (
 													<>
@@ -457,9 +507,11 @@ export function OnboardingSpeedDating() {
 										<div className="flex items-center justify-between gap-3">
 											<div>
 												<p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-													TONIGHT&apos;S DATES
+													{t("speed_dating.tonights_dates")}
 												</p>
-												<p className="text-sm font-semibold">3人の候補</p>
+												<p className="text-sm font-semibold">
+													{t("speed_dating.candidates_count", { count: 3 })}
+												</p>
 											</div>
 											<button
 												type="button"
@@ -476,7 +528,7 @@ export function OnboardingSpeedDating() {
 												) : (
 													<RefreshCw className="w-3.5 h-3.5" />
 												)}
-												デート再生成
+												{t("speed_dating.regenerate")}
 											</button>
 										</div>
 
@@ -491,18 +543,18 @@ export function OnboardingSpeedDating() {
 															<p className="text-sm font-semibold truncate">
 																{i + 1}. {p.name}
 															</p>
-															<p className="text-[11px] text-muted-foreground">
-																{personaTypeLabel(p.persona_type)}
+															<p className="text-[11px] text-muted-foreground line-clamp-2">
+																{p.bio}
 															</p>
 														</div>
-														<span className="text-[10px] font-black tracking-widest text-muted-foreground">
+														<span className="text-[10px] font-black tracking-widest text-muted-foreground shrink-0">
 															DATE {i + 1}
 														</span>
 													</div>
 												))
 											) : (
 												<div className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
-													候補はまだありません。開始時に自動生成されます。先に「デート再生成」でも作成できます。
+													{t("speed_dating.no_candidates")}
 												</div>
 											)}
 										</div>
@@ -525,14 +577,12 @@ export function OnboardingSpeedDating() {
 						<p className="text-lg font-bold">{loadingMessage}</p>
 						{step === "generating" && (
 							<p className="text-sm text-muted-foreground">
-								3人のデート相手を見つけています。少々お待ちください...
+								{t("speed_dating.finding_dates")}
 							</p>
 						)}
 						{showSlowHint && (
 							<div className="text-sm text-muted-foreground text-center">
-								<p>
-									少し時間がかかっています。ネットワーク状態を確認してください。
-								</p>
+								<p>{t("speed_dating.slow_hint")}</p>
 								<button
 									type="button"
 									onClick={() => {
@@ -541,7 +591,7 @@ export function OnboardingSpeedDating() {
 									}}
 									className="mt-3 underline underline-offset-4 hover:text-foreground"
 								>
-									開始画面に戻る
+									{t("speed_dating.back_to_start")}
 								</button>
 							</div>
 						)}
@@ -587,7 +637,7 @@ export function OnboardingSpeedDating() {
 							<div className="flex items-center gap-6">
 								<div className="flex flex-col">
 									<span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60">
-										Tonight&apos;s Dates
+										{t("speed_dating.tonights_dates")}
 									</span>
 									<div className="flex gap-3 mt-2">
 										{virtualPersonas.map((p, i) => (
@@ -648,7 +698,7 @@ export function OnboardingSpeedDating() {
 									{voiceStatus === "connecting" && (
 										<div className="flex items-center gap-2 mt-1">
 											<Loader2 className="w-3 h-3 animate-spin text-white/60" />
-											<p className="text-sm text-white/60">接続中...</p>
+											<p className="text-sm text-white/60">{t("speed_dating.connecting")}</p>
 										</div>
 									)}
 									{voiceStatus === "talking" && (
@@ -663,12 +713,12 @@ export function OnboardingSpeedDating() {
 														<span className="block h-3 w-1 animate-pulse rounded-full bg-secondary [animation-delay:250ms]" />
 													</div>
 													<span className="text-xs text-secondary">
-														話しています...
+														{t("speed_dating.speaking")}
 													</span>
 												</>
 											) : (
 												<span className="text-xs text-white/60">
-													聞いています...
+													{t("speed_dating.listening")}
 												</span>
 											)}
 										</div>
@@ -677,7 +727,7 @@ export function OnboardingSpeedDating() {
 										<div className="flex items-center gap-2 mt-1">
 											<Loader2 className="w-3 h-3 animate-spin text-white/60" />
 											<p className="text-sm text-white/60">
-												音声セッションを開始しています...
+												{t("speed_dating.starting_voice")}
 											</p>
 										</div>
 									)}
@@ -700,8 +750,8 @@ export function OnboardingSpeedDating() {
 									{transcript.length === 0 && (
 										<p className="text-center text-sm text-white/40 py-4">
 											{voiceStatus === "idle" || voiceStatus === "connecting"
-												? "接続を待っています..."
-												: "会話が始まるのを待っています..."}
+												? t("speed_dating.waiting_connection")
+												: t("speed_dating.waiting_conversation")}
 										</p>
 									)}
 									{transcript.map((entry, i) => (
@@ -733,7 +783,7 @@ export function OnboardingSpeedDating() {
 									className="px-8 py-4 rounded-full bg-white/15 text-white font-bold text-sm hover:bg-white/25 backdrop-blur transition-all flex items-center gap-2 border border-white/20"
 								>
 									<MicOff className="w-4 h-4" />
-									会話を終了する
+									{t("speed_dating.end_conversation")}
 								</button>
 							)}
 
@@ -741,7 +791,7 @@ export function OnboardingSpeedDating() {
 							{voiceStatus === "done" && completeSession.isPending && (
 								<div className="flex items-center gap-2 text-sm text-white/60">
 									<Loader2 className="w-4 h-4 animate-spin" />
-									<span>次のデート相手を準備しています...</span>
+									<span>{t("speed_dating.preparing_next")}</span>
 								</div>
 							)}
 						</div>
@@ -757,10 +807,10 @@ export function OnboardingSpeedDating() {
 					>
 						<div className="text-center space-y-4">
 							<h2 className="text-4xl font-black italic tracking-tighter uppercase">
-								Session Complete
+								{t("speed_dating.session_complete_title")}
 							</h2>
 							<p className="text-muted-foreground">
-								会話が完了しました。次のページでプロフィールを確認して確定してください。
+								{t("speed_dating.session_complete_desc")}
 							</p>
 						</div>
 
