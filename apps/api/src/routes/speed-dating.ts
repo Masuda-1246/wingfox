@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
 import { chatComplete } from "../services/mistral";
 import { buildVirtualPersonaPrompt } from "../prompts/virtual-persona";
+import { getRandomIconUrlForGender } from "../lib/fox-icons";
 import { buildSpeedDatingSystemPrompt } from "../prompts/speed-dating";
 import { z } from "zod";
 
@@ -173,6 +174,7 @@ speedDating.post("/personas", requireAuth, async (c) => {
 	const results = await Promise.all(
 		rawResults.map(async ({ personaType, raw }) => {
 			const { name, sections } = parsePersonaMarkdown(raw);
+			const iconUrl = getRandomIconUrlForGender(personaGender);
 			const { data: persona, error: insertErr } = await supabase
 				.from("personas")
 				.upsert(
@@ -181,6 +183,7 @@ speedDating.post("/personas", requireAuth, async (c) => {
 						persona_type: personaType,
 						name: name || personaType,
 						compiled_document: raw,
+						icon_url: iconUrl,
 					},
 					{ onConflict: "user_id,persona_type" },
 				)
