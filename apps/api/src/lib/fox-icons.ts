@@ -8,6 +8,10 @@ export const FOX_ICONS: Record<string, string[]> = {
 		"/foxes/male/sunglasses.png",
 		"/foxes/male/tie.png",
 		"/foxes/male/pias.png",
+		"/foxes/male/redfox.png",
+		"/foxes/male/redfox_face.png",
+		"/foxes/male/redfox_glasses.png",
+		"/foxes/male/blackfox_glasses.png",
 	],
 	female: [
 		"/foxes/female/ribbon.png",
@@ -17,6 +21,8 @@ export const FOX_ICONS: Record<string, string[]> = {
 		"/foxes/female/pinkfox.png",
 		"/foxes/female/pinkfox_cap.png",
 		"/foxes/female/whitefox_blue_ribbon.png",
+		"/foxes/female/blue_fox.png",
+		"/foxes/female/pinkfox_ribbon.png",
 	],
 };
 

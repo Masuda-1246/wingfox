@@ -527,8 +527,8 @@ CONSTRAINTS_CONTENT="- 不適切な内容は生成しない
 CONVERSATION_REFERENCES_CONTENT="会話サンプルから自動抽出（編集不可）"
 
 # キツネアイコン一覧（apps/api/src/lib/fox-icons.ts と一致）
-FOX_ICONS_MALE=("/foxes/male/normal.png" "/foxes/male/balckfox.png" "/foxes/male/glasses.png" "/foxes/male/face.png" "/foxes/male/sunglasses.png" "/foxes/male/tie.png" "/foxes/male/pias.png")
-FOX_ICONS_FEMALE=("/foxes/female/ribbon.png" "/foxes/female/whitefox_glasses.png" "/foxes/female/whitefox.png" "/foxes/female/whtefox_hat.png" "/foxes/female/pinkfox.png" "/foxes/female/pinkfox_cap.png" "/foxes/female/whitefox_blue_ribbon.png")
+FOX_ICONS_MALE=("/foxes/male/normal.png" "/foxes/male/balckfox.png" "/foxes/male/glasses.png" "/foxes/male/face.png" "/foxes/male/sunglasses.png" "/foxes/male/tie.png" "/foxes/male/pias.png" "/foxes/male/redfox.png" "/foxes/male/redfox_face.png" "/foxes/male/redfox_glasses.png" "/foxes/male/blackfox_glasses.png")
+FOX_ICONS_FEMALE=("/foxes/female/ribbon.png" "/foxes/female/whitefox_glasses.png" "/foxes/female/whitefox.png" "/foxes/female/whtefox_hat.png" "/foxes/female/pinkfox.png" "/foxes/female/pinkfox_cap.png" "/foxes/female/whitefox_blue_ribbon.png" "/foxes/female/blue_fox.png" "/foxes/female/pinkfox_ribbon.png")
 FOX_ICONS_ALL=("${FOX_ICONS_MALE[@]}" "${FOX_ICONS_FEMALE[@]}")
 
 case "$(echo "$GENDER" | tr '[:upper:]' '[:lower:]')" in
