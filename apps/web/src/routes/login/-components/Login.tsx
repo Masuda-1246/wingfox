@@ -1,6 +1,7 @@
 import { UpperHeader } from "@/components/layouts/UpperHeader";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -101,6 +102,7 @@ Checkbox.displayName = "Checkbox";
 export function Login() {
 	const { t } = useTranslation("auth");
 	const navigate = useNavigate();
+	const { user, signIn } = useAuth();
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 
@@ -116,18 +118,20 @@ export function Login() {
 	});
 
 	useEffect(() => {
-		const isAuth = localStorage.getItem("isAuthenticated");
-		if (isAuth === "true") {
-			navigate({ to: "/chat" });
+		if (user) {
+			navigate({ to: "/" });
 		}
-	}, [navigate]);
+	}, [user, navigate]);
 
 	const validateForm = () => {
 		let isValid = true;
 		const newErrors = { identifier: "", password: "" };
-
-		if (!formData.identifier.trim()) {
+		const email = formData.identifier.trim();
+		if (!email) {
 			newErrors.identifier = t("login.error_identifier_required");
+			isValid = false;
+		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			newErrors.identifier = t("login.error_identifier_invalid");
 			isValid = false;
 		}
 
@@ -148,16 +152,27 @@ export function Login() {
 		}
 
 		setLoading(true);
-
-		setTimeout(() => {
-			localStorage.setItem("isAuthenticated", "true");
+		const email = formData.identifier.trim();
+		const password = formData.password;
+		try {
+			const { error } = await signIn(email, password);
+			if (error) {
+				const hint =
+					error.message.includes("401") ||
+					error.message.toLowerCase().includes("unauthorized")
+						? "Supabase の設定を確認してください: .env に「Anon (public)」キーを使っていますか？"
+						: null;
+				toast.error(hint ?? error.message);
+				setLoading(false);
+				return;
+			}
 			toast.success(t("login.welcome_toast"), {
 				description: t("login.welcome_description"),
 			});
-
+			navigate({ to: "/" });
+		} finally {
 			setLoading(false);
-			navigate({ to: "/chat" });
-		}, 1000);
+		}
 	};
 
 	return (
@@ -306,13 +321,12 @@ export function Login() {
 					</div>
 
 					<div className="text-center">
-						<button
-							type="button"
-							onClick={() => navigate({ to: "/signup" })}
+						<Link
+							to="/register"
 							className="text-sm font-medium hover:text-secondary transition-colors underline-offset-4 hover:underline"
 						>
 							{t("login.create_account")}
-						</button>
+						</Link>
 					</div>
 				</div>
 			</div>

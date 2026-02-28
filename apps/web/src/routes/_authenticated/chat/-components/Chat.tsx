@@ -1,5 +1,13 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatTime } from "@/lib/date";
+import { useMatchingResults } from "@/lib/hooks/useMatchingResults";
+import { useMatchingResult } from "@/lib/hooks/useMatchingResults";
+import { usePartnerFoxChatMessages, useSendPartnerFoxMessage } from "@/lib/hooks/usePartnerFoxChats";
+import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
+import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
+import { useCreatePartnerFoxChat } from "@/lib/hooks/usePartnerFoxChats";
+import { useReportUser } from "@/lib/hooks/useModeration";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -32,83 +40,13 @@ interface ChatSession {
 	id: string;
 	partnerName: string;
 	partnerFoxVariant: number;
+	partnerImage?: string;
 	lastMessage: string;
 	compatibilityScore: number;
 	status: "active" | "archived";
 	messages: Message[];
 	suggestion?: Message;
 }
-
-const CURRENT_USER_ID = "user-1";
-const MY_PERSONA_ID = "persona-1";
-
-const INITIAL_SESSIONS: ChatSession[] = [
-	{
-		id: "session-1",
-		partnerName: "Emma AI",
-		partnerFoxVariant: 0,
-		lastMessage: "趣味の映画についてもっと聞きたいな。",
-		compatibilityScore: 88,
-		status: "active",
-		messages: [
-			{
-				id: "m1",
-				senderId: "partner-1",
-				senderName: "Emma AI",
-				text: "こんにちは！映画が好きってプロフィールに書いてあったけど、最近何か観た？",
-				type: "text",
-				timestamp: new Date(Date.now() - 1000 * 60 * 60),
-				isAi: true,
-			},
-			{
-				id: "m2",
-				senderId: MY_PERSONA_ID,
-				senderName: "My Persona",
-				text: "SF映画が好きで、最近はインターステラーを見返しました。",
-				type: "text",
-				timestamp: new Date(Date.now() - 1000 * 60 * 30),
-				isAi: true,
-			},
-			{
-				id: "m3",
-				senderId: "partner-1",
-				senderName: "Emma AI",
-				text: "最高！私もクリストファー・ノーラン監督の大ファンなの。特にあの映像美がたまらないよね。",
-				type: "text",
-				timestamp: new Date(Date.now() - 1000 * 60 * 5),
-				isAi: true,
-			},
-		],
-		suggestion: {
-			id: "s1",
-			senderId: MY_PERSONA_ID,
-			senderName: "My Persona",
-			text: "音楽の趣味も合いそうですね。ハンス・ジマーのサウンドトラックについてどう思いますか？",
-			type: "suggestion",
-			timestamp: new Date(),
-			isAi: true,
-		},
-	},
-	{
-		id: "session-2",
-		partnerName: "Liam Bot",
-		partnerFoxVariant: 1,
-		lastMessage: "週末はどこか出かける予定ですか？",
-		compatibilityScore: 72,
-		status: "active",
-		messages: [
-			{
-				id: "m1",
-				senderId: "partner-2",
-				senderName: "Liam Bot",
-				text: "コーヒーにこだわりがあるんですね。",
-				type: "text",
-				timestamp: new Date(Date.now() - 1000 * 60 * 120),
-				isAi: true,
-			},
-		],
-	},
-];
 
 const labelData = [
 	{ label: "Humor", x: 50, y: 5 },
@@ -121,86 +59,152 @@ const labelData = [
 
 export function Chat() {
 	const { t } = useTranslation("chat");
-	const [sessions, setSessions] = useState<ChatSession[]>(INITIAL_SESSIONS);
-	const [activeSessionId, setActiveSessionId] = useState<string>("session-1");
+	const { user } = useAuth();
+	const { data: matchingData, isLoading } = useMatchingResults(undefined, { enabled: !!user });
+	const matches = matchingData?.data ?? [];
+	const sessions: ChatSession[] = matches.map((m) => ({
+		id: m.id,
+		partnerName: m.partner?.nickname ?? "マッチ",
+		partnerFoxVariant: 0,
+		partnerImage: m.partner?.avatar_url ?? "https://picsum.photos/200/300?random=0",
+		lastMessage: "",
+		compatibilityScore: m.final_score ?? 0,
+		status: "active" as const,
+		messages: [],
+	}));
+
+	const [activeSessionId, setActiveSessionId] = useState<string>(
+		sessions[0]?.id ?? "",
+	);
 	const [inputValue, setInputValue] = useState("");
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-	const activeSession =
-		sessions.find((s) => s.id === activeSessionId) || sessions[0];
+	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
+	const detail = matchDetail.data;
+	const partnerFoxChatId = detail?.partner_fox_chat_id ?? null;
+	const directChatRoomId = detail?.direct_chat_room_id ?? null;
+	const foxConversationId = detail?.fox_conversation_id ?? null;
+	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
+
+	const partnerFoxMessages = usePartnerFoxChatMessages(partnerFoxChatId);
+	const sendPartnerFox = useSendPartnerFoxMessage(partnerFoxChatId);
+	const directMessages = useDirectChatMessages(directChatRoomId);
+	const sendDirect = useSendDirectChatMessage(directChatRoomId);
+	const foxMessages = useFoxConversationMessages(foxConversationId);
+	const createPartnerFox = useCreatePartnerFoxChat();
+
+	// Resolve messages for active session from the right source
+	const activeMessages: Message[] = (() => {
+		if (partnerFoxChatId && partnerFoxMessages.data?.data) {
+			return partnerFoxMessages.data.data.map((m) => ({
+				id: m.id,
+				senderId: m.role === "user" ? "me" : "fox",
+				senderName: m.role === "user" ? "You" : partnerName,
+				text: m.content,
+				type: "text" as const,
+				timestamp: new Date(m.created_at),
+				isAi: m.role !== "user",
+			}));
+		}
+		if (directChatRoomId && directMessages.data?.data) {
+			return directMessages.data.data.map((m) => ({
+				id: m.id,
+				senderId: m.sender_id,
+				senderName: m.sender_id ? "You" : partnerName,
+				text: m.content,
+				type: "text" as const,
+				timestamp: new Date(m.created_at),
+				isAi: false,
+			}));
+		}
+		if (foxConversationId && foxMessages.data?.data) {
+			return foxMessages.data.data.map((m) => ({
+				id: m.id,
+				senderId: m.speaker === "my_fox" ? "my_fox" : "partner_fox",
+				senderName: m.speaker === "my_fox" ? "My Fox" : `${partnerName} Fox`,
+				text: m.content,
+				type: "text" as const,
+				timestamp: new Date(m.created_at),
+				isAi: true,
+			}));
+		}
+		return [];
+	})();
+
+	const activeSession: ChatSession | undefined = sessions.find(
+		(s) => s.id === activeSessionId,
+	);
+	const displaySession: ChatSession = activeSession
+		? { ...activeSession, messages: activeMessages }
+		: {
+				id: activeSessionId,
+				partnerName: partnerName || "マッチ",
+				partnerImage: "https://picsum.photos/200/300?random=0",
+				lastMessage: "",
+				compatibilityScore: detail?.final_score ?? 0,
+				status: "active",
+				messages: activeMessages,
+			};
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on message/suggestion change
 	useEffect(() => {
 		scrollToBottom();
-	}, [activeSession?.messages, activeSession?.suggestion, scrollToBottom]);
+	}, [activeMessages, scrollToBottom]);
 
-	const handleSendMessage = (text: string) => {
+	const canSendMessage = Boolean(
+		(partnerFoxChatId && sendPartnerFox) ||
+			(directChatRoomId && sendDirect),
+	);
+
+	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
-		const newMessage: Message = {
-			id: `new-${Date.now()}`,
-			senderId: CURRENT_USER_ID,
-			senderName: "You",
-			text: text,
-			type: "text",
-			timestamp: new Date(),
-			isAi: false,
-		};
-		setSessions((prev) =>
-			prev.map((s) => {
-				if (s.id === activeSessionId) {
-					return {
-						...s,
-						messages: [...s.messages, newMessage],
-						lastMessage: text,
-					};
-				}
-				return s;
-			}),
-		);
-		setInputValue("");
+		try {
+			if (partnerFoxChatId) {
+				await sendPartnerFox.mutateAsync(text);
+			} else if (directChatRoomId) {
+				await sendDirect.mutateAsync(text);
+			} else {
+				toast.info("まずパートナーフォックスチャットを開始してください");
+				return;
+			}
+			setInputValue("");
+		} catch (e) {
+			console.error(e);
+			toast.error("送信に失敗しました");
+		}
+	};
+
+	const handleStartPartnerFoxChat = async () => {
+		if (!activeSessionId) return;
+		try {
+			await createPartnerFox.mutateAsync(activeSessionId);
+			toast.success("パートナーフォックスチャットを開始しました");
+			matchDetail.refetch();
+		} catch (e) {
+			console.error(e);
+			toast.error("チャットの開始に失敗しました");
+		}
 	};
 
 	const handleApproveSuggestion = () => {
-		if (!activeSession?.suggestion) return;
-		const approvedMessage: Message = {
-			...activeSession.suggestion,
-			type: "text",
-			senderId: MY_PERSONA_ID,
-			timestamp: new Date(),
-		};
-		setSessions((prev) =>
-			prev.map((s) => {
-				if (s.id === activeSessionId) {
-					return {
-						...s,
-						messages: [...s.messages, approvedMessage],
-						suggestion: undefined,
-						lastMessage: approvedMessage.text,
-					};
-				}
-				return s;
-			}),
-		);
-		toast.success(t("suggestion_approved"));
+		toast.info("APIでは提案承認は未実装です");
 	};
 
 	const handleRejectSuggestion = () => {
-		setSessions((prev) =>
-			prev.map((s) => {
-				if (s.id === activeSessionId) {
-					return { ...s, suggestion: undefined };
-				}
-				return s;
-			}),
-		);
-		toast.info(t("suggestion_discarded"));
+		toast.info("提案を破棄しました");
 	};
+
+	// Set first match as active when matches load
+	useEffect(() => {
+		if (sessions.length > 0 && !activeSessionId) {
+			setActiveSessionId(sessions[0].id);
+		}
+	}, [sessions, activeSessionId]);
 
 	const handleReport = () => {
 		setShowReportModal(false);
@@ -235,7 +239,16 @@ export function Chat() {
 						</div>
 					</div>
 					<div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
-						{sessions.map((session) => (
+						{isLoading ? (
+							<div className="flex items-center justify-center py-8">
+								<div className="animate-spin rounded-full h-8 w-8 border-2 border-secondary border-t-transparent" />
+							</div>
+						) : sessions.length === 0 ? (
+							<p className="text-sm text-muted-foreground p-4">
+								マッチング結果がありません
+							</p>
+						) : (
+						sessions.map((session) => (
 							<div
 								key={session.id}
 								onClick={() => {
@@ -272,7 +285,7 @@ export function Chat() {
 									</div>
 								</div>
 							</div>
-						))}
+						)))}
 					</div>
 				</div>
 
@@ -289,7 +302,7 @@ export function Chat() {
 							</button>
 							<div className="flex flex-col">
 								<h3 className="font-black text-base uppercase tracking-tight">
-									{activeSession.partnerName}
+									{displaySession.partnerName}
 								</h3>
 								<span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">
 									{t("persona_sync_active")}
@@ -308,10 +321,11 @@ export function Chat() {
 					</div>
 
 					<div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 min-h-0">
-						{activeSession.messages.map((msg) => {
+						{displaySession.messages.map((msg) => {
 							const isMe =
-								msg.senderId === CURRENT_USER_ID ||
-								msg.senderId === MY_PERSONA_ID;
+								msg.senderId === "me" ||
+								msg.senderId === "user" ||
+								msg.senderId === "my_fox";
 							return (
 								<motion.div
 									key={msg.id}
@@ -359,7 +373,7 @@ export function Chat() {
 						})}
 
 						<AnimatePresence>
-							{activeSession.suggestion && (
+							{displaySession.suggestion && (
 								<motion.div
 									initial={{ opacity: 0, scale: 0.95 }}
 									animate={{ opacity: 1, scale: 1 }}
@@ -374,7 +388,7 @@ export function Chat() {
 											</span>
 										</div>
 										<div className="bg-background border border-border rounded-xl p-4 mb-4 text-sm font-medium italic">
-											&ldquo;{activeSession.suggestion.text}&rdquo;
+											&ldquo;{displaySession.suggestion.text}&rdquo;
 										</div>
 										<div className="flex gap-2 justify-end">
 											<button
@@ -400,6 +414,18 @@ export function Chat() {
 					</div>
 
 					<div className="p-6 bg-background/50 border-t border-border backdrop-blur-sm shrink-0">
+						{!canSendMessage && detail && !partnerFoxChatId && detail.fox_conversation_id && (
+							<div className="mb-4">
+								<button
+									type="button"
+									onClick={handleStartPartnerFoxChat}
+									disabled={createPartnerFox.isPending}
+									className="w-full py-3 rounded-2xl border-2 border-dashed border-secondary/50 bg-secondary/5 text-sm font-bold hover:bg-secondary/10 transition-colors disabled:opacity-50"
+								>
+									{createPartnerFox.isPending ? "開始中..." : "パートナーフォックスチャットを開始"}
+								</button>
+							</div>
+						)}
 						<div className="flex items-center gap-2 bg-background border border-border rounded-2xl px-4 py-2 focus-within:border-secondary transition-all">
 							<input
 								type="text"
@@ -414,7 +440,7 @@ export function Chat() {
 							<button
 								type="button"
 								onClick={() => handleSendMessage(inputValue)}
-								disabled={!inputValue.trim()}
+								disabled={!inputValue.trim() || !canSendMessage}
 								className="p-2.5 bg-foreground text-background rounded-xl hover:bg-foreground/90 disabled:opacity-50 transition-all"
 							>
 								<Send className="w-4 h-4" />
@@ -434,7 +460,7 @@ export function Chat() {
 						</div>
 						<div className="flex items-end gap-1.5 mb-2">
 							<span className="text-5xl font-black tracking-tighter">
-								{activeSession.compatibilityScore}
+								{displaySession.compatibilityScore}
 							</span>
 							<span className="text-xs font-black text-secondary uppercase mb-2">
 								{t("sync")}
@@ -444,7 +470,7 @@ export function Chat() {
 							<motion.div
 								initial={{ width: 0 }}
 								animate={{
-									width: `${activeSession.compatibilityScore}%`,
+									width: `${displaySession.compatibilityScore}%`,
 								}}
 								transition={{ duration: 1, ease: "easeOut" }}
 								className="h-full bg-secondary"

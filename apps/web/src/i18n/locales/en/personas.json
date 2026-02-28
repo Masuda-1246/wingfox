@@ -20,6 +20,9 @@
 		"total_dialogues": "Total Dialogues",
 		"view_analysis": "View detailed analysis",
 		"enter_talk_room": "Enter Talk Room",
+		"quiz_title": "Question Quiz",
+		"quiz_description": "Answer preference and personality questions to reflect in your persona.",
+		"quiz_button": "Take the quiz",
 		"retrain_title": "Concerned about persona behavior?",
 		"retrain_description": "You can retrain and adjust your persona through a Speed Date session.",
 		"retrain_button": "Retrain via Speed Date",
@@ -31,6 +34,12 @@
 		"update_error": "Failed to update",
 		"demo_created": "Demo persona created",
 		"demo_error": "Failed to create"
+	},
+	"quiz": {
+		"title": "Question Quiz",
+		"description": "Tell us your preferences and personality. Used for persona generation.",
+		"submit_success": "Answers saved",
+		"submit_error": "Failed to save"
 	},
 	"create": {
 		"lounge_title": "THE LOUNGE",

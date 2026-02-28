@@ -1,6 +1,11 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatDateTime } from "@/lib/date";
-import { usePersonas } from "@/lib/hooks/usePersonas";
+import {
+	usePersonasList,
+	usePersona,
+	usePersonaSections,
+	useUpdatePersonaSection,
+} from "@/lib/hooks/usePersonasApi";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -119,61 +124,36 @@ function Badge({
 
 export function PersonasMe() {
 	const { t } = useTranslation("personas");
-	const { personas, isLoading, edit, add } = usePersonas();
+	const { data: personasList, isLoading } = usePersonasList("wingfox");
+	const myPersona = personasList && personasList.length > 0 ? personasList[0] : null;
+	const { data: personaDetail } = usePersona(myPersona?.id);
+	const { data: sections } = usePersonaSections(myPersona?.id);
+	const updateSection = useUpdatePersonaSection(myPersona?.id ?? null, "core_identity");
 	const [isEditing, setIsEditing] = useState(false);
 	const [formData, setFormData] = useState({
 		name: "",
-		traits: "",
 		profile_text: "",
 	});
-
-	const myPersona = personas && personas.length > 0 ? personas[0] : null;
 
 	useEffect(() => {
 		if (myPersona) {
 			setFormData({
 				name: myPersona.name,
-				traits: myPersona.traits ? myPersona.traits.join(", ") : "",
-				profile_text: myPersona.profile_text || "",
+				profile_text:
+					sections?.find((s) => s.section_id === "core_identity")?.content ?? "",
 			});
 		}
-	}, [myPersona]);
+	}, [myPersona, sections]);
 
 	const handleSave = async () => {
 		if (!myPersona) return;
 		try {
-			await edit(myPersona.id, {
-				name: formData.name,
-				traits: formData.traits
-					.split(",")
-					.map((t) => t.trim())
-					.filter(Boolean),
-				profile_text: formData.profile_text,
-				updated_at: new Date(),
-			});
+			await updateSection.mutateAsync(formData.profile_text);
 			setIsEditing(false);
 			toast.success(t("me.updated_toast"));
 		} catch (error) {
 			console.error(error);
 			toast.error(t("me.update_error"));
-		}
-	};
-
-	const createDemoPersona = async () => {
-		try {
-			await add({
-				id: crypto.randomUUID(),
-				user_id: "current-user-id",
-				name: "Alex (AI)",
-				traits: ["好奇心旺盛", "論理的", "映画好き", "ミニマリスト"],
-				profile_text:
-					"こんにちは、私はAlexです。効率と美しさを重視するミニマリストですが、週末は映画の世界に没頭するのが好きです。新しいテクノロジーについて議論するのが得意です。",
-				created_at: new Date(),
-				updated_at: new Date(),
-			});
-			toast.success(t("me.demo_created"));
-		} catch (error) {
-			toast.error(t("me.demo_error"));
 		}
 	};
 
@@ -187,36 +167,14 @@ export function PersonasMe() {
 
 	if (!myPersona) {
 		return (
-			<div className="p-4 md:p-6 w-full h-full flex flex-col items-center justify-center max-w-4xl mx-auto text-center space-y-6">
-				<div className="bg-accent/20 p-6 rounded-full">
-					<Fingerprint className="w-12 h-12 text-secondary" />
-				</div>
-				<div className="space-y-2">
-					<h1 className="text-3xl font-black tracking-tight">
-						{t("me.no_persona_title")}
-					</h1>
-					<p className="text-muted-foreground max-w-md mx-auto">
-						{t("me.no_persona_description")}
-					</p>
-				</div>
-				<div className="flex flex-col sm:flex-row gap-4">
-					<Link to="/personas/create">
-						<Button
-							variant="secondary"
-							className="w-full sm:w-auto text-base px-8 h-12"
-						>
-							<Sparkles className="w-4 h-4 mr-2" />
-							{t("me.start_speed_date")}
-						</Button>
-					</Link>
-					<Button
-						variant="outline"
-						onClick={createDemoPersona}
-						className="w-full sm:w-auto text-base px-8 h-12"
-					>
-						{t("me.create_demo")}
+			<div className="p-4 md:p-6 w-full max-w-md mx-auto flex flex-col items-center justify-center min-h-[40vh] text-center space-y-4">
+				<p className="text-muted-foreground">{t("me.no_persona_title")}</p>
+				<Link to="/onboarding/quiz">
+					<Button variant="secondary" className="text-sm">
+						<Sparkles className="w-4 h-4 mr-2" />
+						{t("me.start_speed_date")}
 					</Button>
-				</div>
+				</Link>
 			</div>
 		);
 	}
@@ -229,7 +187,9 @@ export function PersonasMe() {
 					<p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
 						<RefreshCw className="w-3 h-3" />
 						{t("me.last_updated", {
-							date: formatDateTime(myPersona.updated_at),
+							date: myPersona.updated_at
+								? formatDateTime(new Date(myPersona.updated_at))
+								: "—",
 						})}
 					</p>
 				</div>
@@ -251,7 +211,7 @@ export function PersonasMe() {
 								<Edit2 className="w-4 h-4 mr-2" />
 								{t("me.edit")}
 							</Button>
-							<Link to="/personas/create">
+							<Link to="/onboarding/speed-dating">
 								<Button variant="outline">
 									<RefreshCw className="w-4 h-4 mr-2" />
 									{t("me.regenerate")}
@@ -350,7 +310,7 @@ export function PersonasMe() {
 						) : (
 							<div className="prose prose-sm max-w-none">
 								<p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-									{myPersona.profile_text || t("me.no_profile")}
+									{formData.profile_text || t("me.no_profile")}
 								</p>
 							</div>
 						)}
@@ -361,41 +321,22 @@ export function PersonasMe() {
 							<Tag className="w-5 h-5 text-tertiary" />
 							<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
 						</div>
-
-						{isEditing ? (
-							<div className="space-y-2">
-								<Input
-									value={formData.traits}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											traits: e.target.value,
-										})
-									}
-									placeholder={t("me.traits_placeholder")}
-								/>
-								<p className="text-xs text-muted-foreground">
-									{t("me.traits_hint")}
+						<div className="flex flex-wrap gap-2">
+							{sections && sections.length > 0 ? (
+								sections.slice(0, 5).map((s) => (
+									<Badge
+										key={s.section_id}
+										className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
+									>
+										#{s.section_id}
+									</Badge>
+								))
+							) : (
+								<p className="text-sm text-muted-foreground">
+									{t("me.no_traits")}
 								</p>
-							</div>
-						) : (
-							<div className="flex flex-wrap gap-2">
-								{myPersona.traits && myPersona.traits.length > 0 ? (
-									myPersona.traits.map((trait) => (
-										<Badge
-											key={trait}
-											className="bg-accent/50 text-foreground hover:bg-accent border-accent px-3 py-1.5 text-sm font-medium"
-										>
-											#{trait}
-										</Badge>
-									))
-								) : (
-									<p className="text-sm text-muted-foreground">
-										{t("me.no_traits")}
-									</p>
-								)}
-							</div>
-						)}
+							)}
+						</div>
 					</Card>
 
 					<Card className="col-span-1 p-6 flex flex-col justify-between">
@@ -427,7 +368,7 @@ export function PersonasMe() {
 						</div>
 					</Card>
 
-					<div className="col-span-1 md:col-span-2 mt-4">
+					<Card className="col-span-1 md:col-span-2 mt-4">
 						<div className="bg-gradient-to-r from-secondary/10 to-tertiary/10 border border-secondary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
 							<div className="space-y-1">
 								<h3 className="font-bold text-lg">{t("me.retrain_title")}</h3>
@@ -435,7 +376,7 @@ export function PersonasMe() {
 									{t("me.retrain_description")}
 								</p>
 							</div>
-							<Link to="/personas/create">
+							<Link to="/onboarding/speed-dating">
 								<Button
 									variant="outline"
 									className="bg-background border-secondary/30 hover:bg-secondary hover:text-white transition-all whitespace-nowrap"
@@ -445,7 +386,7 @@ export function PersonasMe() {
 								</Button>
 							</Link>
 						</div>
-					</div>
+					</Card>
 				</div>
 			</div>
 		</div>

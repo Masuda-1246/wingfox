@@ -102,7 +102,7 @@ export function Signup() {
 	useEffect(() => {
 		const isAuth = localStorage.getItem("isAuthenticated");
 		if (isAuth === "true") {
-			navigate({ to: "/chat" });
+			navigate({ to: "/" });
 		}
 	}, [navigate]);
 
@@ -151,7 +151,7 @@ export function Signup() {
 			});
 
 			setLoading(false);
-			navigate({ to: "/personas/create" });
+			navigate({ to: "/" });
 		}, 1000);
 	};
 

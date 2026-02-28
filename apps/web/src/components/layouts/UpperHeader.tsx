@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -17,9 +18,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-const CURRENT_USER = {
-	name: "Alex Fox",
-	email: "alex.fox@example.com",
+const CURRENT_USER_PLACEHOLDER = {
+	name: "User",
+	avatar: "https://picsum.photos/200/300",
+	email: "",
 };
 
 function Button({
@@ -65,16 +67,11 @@ export function UpperHeader() {
 	const { t } = useTranslation("common");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const userMenuRef = useRef<HTMLDivElement>(null);
 	const location = useLocation();
 	const navigate = useNavigate();
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: re-check auth on route change
-	useEffect(() => {
-		const authStatus = localStorage.getItem("isAuthenticated") === "true";
-		setIsAuthenticated(authStatus);
-	}, [location.pathname]);
+	const { user, signOut } = useAuth();
+	const isAuthenticated = Boolean(user);
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -89,9 +86,8 @@ export function UpperHeader() {
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
-	const handleSignOut = () => {
-		localStorage.removeItem("isAuthenticated");
-		setIsAuthenticated(false);
+	const handleSignOut = async () => {
+		await signOut();
 		setIsUserMenuOpen(false);
 		toast.success(t("signed_out_success"));
 		navigate({ to: "/login" });
@@ -106,7 +102,7 @@ export function UpperHeader() {
 							<WingfoxLogo className="w-8 h-8" />
 						</div>
 						<span className="font-black text-lg tracking-tight hidden sm:inline-block">
-							wing<span className="text-secondary">fox</span>
+							Wing<span className="text-secondary">Fox</span>
 						</span>
 					</Link>
 				</div>
@@ -157,12 +153,15 @@ export function UpperHeader() {
 									className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-border hover:bg-accent transition-colors outline-none"
 								>
 									<span className="text-xs font-bold hidden md:block px-1 truncate">
-										{CURRENT_USER.name}
+										{user?.user_metadata?.display_name ?? user?.email ?? CURRENT_USER_PLACEHOLDER.name}
 									</span>
-									<FoxAvatar
-										seed={CURRENT_USER.email}
-										className="h-8 w-8 rounded-full border border-border"
-									/>
+									<div className="h-8 w-8 rounded-full overflow-hidden border border-border bg-muted">
+										<img
+											src={user?.user_metadata?.avatar_url ?? CURRENT_USER_PLACEHOLDER.avatar}
+											alt="User"
+											className="w-full h-full object-cover"
+										/>
+									</div>
 									<ChevronDown
 										className={cn(
 											"w-3 h-3 text-muted-foreground transition-transform",
@@ -230,20 +229,6 @@ export function UpperHeader() {
 											>
 												<Settings className="h-4 w-4 shrink-0" />
 												<span className="font-medium">{t("settings")}</span>
-											</Link>
-
-											<Link
-												to="/reports"
-												className={cn(
-													"flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-													location.pathname === "/reports"
-														? "bg-secondary text-secondary-foreground"
-														: "hover:bg-accent",
-												)}
-												onClick={() => setIsUserMenuOpen(false)}
-											>
-												<HelpCircle className="h-4 w-4 shrink-0" />
-												<span className="font-medium">{t("reports_help")}</span>
 											</Link>
 
 											<div className="h-px bg-border my-1.5 mx-2" />

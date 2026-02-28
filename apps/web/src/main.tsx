@@ -3,6 +3,7 @@ import { ThemeProvider } from "next-themes";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 
+import { AuthProvider } from "./lib/auth";
 import { routeTree } from "./routeTree.gen";
 
 import "./i18n";
@@ -34,7 +35,9 @@ if (rootElement && !rootElement.innerHTML) {
 				forcedTheme="light"
 				disableTransitionOnChange
 			>
-				<RouterProvider router={router} />
+				<AuthProvider>
+					<RouterProvider router={router} />
+				</AuthProvider>
 			</ThemeProvider>
 		</StrictMode>,
 	);

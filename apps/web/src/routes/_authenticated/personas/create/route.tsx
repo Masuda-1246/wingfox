@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PersonasCreate } from "./-components/PersonasCreate";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/personas/create")({
-	component: PersonasCreate,
+	beforeLoad: () => {
+		throw redirect({ to: "/onboarding/speed-dating" });
+	},
+	component: () => null,
 });

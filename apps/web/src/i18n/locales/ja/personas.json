@@ -20,6 +20,9 @@
 		"total_dialogues": "総対話数",
 		"view_analysis": "詳細な分析を見る",
 		"enter_talk_room": "トークルームへ入室",
+		"quiz_title": "質問クイズ",
+		"quiz_description": "好みや性格の傾向を選択式で答えて、ペルソナに反映できます。",
+		"quiz_button": "クイズに答える",
 		"retrain_title": "ペルソナの挙動が気になりますか？",
 		"retrain_description": "Speed Date形式でペルソナを再トレーニング・調整することができます。",
 		"retrain_button": "Speed Dateで再調整",
@@ -31,6 +34,12 @@
 		"update_error": "更新に失敗しました",
 		"demo_created": "デモ用ペルソナを作成しました",
 		"demo_error": "作成に失敗しました"
+	},
+	"quiz": {
+		"title": "質問クイズ",
+		"description": "あなたの好みや性格の傾向を教えてください。ペルソナ生成に利用されます。",
+		"submit_success": "回答を保存しました",
+		"submit_error": "保存に失敗しました"
 	},
 	"create": {
 		"lounge_title": "THE LOUNGE",

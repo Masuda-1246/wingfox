@@ -3,13 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "format": "turbo format",
-    "check": "turbo check",
-    "test": "turbo test",
-    "clean": "turbo clean"
+    "dev": "mise exec -- turbo dev",
+    "build": "mise exec -- turbo build",
+    "lint": "mise exec -- turbo lint",
+    "format": "mise exec -- turbo format",
+    "check": "mise exec -- turbo check",
+    "test": "mise exec -- turbo test",
+    "clean": "mise exec -- turbo clean"
   },
   "devDependencies": {
     "turbo": "^2.5.6",

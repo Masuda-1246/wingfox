@@ -11,14 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SpeedDatingRouteRouteImport } from './routes/speed-dating/route'
 import { Route as SignupRouteRouteImport } from './routes/signup/route'
+import { Route as RegisterRouteRouteImport } from './routes/register/route'
 import { Route as LoginRouteRouteImport } from './routes/login/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteRouteImport } from './routes/index/route'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
-import { Route as AuthenticatedReportsRouteRouteImport } from './routes/_authenticated/reports/route'
+import { Route as AuthenticatedOnboardingRouteRouteImport } from './routes/_authenticated/onboarding/route'
 import { Route as AuthenticatedChatRouteRouteImport } from './routes/_authenticated/chat/route'
+import { Route as AuthenticatedPersonasQuizRouteRouteImport } from './routes/_authenticated/personas/quiz/route'
 import { Route as AuthenticatedPersonasMeRouteRouteImport } from './routes/_authenticated/personas/me/route'
 import { Route as AuthenticatedPersonasCreateRouteRouteImport } from './routes/_authenticated/personas/create/route'
+import { Route as AuthenticatedOnboardingSpeedDatingRouteRouteImport } from './routes/_authenticated/onboarding/speed-dating/route'
+import { Route as AuthenticatedOnboardingReviewRouteRouteImport } from './routes/_authenticated/onboarding/review/route'
+import { Route as AuthenticatedOnboardingQuizRouteRouteImport } from './routes/_authenticated/onboarding/quiz/route'
 
 const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
   id: '/speed-dating',
@@ -28,6 +33,11 @@ const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
 const SignupRouteRoute = SignupRouteRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRouteRoute = RegisterRouteRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRouteRoute = LoginRouteRouteImport.update({
@@ -50,10 +60,10 @@ const AuthenticatedSettingsRouteRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedReportsRouteRoute =
-  AuthenticatedReportsRouteRouteImport.update({
-    id: '/reports',
-    path: '/reports',
+const AuthenticatedOnboardingRouteRoute =
+  AuthenticatedOnboardingRouteRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedChatRouteRoute = AuthenticatedChatRouteRouteImport.update({
@@ -61,6 +71,12 @@ const AuthenticatedChatRouteRoute = AuthenticatedChatRouteRouteImport.update({
   path: '/chat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPersonasQuizRouteRoute =
+  AuthenticatedPersonasQuizRouteRouteImport.update({
+    id: '/personas/quiz',
+    path: '/personas/quiz',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPersonasMeRouteRoute =
   AuthenticatedPersonasMeRouteRouteImport.update({
     id: '/personas/me',
@@ -73,83 +89,132 @@ const AuthenticatedPersonasCreateRouteRoute =
     path: '/personas/create',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOnboardingSpeedDatingRouteRoute =
+  AuthenticatedOnboardingSpeedDatingRouteRouteImport.update({
+    id: '/speed-dating',
+    path: '/speed-dating',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
+const AuthenticatedOnboardingReviewRouteRoute =
+  AuthenticatedOnboardingReviewRouteRouteImport.update({
+    id: '/review',
+    path: '/review',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
+const AuthenticatedOnboardingQuizRouteRoute =
+  AuthenticatedOnboardingQuizRouteRouteImport.update({
+    id: '/quiz',
+    path: '/quiz',
+    getParentRoute: () => AuthenticatedOnboardingRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
+  '/register': typeof RegisterRouteRoute
   '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
-  '/reports': typeof AuthenticatedReportsRouteRoute
+  '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
+  '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
+  '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
+  '/register': typeof RegisterRouteRoute
   '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
-  '/reports': typeof AuthenticatedReportsRouteRoute
+  '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
+  '/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
+  '/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
+  '/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRouteRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRouteRoute
+  '/register': typeof RegisterRouteRoute
   '/signup': typeof SignupRouteRoute
   '/speed-dating': typeof SpeedDatingRouteRoute
   '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
-  '/_authenticated/reports': typeof AuthenticatedReportsRouteRoute
+  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
+  '/_authenticated/onboarding/quiz': typeof AuthenticatedOnboardingQuizRouteRoute
+  '/_authenticated/onboarding/review': typeof AuthenticatedOnboardingReviewRouteRoute
+  '/_authenticated/onboarding/speed-dating': typeof AuthenticatedOnboardingSpeedDatingRouteRoute
   '/_authenticated/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
   '/_authenticated/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/_authenticated/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
+    | '/register'
     | '/signup'
     | '/speed-dating'
     | '/chat'
-    | '/reports'
+    | '/onboarding'
     | '/settings'
+    | '/onboarding/quiz'
+    | '/onboarding/review'
+    | '/onboarding/speed-dating'
     | '/personas/create'
     | '/personas/me'
+    | '/personas/quiz'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/register'
     | '/signup'
     | '/speed-dating'
     | '/chat'
-    | '/reports'
+    | '/onboarding'
     | '/settings'
+    | '/onboarding/quiz'
+    | '/onboarding/review'
+    | '/onboarding/speed-dating'
     | '/personas/create'
     | '/personas/me'
+    | '/personas/quiz'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/register'
     | '/signup'
     | '/speed-dating'
     | '/_authenticated/chat'
-    | '/_authenticated/reports'
+    | '/_authenticated/onboarding'
     | '/_authenticated/settings'
+    | '/_authenticated/onboarding/quiz'
+    | '/_authenticated/onboarding/review'
+    | '/_authenticated/onboarding/speed-dating'
     | '/_authenticated/personas/create'
     | '/_authenticated/personas/me'
+    | '/_authenticated/personas/quiz'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRouteRoute: typeof IndexRouteRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRouteRoute: typeof LoginRouteRoute
+  RegisterRouteRoute: typeof RegisterRouteRoute
   SignupRouteRoute: typeof SignupRouteRoute
   SpeedDatingRouteRoute: typeof SpeedDatingRouteRoute
 }
@@ -168,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -198,11 +270,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/reports': {
-      id: '/_authenticated/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AuthenticatedReportsRouteRouteImport
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chat': {
@@ -210,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof AuthenticatedChatRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/personas/quiz': {
+      id: '/_authenticated/personas/quiz'
+      path: '/personas/quiz'
+      fullPath: '/personas/quiz'
+      preLoaderRoute: typeof AuthenticatedPersonasQuizRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/personas/me': {
@@ -226,23 +305,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPersonasCreateRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/onboarding/speed-dating': {
+      id: '/_authenticated/onboarding/speed-dating'
+      path: '/speed-dating'
+      fullPath: '/onboarding/speed-dating'
+      preLoaderRoute: typeof AuthenticatedOnboardingSpeedDatingRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
+    '/_authenticated/onboarding/review': {
+      id: '/_authenticated/onboarding/review'
+      path: '/review'
+      fullPath: '/onboarding/review'
+      preLoaderRoute: typeof AuthenticatedOnboardingReviewRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
+    '/_authenticated/onboarding/quiz': {
+      id: '/_authenticated/onboarding/quiz'
+      path: '/quiz'
+      fullPath: '/onboarding/quiz'
+      preLoaderRoute: typeof AuthenticatedOnboardingQuizRouteRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRouteRoute
+    }
   }
 }
 
+interface AuthenticatedOnboardingRouteRouteChildren {
+  AuthenticatedOnboardingQuizRouteRoute: typeof AuthenticatedOnboardingQuizRouteRoute
+  AuthenticatedOnboardingReviewRouteRoute: typeof AuthenticatedOnboardingReviewRouteRoute
+  AuthenticatedOnboardingSpeedDatingRouteRoute: typeof AuthenticatedOnboardingSpeedDatingRouteRoute
+}
+
+const AuthenticatedOnboardingRouteRouteChildren: AuthenticatedOnboardingRouteRouteChildren =
+  {
+    AuthenticatedOnboardingQuizRouteRoute:
+      AuthenticatedOnboardingQuizRouteRoute,
+    AuthenticatedOnboardingReviewRouteRoute:
+      AuthenticatedOnboardingReviewRouteRoute,
+    AuthenticatedOnboardingSpeedDatingRouteRoute:
+      AuthenticatedOnboardingSpeedDatingRouteRoute,
+  }
+
+const AuthenticatedOnboardingRouteRouteWithChildren =
+  AuthenticatedOnboardingRouteRoute._addFileChildren(
+    AuthenticatedOnboardingRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRouteRoute: typeof AuthenticatedChatRouteRoute
-  AuthenticatedReportsRouteRoute: typeof AuthenticatedReportsRouteRoute
+  AuthenticatedOnboardingRouteRoute: typeof AuthenticatedOnboardingRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
   AuthenticatedPersonasCreateRouteRoute: typeof AuthenticatedPersonasCreateRouteRoute
   AuthenticatedPersonasMeRouteRoute: typeof AuthenticatedPersonasMeRouteRoute
+  AuthenticatedPersonasQuizRouteRoute: typeof AuthenticatedPersonasQuizRouteRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatRouteRoute: AuthenticatedChatRouteRoute,
-  AuthenticatedReportsRouteRoute: AuthenticatedReportsRouteRoute,
+  AuthenticatedOnboardingRouteRoute:
+    AuthenticatedOnboardingRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRoute,
   AuthenticatedPersonasCreateRouteRoute: AuthenticatedPersonasCreateRouteRoute,
   AuthenticatedPersonasMeRouteRoute: AuthenticatedPersonasMeRouteRoute,
+  AuthenticatedPersonasQuizRouteRoute: AuthenticatedPersonasQuizRouteRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -252,6 +376,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRouteRoute: IndexRouteRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRouteRoute: LoginRouteRoute,
+  RegisterRouteRoute: RegisterRouteRoute,
   SignupRouteRoute: SignupRouteRoute,
   SpeedDatingRouteRoute: SpeedDatingRouteRoute,
 }

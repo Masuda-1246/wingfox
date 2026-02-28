@@ -1,5 +1,5 @@
-import { FoxAvatar } from "@/components/icons/FoxAvatar";
-import { useUsers } from "@/lib/hooks/useUsers";
+import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
+import { useProfileMe, useUpdateProfileMe } from "@/lib/hooks/useProfile";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -146,10 +146,12 @@ function SectionHeader({
 
 export function Settings() {
 	const { t, i18n } = useTranslation("settings");
-	const { users, isLoading, edit, add, remove } = useUsers();
+	const { data: profile, isLoading, error } = useProfileMe();
+	const updateProfile = useUpdateProfileMe();
+	const { data: authMe } = useAuthMe();
+	const updateAuthMe = useUpdateAuthMe();
 
 	const [formData, setFormData] = useState({
-		id: "",
 		display_name: "",
 		location: "",
 		bio: "",
@@ -157,72 +159,106 @@ export function Settings() {
 		email: "user@example.com",
 	});
 
+	const [basicInfo, setBasicInfo] = useState({
+		nickname: "",
+		gender: "",
+		birthYear: "",
+	});
+
 	const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
 
 	useEffect(() => {
-		if (!isLoading) {
-			if (users && users.length > 0) {
-				const user = users[0];
-				setFormData((prev) => ({
-					...prev,
-					id: user.id,
-					display_name: user.display_name,
-					location: user.location || "",
-					bio: user.bio || "",
-					age: user.age || 0,
-				}));
-			} else {
-				setFormData((prev) => ({
-					...prev,
-					id: crypto.randomUUID(),
-					display_name: "New User",
-				}));
-			}
+		if (authMe) {
+			const genderMap: Record<string, string> = {
+				male: "男性",
+				female: "女性",
+				other: "その他",
+				undisclosed: "未回答",
+			};
+			setBasicInfo({
+				nickname: authMe.nickname ?? "",
+				gender: authMe.gender ? genderMap[authMe.gender] ?? "" : "",
+				birthYear: authMe.birth_year != null ? String(authMe.birth_year) : "",
+			});
 		}
-	}, [users, isLoading]);
+	}, [authMe]);
+
+	useEffect(() => {
+		if (profile) {
+			const basic = (profile.basic_info ?? {}) as Record<string, unknown>;
+			setFormData((prev) => ({
+				...prev,
+				display_name: (basic.display_name as string) ?? "",
+				location: (basic.location as string) ?? "",
+				bio: (basic.bio as string) ?? "",
+				age: Number(basic.age) || 0,
+			}));
+		}
+	}, [profile]);
 
 	const handleSave = async () => {
 		try {
-			if (users.length > 0) {
-				await edit(formData.id, {
+			await updateProfile.mutateAsync({
+				basic_info: {
 					display_name: formData.display_name,
 					location: formData.location,
 					bio: formData.bio,
-					age: Number(formData.age),
-				});
-				toast.success(t("updated_toast"));
-			} else {
-				await add({
-					id: formData.id,
-					display_name: formData.display_name,
-					location: formData.location,
-					bio: formData.bio,
-					age: Number(formData.age),
-					created_at: new Date(),
-				});
-				toast.success(t("created_toast"));
-			}
-		} catch (error) {
-			console.error(error);
+					age: formData.age,
+				},
+			});
+			toast.success(t("updated_toast"));
+		} catch (err) {
+			console.error(err);
+			toast.error(t("save_error"));
+		}
+	};
+
+	const handleSaveBasicInfo = async () => {
+		const genderApiMap: Record<string, "male" | "female" | "other" | "undisclosed"> = {
+			男性: "male",
+			女性: "female",
+			その他: "other",
+			未回答: "undisclosed",
+		};
+		const gender = basicInfo.gender ? genderApiMap[basicInfo.gender] ?? "undisclosed" : "undisclosed";
+		const birthYearNum = basicInfo.birthYear.trim()
+			? Number(basicInfo.birthYear)
+			: null;
+		if (birthYearNum != null && (Number.isNaN(birthYearNum) || birthYearNum < 1900 || birthYearNum > 2100)) {
+			toast.error(t("save_error"));
+			return;
+		}
+		try {
+			await updateAuthMe.mutateAsync({
+				nickname: basicInfo.nickname || undefined,
+				gender,
+				birth_year: birthYearNum,
+			});
+			toast.success(t("updated_toast"));
+		} catch (err) {
+			console.error(err);
 			toast.error(t("save_error"));
 		}
 	};
 
 	const handleDeleteAccount = async () => {
 		if (confirm(t("delete_confirm"))) {
-			try {
-				await remove(formData.id);
-				toast.success(t("deleted_toast"));
-			} catch (error) {
-				toast.error(t("delete_error"));
-			}
+			toast.error("アカウント削除はサポートからお問い合わせください");
 		}
 	};
 
-	if (isLoading) {
+	if (isLoading || (profile === undefined && !error)) {
 		return (
 			<div className="flex items-center justify-center h-full">
 				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="p-4 md:p-6 max-w-7xl mx-auto">
+				<p className="text-destructive">プロフィールの読み込みに失敗しました。</p>
 			</div>
 		);
 	}
@@ -237,15 +273,6 @@ export function Settings() {
 					<p className="text-muted-foreground text-sm max-w-lg">
 						{t("description")}
 					</p>
-				</div>
-				<div className="flex gap-2">
-					<Button variant="outline" onClick={() => window.location.reload()}>
-						{t("cancel")}
-					</Button>
-					<Button onClick={handleSave} className="gap-2">
-						<Save className="w-4 h-4" />
-						{t("save")}
-					</Button>
 				</div>
 			</div>
 
@@ -290,114 +317,66 @@ export function Settings() {
 								animate={{ opacity: 1, y: 0 }}
 								exit={{ opacity: 0, y: -10 }}
 								transition={{ duration: 0.2 }}
-								className="grid grid-cols-1 md:grid-cols-2 gap-6"
+								className="space-y-6"
 							>
-								<Card className="col-span-1 md:col-span-2 p-6">
+								<Card className="p-6">
 									<SectionHeader
 										icon={User}
-										title={t("profile_title")}
-										description={t("profile_description")}
+										title={t("basic_info_title")}
+										description={t("basic_info_description")}
 									/>
-									<div className="grid gap-6 md:grid-cols-2">
+									<div className="grid gap-6 md:grid-cols-3">
 										<div className="space-y-2">
-											<Label htmlFor="display_name">{t("display_name")}</Label>
+											<Label htmlFor="nickname">{t("nickname")}</Label>
 											<Input
-												id="display_name"
-												value={formData.display_name}
+												id="nickname"
+												value={basicInfo.nickname}
 												onChange={(e) =>
-													setFormData({
-														...formData,
-														display_name: e.target.value,
-													})
+													setBasicInfo({ ...basicInfo, nickname: e.target.value })
 												}
-												placeholder={t("display_name_placeholder")}
+												placeholder={t("nickname_placeholder")}
 											/>
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="location">{t("location")}</Label>
-											<Input
-												id="location"
-												value={formData.location}
+											<Label htmlFor="gender">{t("gender")}</Label>
+											<select
+												id="gender"
+												value={basicInfo.gender}
 												onChange={(e) =>
-													setFormData({
-														...formData,
-														location: e.target.value,
-													})
+													setBasicInfo({ ...basicInfo, gender: e.target.value })
 												}
-												placeholder={t("location_placeholder")}
-											/>
+												className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+											>
+												<option value="">{t("gender_select")}</option>
+												<option value="男性">{t("gender_male")}</option>
+												<option value="女性">{t("gender_female")}</option>
+												<option value="その他">{t("gender_other")}</option>
+												<option value="未回答">未回答</option>
+											</select>
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="age">{t("age")}</Label>
+											<Label htmlFor="birth_year">{t("birth_year")}</Label>
 											<Input
-												id="age"
+												id="birth_year"
 												type="number"
-												value={formData.age}
+												min={1900}
+												max={2100}
+												value={basicInfo.birthYear}
 												onChange={(e) =>
-													setFormData({
-														...formData,
-														age: Number(e.target.value),
-													})
+													setBasicInfo({ ...basicInfo, birthYear: e.target.value })
 												}
-												placeholder="25"
+												placeholder={t("birth_year_placeholder")}
 											/>
 										</div>
 									</div>
-									<div className="space-y-2 mt-6">
-										<Label htmlFor="bio">{t("bio_label")}</Label>
-										<Textarea
-											id="bio"
-											value={formData.bio}
-											onChange={(e) =>
-												setFormData({
-													...formData,
-													bio: e.target.value,
-												})
-											}
-											placeholder={t("bio_placeholder")}
-											className="min-h-[120px]"
-										/>
-										<p className="text-[11px] text-muted-foreground text-right">
-											{t("bio_count", { count: formData.bio.length })}
-										</p>
-									</div>
-								</Card>
-
-								<Card className="col-span-1 p-6 flex flex-col items-center justify-center text-center space-y-4">
-									<div className="relative">
-										<div className="w-32 h-32 rounded-full overflow-hidden border-4 border-background shadow-xl ring-2 ring-border">
-											<FoxAvatar
-												variant={4}
-												className="w-full h-full"
-											/>
-										</div>
-										<button
-											type="button"
-											className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-sm"
-										>
-											<SettingsIcon className="w-4 h-4" />
-										</button>
-									</div>
-									<div>
-										<h3 className="font-semibold text-lg">
-											{formData.display_name || "No Name"}
-										</h3>
-										<p className="text-sm text-muted-foreground">
-											@{formData.id.slice(0, 8)}...
-										</p>
-									</div>
-									<div className="flex gap-2">
-										<Button variant="outline" size="sm">
-											{t("change_photo")}
-										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="text-red-500 hover:text-red-600 hover:bg-red-50"
-										>
-											{t("delete_photo")}
-										</Button>
-									</div>
+									<Button
+										onClick={handleSaveBasicInfo}
+										disabled={updateAuthMe.isPending}
+										className="mt-4 gap-2"
+									>
+										<Save className="w-4 h-4" />
+										{t("save")}
+									</Button>
 								</Card>
 							</motion.div>
 						)}

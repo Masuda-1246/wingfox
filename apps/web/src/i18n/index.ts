@@ -5,12 +5,14 @@ import { initReactI18next } from "react-i18next";
 import enAuth from "./locales/en/auth.json";
 import enChat from "./locales/en/chat.json";
 import enCommon from "./locales/en/common.json";
+import enOnboarding from "./locales/en/onboarding.json";
 import enPersonas from "./locales/en/personas.json";
 import enReports from "./locales/en/reports.json";
 import enSettings from "./locales/en/settings.json";
 import jaAuth from "./locales/ja/auth.json";
 import jaChat from "./locales/ja/chat.json";
 import jaCommon from "./locales/ja/common.json";
+import jaOnboarding from "./locales/ja/onboarding.json";
 import jaPersonas from "./locales/ja/personas.json";
 import jaReports from "./locales/ja/reports.json";
 import jaSettings from "./locales/ja/settings.json";
@@ -24,6 +26,7 @@ i18n
 				common: jaCommon,
 				auth: jaAuth,
 				chat: jaChat,
+				onboarding: jaOnboarding,
 				personas: jaPersonas,
 				reports: jaReports,
 				settings: jaSettings,
@@ -32,6 +35,7 @@ i18n
 				common: enCommon,
 				auth: enAuth,
 				chat: enChat,
+				onboarding: enOnboarding,
 				personas: enPersonas,
 				reports: enReports,
 				settings: enSettings,
