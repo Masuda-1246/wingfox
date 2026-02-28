@@ -1,6 +1,6 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const directChatsApi = client.api["direct-chats"] as {
 	$get: () => Promise<Response>;
@@ -29,26 +29,39 @@ export function useDirectChatRooms() {
 	});
 }
 
+export interface DirectChatMessage {
+	id: string;
+	sender_id: string;
+	is_mine: boolean;
+	content: string;
+	is_read: boolean;
+	created_at: string;
+}
+
+interface DirectChatMessagesPage {
+	data: DirectChatMessage[];
+	next_cursor: string | null;
+	has_more: boolean;
+}
+
 export function useDirectChatMessages(
 	roomId: string | undefined | null,
-	params?: { limit?: number; cursor?: string },
+	params?: { limit?: number },
 ) {
-	return useQuery({
-		queryKey: ["direct-chats", roomId, "messages", params],
-		queryFn: async () => {
+	return useInfiniteQuery<DirectChatMessagesPage, Error>({
+		queryKey: ["direct-chats", roomId, "messages"],
+		queryFn: async ({ pageParam }) => {
 			if (!roomId) throw new Error("Room id required");
 			const res = await directChatsApi[":id"].messages.$get({
 				param: { id: roomId },
-				query: params,
+				query: { ...params, cursor: pageParam as string | undefined },
 			});
 			const json = await res.json();
 			if ("error" in json) throw new Error(json.error.message);
-			return json as {
-				data: Array<{ id: string; content: string; created_at: string; sender_id: string }>;
-				next_cursor: string | null;
-				has_more: boolean;
-			};
+			return json as DirectChatMessagesPage;
 		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
 		enabled: Boolean(roomId),
 	});
 }

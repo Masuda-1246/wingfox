@@ -30,7 +30,10 @@ matching.get("/results", requireAuth, async (c) => {
 		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, created_at")
 		.or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
 		.order("final_score", { ascending: false, nullsFirst: false });
-	if (statusFilter) q = q.eq("status", statusFilter);
+	if (statusFilter) {
+		const statuses = statusFilter.split(",");
+		q = statuses.length === 1 ? q.eq("status", statuses[0]) : q.in("status", statuses);
+	}
 	if (cursor) q = q.lt("created_at", cursor);
 	const { data: rows, error } = await q.limit(limit + 1);
 	if (error) return jsonError(c, "INTERNAL_ERROR", "Failed to fetch matches");

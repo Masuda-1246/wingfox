@@ -34,6 +34,10 @@ export function useStartFoxSearch() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 		},
+		onError: () => {
+			// Chat.tsx の handleStartFoxSearch で個別にハンドリングするため
+			// グローバル onError（query-client.ts）の toast.error を抑制
+		},
 	});
 }
 
@@ -90,9 +94,15 @@ export function useMultipleFoxConversationStatus(conversationIds: string[]) {
 	const totalRounds = statuses.reduce((sum, s) => sum + (s?.total_rounds ?? 0), 0);
 	const currentRounds = statuses.reduce((sum, s) => sum + (s?.current_round ?? 0), 0);
 
+	const statusMap = new Map<string, FoxConversationStatus | undefined>();
+	conversationIds.forEach((id, i) => {
+		statusMap.set(id, statuses[i]);
+	});
+
 	return {
 		queries,
 		statuses,
+		statusMap,
 		allTerminal,
 		completedCount,
 		failedCount,

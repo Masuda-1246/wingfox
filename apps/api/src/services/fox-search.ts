@@ -71,7 +71,7 @@ export async function searchAndStartFoxConversation(
 	} = {
 		user_a_id: userA,
 		user_b_id: userB,
-		status: "pending",
+		status: "fox_conversation_in_progress",
 	};
 	if (scoreDetails) {
 		matchPayload.profile_score = scoreDetails.profile_score;
@@ -178,7 +178,7 @@ export async function searchAndStartMultipleFoxConversations(
 			const [userA, userB] =
 				userId < partnerUserId ? [userId, partnerUserId] : [partnerUserId, userId];
 
-			const scoreDetails = await getProfileScoreDetailsForUsersForUsers(supabase, userA, userB);
+			const scoreDetails = await getProfileScoreDetailsForUsers(supabase, userA, userB);
 			const matchPayload: {
 				user_a_id: string;
 				user_b_id: string;
@@ -189,7 +189,7 @@ export async function searchAndStartMultipleFoxConversations(
 			} = {
 				user_a_id: userA,
 				user_b_id: userB,
-				status: "pending",
+				status: "fox_conversation_in_progress",
 			};
 			if (scoreDetails) {
 				matchPayload.profile_score = scoreDetails.profile_score;

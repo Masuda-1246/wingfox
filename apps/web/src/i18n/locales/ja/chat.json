@@ -45,6 +45,11 @@
 	"fox_search_failed": "Fox会話に失敗しました。もう一度お試しください。",
 	"fox_search_failed_multiple": "{{count}}件のFox会話が失敗しました",
 	"fox_search_error": "Fox検索の開始に失敗しました。",
+	"fox_search_no_candidates": "新しいマッチ候補が見つかりませんでした。すべての候補者と既にマッチ済みです。",
 	"no_trait_data": "データなし",
-	"topic_pending": "Fox会話完了後に表示されます"
+	"topic_pending": "Fox会話完了後に表示されます",
+	"fox_chat_active": "Fox対話中",
+	"fox_search_completed_badge": "完了",
+	"back": "戻る",
+	"analysis": "分析"
 }

@@ -59,6 +59,7 @@ export async function runFoxConversation(
 	if (!personaA?.compiled_document || !personaB?.compiled_document) {
 		console.error(`[runFoxConversation] Persona missing for conversation ${conversationId}: personaA=${!!personaA?.compiled_document}, personaB=${!!personaB?.compiled_document}`);
 		await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", conversationId);
+		await supabase.from("matches").update({ status: "pending" }).eq("id", conv.match_id);
 		return;
 	}
 	await supabase
@@ -104,14 +105,14 @@ export async function runFoxConversation(
 	const logText = (allMsgs ?? [])
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
-	const scorePrompt = buildConversationScorePrompt(logText);
-	const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
-		maxTokens: 300,
-		responseFormat: { type: "json_object" },
-	});
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
 	try {
+		const scorePrompt = buildConversationScorePrompt(logText);
+		const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
+			maxTokens: 1024,
+			responseFormat: { type: "json_object" },
+		});
 		const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
 		conversationScore = parsed.score;
 		analysis = {
@@ -121,7 +122,7 @@ export async function runFoxConversation(
 			topic_distribution: parsed.topic_distribution,
 		};
 	} catch (e) {
-		console.error("[runFoxConversation] Score parsing failed:", e);
+		console.warn("[runFoxConversation] Score computation failed, using default score(50):", e);
 	}
 	const { data: matchRow } = await supabase.from("matches").select("profile_score, score_details").eq("id", conv.match_id).single();
 	let profileScore = (matchRow?.profile_score as number) ?? 50;

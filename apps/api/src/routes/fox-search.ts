@@ -67,6 +67,7 @@ foxSearch.post("/start", requireAuth, async (c) => {
 				);
 			} else {
 				const convId = result.fox_conversation_id;
+				const matchId = result.match_id;
 				const bgTask = runFoxConversation(supabase, apiKey, convId).catch(
 					async (err) => {
 						console.error("Fox conversation failed:", err);
@@ -74,6 +75,10 @@ foxSearch.post("/start", requireAuth, async (c) => {
 							.from("fox_conversations")
 							.update({ status: "failed" })
 							.eq("id", convId);
+						await supabase
+							.from("matches")
+							.update({ status: "pending" })
+							.eq("id", matchId);
 					},
 				);
 				try {
