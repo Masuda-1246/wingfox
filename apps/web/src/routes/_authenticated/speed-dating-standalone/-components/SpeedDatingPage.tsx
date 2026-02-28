@@ -11,6 +11,15 @@ import { ArrowLeft, CheckCircle2, Loader2, MicOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+/** Strip markdown formatting (bold, italic, headers) from AI transcript text */
+function stripMarkdown(text: string): string {
+	return text
+		.replace(/\*{1,3}(.+?)\*{1,3}/g, "$1") // **bold**, *italic*, ***both***
+		.replace(/_{1,3}(.+?)_{1,3}/g, "$1") // __bold__, _italic_
+		.replace(/^#{1,6}\s+/gm, "") // ## headers
+		.replace(/`([^`]+)`/g, "$1"); // `code`
+}
+
 function formatTime(ms: number): string {
 	const totalSeconds = Math.ceil(ms / 1000);
 	const minutes = Math.floor(totalSeconds / 60);
@@ -374,7 +383,9 @@ export function SpeedDatingPage() {
 													: "bg-primary text-primary-foreground"
 											}`}
 										>
-											{entry.message}
+											{entry.source === "ai"
+												? stripMarkdown(entry.message)
+												: entry.message}
 										</div>
 									</m.div>
 								))}
