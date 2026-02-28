@@ -109,9 +109,6 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.1.13(vite@6.3.5(@types/node@24.3.1)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5))
-      '@tanstack/router-vite-plugin':
-        specifier: ^1.129.7
-        version: 1.131.35(@tanstack/react-router@1.131.35(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@6.3.5(@types/node@24.3.1)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5))
       '@testing-library/dom':
         specifier: ^10.4.0
         version: 10.4.1
@@ -1939,10 +1936,6 @@ packages:
 
   '@tanstack/router-utils@1.131.2':
     resolution: {integrity: sha512-sr3x0d2sx9YIJoVth0QnfEcAcl+39sQYaNQxThtHmRpyeFYNyM2TTH+Ud3TNEnI3bbzmLYEUD+7YqB987GzhDA==}
-    engines: {node: '>=12'}
-
-  '@tanstack/router-vite-plugin@1.131.35':
-    resolution: {integrity: sha512-NkWV9AxY/Vl4/SgB0BeUawhesDntFVZPoCCI4vJwj0BtagpO1QSL7CU79gZjxgeeLBU4lbpqdk4H/DEf2gBhXw==}
     engines: {node: '>=12'}
 
   '@tanstack/store@0.7.4':
@@ -4723,17 +4716,6 @@ snapshots:
       diff: 8.0.2
     transitivePeerDependencies:
       - supports-color
-
-  '@tanstack/router-vite-plugin@1.131.35(@tanstack/react-router@1.131.35(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@6.3.5(@types/node@24.3.1)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5))':
-    dependencies:
-      '@tanstack/router-plugin': 1.131.35(@tanstack/react-router@1.131.35(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(vite@6.3.5(@types/node@24.3.1)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.20.5))
-    transitivePeerDependencies:
-      - '@rsbuild/core'
-      - '@tanstack/react-router'
-      - supports-color
-      - vite
-      - vite-plugin-solid
-      - webpack
 
   '@tanstack/store@0.7.4': {}
 

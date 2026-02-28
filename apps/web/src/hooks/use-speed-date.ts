@@ -21,13 +21,27 @@ export function useSpeedDate() {
 	const endTimeRef = useRef<number>(0);
 	const hasConnectedRef = useRef(false);
 
+	const stopTimer = useCallback(() => {
+		if (timerRef.current) {
+			clearInterval(timerRef.current);
+			timerRef.current = null;
+		}
+	}, []);
+
 	const conversation = useConversation({
 		onConnect: () => {
 			console.log("[SpeedDate] Connected");
 			hasConnectedRef.current = true;
 			setError(null);
 			setStatus("talking");
-			startTimer();
+			endTimeRef.current = Date.now() + DURATION_MS;
+			timerRef.current = setInterval(() => {
+				const remaining = Math.max(0, endTimeRef.current - Date.now());
+				setRemainingMs(remaining);
+				if (remaining <= 0) {
+					conversationRef.current?.endSession();
+				}
+			}, 200);
 		},
 		onDisconnect: (details) => {
 			console.log("[SpeedDate] Disconnected:", details);
@@ -35,7 +49,6 @@ export function useSpeedDate() {
 			if (hasConnectedRef.current) {
 				setStatus("done");
 			} else {
-				// Connection failed before we ever connected
 				setError(
 					details.reason === "error"
 						? details.message
@@ -61,30 +74,15 @@ export function useSpeedDate() {
 		},
 	});
 
-	const startTimer = useCallback(() => {
-		endTimeRef.current = Date.now() + DURATION_MS;
-		timerRef.current = setInterval(() => {
-			const remaining = Math.max(0, endTimeRef.current - Date.now());
-			setRemainingMs(remaining);
-			if (remaining <= 0) {
-				conversation.endSession();
-			}
-		}, 200);
-	}, [conversation]);
-
-	const stopTimer = useCallback(() => {
-		if (timerRef.current) {
-			clearInterval(timerRef.current);
-			timerRef.current = null;
-		}
-	}, []);
+	const conversationRef = useRef(conversation);
+	conversationRef.current = conversation;
 
 	const startDate = useCallback(async () => {
 		setTranscript([]);
 		setRemainingMs(DURATION_MS);
 		setError(null);
 		try {
-			await conversation.startSession({
+			await conversationRef.current.startSession({
 				agentId: ELEVENLABS_AGENT_ID,
 				connectionType: "webrtc",
 			});
@@ -95,11 +93,11 @@ export function useSpeedDate() {
 			);
 			setStatus("idle");
 		}
-	}, [conversation]);
+	}, []);
 
 	const endDate = useCallback(async () => {
-		await conversation.endSession();
-	}, [conversation]);
+		await conversationRef.current.endSession();
+	}, []);
 
 	const reset = useCallback(() => {
 		setStatus("idle");

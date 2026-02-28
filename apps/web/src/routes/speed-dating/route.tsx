@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -248,8 +248,16 @@ function DoneView({
 								))}
 							</div>
 						</ScrollArea>
-						<Button size="lg" className="w-full" onClick={onReset}>
-							Try Again
+						<Button size="lg" className="w-full" asChild>
+							<Link to="/personas/create">ペルソナを生成</Link>
+						</Button>
+						<Button
+							size="lg"
+							variant="outline"
+							className="w-full"
+							onClick={onReset}
+						>
+							もう一度試す
 						</Button>
 					</CardContent>
 				</Card>
