@@ -46,5 +46,9 @@
 	"fox_search_failed_multiple": "{{count}} fox conversations failed",
 	"fox_search_error": "Failed to start fox search.",
 	"no_trait_data": "No data",
-	"topic_pending": "Available after fox conversation completes"
+	"topic_pending": "Available after fox conversation completes",
+	"fox_chat_active": "Fox Chat Active",
+	"fox_search_completed_badge": "Completed",
+	"back": "Back",
+	"analysis": "Analysis"
 }

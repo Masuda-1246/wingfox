@@ -46,5 +46,9 @@
 	"fox_search_failed_multiple": "{{count}}件のフォックス会話が失敗しました",
 	"fox_search_error": "フォックス検索の開始に失敗しました。",
 	"no_trait_data": "データなし",
-	"topic_pending": "フォックス会話完了後に表示されます"
+	"topic_pending": "フォックス会話完了後に表示されます",
+	"fox_chat_active": "フォックス対話中",
+	"fox_search_completed_badge": "完了",
+	"back": "戻る",
+	"analysis": "分析"
 }
