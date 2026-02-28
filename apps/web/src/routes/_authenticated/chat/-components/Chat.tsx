@@ -2,25 +2,28 @@ import { FoxAvatar } from "@/components/icons/FoxAvatar";
 import { formatTime } from "@/lib/date";
 import { useMatchingResults } from "@/lib/hooks/useMatchingResults";
 import { useMatchingResult } from "@/lib/hooks/useMatchingResults";
-import { usePartnerFoxChatMessages, useSendPartnerFoxMessage } from "@/lib/hooks/usePartnerFoxChats";
 import { useDirectChatMessages, useSendDirectChatMessage } from "@/lib/hooks/useDirectChats";
 import { useFoxConversationMessages } from "@/lib/hooks/useFoxConversations";
-import { useCreatePartnerFoxChat } from "@/lib/hooks/usePartnerFoxChats";
+import { useStartFoxSearch, useFoxConversationStatus } from "@/lib/hooks/useFoxSearch";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
+import { useBlockUser } from "@/lib/hooks/useModeration";
 import {
 	AlertTriangle,
 	Bot,
 	Menu,
 	PieChart,
+	Search,
 	Send,
 	ShieldAlert,
 	Sparkles,
 	Target,
 	User,
+	UserX,
 	X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -59,6 +62,7 @@ const labelData = [
 export function Chat() {
 	const { t } = useTranslation("chat");
 	const { user } = useAuth();
+	const queryClient = useQueryClient();
 	const { data: matchingData, isLoading } = useMatchingResults(undefined, { enabled: !!user });
 	const matches = matchingData?.data ?? [];
 	const sessions: ChatSession[] = matches.map((m) => ({
@@ -77,35 +81,26 @@ export function Chat() {
 	);
 	const [inputValue, setInputValue] = useState("");
 	const [showReportModal, setShowReportModal] = useState(false);
+	const [showUnmatchModal, setShowUnmatchModal] = useState(false);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [activeFoxConvId, setActiveFoxConvId] = useState<string | null>(null);
+	const blockUser = useBlockUser();
+	const startFoxSearch = useStartFoxSearch();
+	const foxConvStatus = useFoxConversationStatus(activeFoxConvId);
 
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
-	const partnerFoxChatId = detail?.partner_fox_chat_id ?? null;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
 	const foxConversationId = detail?.fox_conversation_id ?? null;
+	const partnerId = detail?.partner_id ?? null;
 	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
 
-	const partnerFoxMessages = usePartnerFoxChatMessages(partnerFoxChatId);
-	const sendPartnerFox = useSendPartnerFoxMessage(partnerFoxChatId);
 	const directMessages = useDirectChatMessages(directChatRoomId);
 	const sendDirect = useSendDirectChatMessage(directChatRoomId);
 	const foxMessages = useFoxConversationMessages(foxConversationId);
-	const createPartnerFox = useCreatePartnerFoxChat();
 
 	// Resolve messages for active session from the right source
 	const activeMessages: Message[] = (() => {
-		if (partnerFoxChatId && partnerFoxMessages.data?.data) {
-			return partnerFoxMessages.data.data.map((m) => ({
-				id: m.id,
-				senderId: m.role === "user" ? "me" : "fox",
-				senderName: m.role === "user" ? "You" : partnerName,
-				text: m.content,
-				type: "text" as const,
-				timestamp: new Date(m.created_at),
-				isAi: m.role !== "user",
-			}));
-		}
 		if (directChatRoomId && directMessages.data?.data) {
 			return directMessages.data.data.map((m) => ({
 				id: m.id,
@@ -156,20 +151,14 @@ export function Chat() {
 		scrollToBottom();
 	}, [activeMessages, scrollToBottom]);
 
-	const canSendMessage = Boolean(
-		(partnerFoxChatId && sendPartnerFox) ||
-			(directChatRoomId && sendDirect),
-	);
+	const canSendMessage = Boolean(directChatRoomId && sendDirect);
 
 	const handleSendMessage = async (text: string) => {
 		if (!text.trim()) return;
 		try {
-			if (partnerFoxChatId) {
-				await sendPartnerFox.mutateAsync(text);
-			} else if (directChatRoomId) {
+			if (directChatRoomId) {
 				await sendDirect.mutateAsync(text);
 			} else {
-				toast.info("まずパートナーフォックスチャットを開始してください");
 				return;
 			}
 			setInputValue("");
@@ -179,15 +168,19 @@ export function Chat() {
 		}
 	};
 
-	const handleStartPartnerFoxChat = async () => {
-		if (!activeSessionId) return;
+	const handleStartFoxSearch = async () => {
 		try {
-			await createPartnerFox.mutateAsync(activeSessionId);
-			toast.success("パートナーフォックスチャットを開始しました");
-			matchDetail.refetch();
+			const result = await startFoxSearch.mutateAsync();
+			setActiveFoxConvId(result.fox_conversation_id);
+			toast.success(t("fox_search_started"));
 		} catch (e) {
-			console.error(e);
-			toast.error("チャットの開始に失敗しました");
+			const msg = e instanceof Error ? e.message : "";
+			if (msg.includes("already in progress")) {
+				toast.info(t("fox_search_in_progress"));
+			} else {
+				console.error(e);
+				toast.error(t("fox_search_error"));
+			}
 		}
 	};
 
@@ -199,9 +192,22 @@ export function Chat() {
 		toast.info("提案を破棄しました");
 	};
 
-	// Set first match as active when matches load
+	// When fox conversation completes, refresh matches and clear the polling state
 	useEffect(() => {
-		if (sessions.length > 0 && !activeSessionId) {
+		if (foxConvStatus.data?.status === "completed") {
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+			setActiveFoxConvId(null);
+			toast.success(t("fox_search_completed"));
+		}
+		if (foxConvStatus.data?.status === "failed") {
+			setActiveFoxConvId(null);
+			toast.error(t("fox_search_failed"));
+		}
+	}, [foxConvStatus.data?.status, queryClient, t]);
+
+	// Set first match as active when matches load or current session is removed
+	useEffect(() => {
+		if (sessions.length > 0 && (!activeSessionId || !sessions.find((s) => s.id === activeSessionId))) {
 			setActiveSessionId(sessions[0].id);
 		}
 	}, [sessions, activeSessionId]);
@@ -209,6 +215,18 @@ export function Chat() {
 	const handleReport = () => {
 		setShowReportModal(false);
 		toast.error(t("reported_toast"));
+	};
+
+	const handleUnmatch = async () => {
+		if (!partnerId) return;
+		try {
+			await blockUser.mutateAsync(partnerId);
+			setShowUnmatchModal(false);
+			toast.success(t("unmatch_success"));
+			setActiveSessionId("");
+		} catch {
+			toast.error(t("unmatch_error"));
+		}
 	};
 
 	return (
@@ -238,6 +256,47 @@ export function Chat() {
 							{t("active")}
 						</div>
 					</div>
+					{/* Fox Search Button & Progress */}
+					<div className="mb-3 shrink-0">
+						<button
+							type="button"
+							onClick={handleStartFoxSearch}
+							disabled={startFoxSearch.isPending || !!activeFoxConvId}
+							className="w-full py-3 rounded-2xl border-2 border-dashed border-secondary/50 bg-secondary/5 text-sm font-bold hover:bg-secondary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+						>
+							{startFoxSearch.isPending ? (
+								<div className="animate-spin rounded-full h-4 w-4 border-2 border-secondary border-t-transparent" />
+							) : (
+								<Search className="w-4 h-4" />
+							)}
+							{startFoxSearch.isPending
+								? t("fox_search_searching")
+								: activeFoxConvId
+									? t("fox_search_in_progress")
+									: t("fox_search_button")}
+						</button>
+						{activeFoxConvId && foxConvStatus.data && (
+							<div className="mt-2 px-2">
+								<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground mb-1">
+									<span>{t("fox_search_progress")}</span>
+									<span>
+										{foxConvStatus.data.current_round}/{foxConvStatus.data.total_rounds}
+									</span>
+								</div>
+								<div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+									<motion.div
+										initial={{ width: 0 }}
+										animate={{
+											width: `${(foxConvStatus.data.current_round / foxConvStatus.data.total_rounds) * 100}%`,
+										}}
+										transition={{ duration: 0.5, ease: "easeOut" }}
+										className="h-full bg-secondary rounded-full"
+									/>
+								</div>
+							</div>
+						)}
+					</div>
+
 					<div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
 						{isLoading ? (
 							<div className="flex items-center justify-center py-8">
@@ -310,6 +369,14 @@ export function Chat() {
 							</div>
 						</div>
 						<div className="flex items-center gap-3">
+							<button
+								type="button"
+								onClick={() => setShowUnmatchModal(true)}
+								className="p-2 text-muted-foreground hover:text-orange-500 transition-colors"
+								title={t("unmatch")}
+							>
+								<UserX className="w-5 h-5" />
+							</button>
 							<button
 								type="button"
 								onClick={() => setShowReportModal(true)}
@@ -414,18 +481,6 @@ export function Chat() {
 					</div>
 
 					<div className="p-6 bg-background/50 border-t border-border backdrop-blur-sm shrink-0">
-						{!canSendMessage && detail && !partnerFoxChatId && detail.fox_conversation_id && (
-							<div className="mb-4">
-								<button
-									type="button"
-									onClick={handleStartPartnerFoxChat}
-									disabled={createPartnerFox.isPending}
-									className="w-full py-3 rounded-2xl border-2 border-dashed border-secondary/50 bg-secondary/5 text-sm font-bold hover:bg-secondary/10 transition-colors disabled:opacity-50"
-								>
-									{createPartnerFox.isPending ? "開始中..." : "パートナーフォックスチャットを開始"}
-								</button>
-							</div>
-						)}
 						<div className="flex items-center gap-2 bg-background border border-border rounded-2xl px-4 py-2 focus-within:border-secondary transition-all">
 							<input
 								type="text"
@@ -679,6 +734,49 @@ export function Chat() {
 									<button
 										type="button"
 										onClick={() => setShowReportModal(false)}
+										className="w-full py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground"
+									>
+										{t("cancel")}
+									</button>
+								</div>
+							</div>
+						</motion.div>
+					</div>
+				)}
+			</AnimatePresence>
+
+			{/* Unmatch Modal */}
+			<AnimatePresence>
+				{showUnmatchModal && (
+					<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+						<motion.div
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{ opacity: 1, scale: 1 }}
+							exit={{ opacity: 0, scale: 0.95 }}
+							className="bg-card w-full max-w-md border border-border rounded-2xl shadow-2xl overflow-hidden"
+						>
+							<div className="p-8 text-center">
+								<div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+									<UserX className="w-8 h-8" />
+								</div>
+								<h3 className="text-xl font-black mb-2">
+									{t("unmatch_title")}
+								</h3>
+								<p className="text-sm text-muted-foreground">
+									{t("unmatch_description")}
+								</p>
+								<div className="mt-6 space-y-2">
+									<button
+										type="button"
+										onClick={handleUnmatch}
+										disabled={blockUser.isPending}
+										className="w-full py-3 bg-orange-600 text-white text-[10px] font-black uppercase rounded-full hover:bg-orange-700 disabled:opacity-50"
+									>
+										{blockUser.isPending ? "..." : t("confirm_unmatch")}
+									</button>
+									<button
+										type="button"
+										onClick={() => setShowUnmatchModal(false)}
 										className="w-full py-3 text-[10px] font-black uppercase text-muted-foreground hover:text-foreground"
 									>
 										{t("cancel")}

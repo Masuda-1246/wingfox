@@ -33,6 +33,7 @@ export function useBlockUser() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["moderation"] });
+			queryClient.invalidateQueries({ queryKey: ["matching"] });
 		},
 	});
 }
