@@ -254,8 +254,12 @@
     }
   },
   "speed_dating": {
-    "lounge_title": "THE LOUNGE",
-    "lounge_subtitle": "3人の仮想デート相手と会話します。興味を選んで、準備ができたら開始しましょう。",
+    "lounge_title": "スピードデート",
+    "lounge_subtitle": "3人の仮想ゲストと順番に音声で会話し、相性を探る体験です。準備ができたら開始しましょう。",
+    "page_hint": "スピードデートとは？ 短時間ずつ複数の相手と会話し、相性を感じ取る形式です。ここではAIが演じる3人のゲストと音声で話します。",
+    "hint_label": "ヒント",
+    "generating_personas": "ペルソナを生成しています",
+    "generating_personas_hint": "今夜のゲストを準備しています。しばらくお待ちください。",
     "display_name": "ニックネーム",
     "name_placeholder": "表示したい名前を入力",
     "gender": "性別",
@@ -286,7 +290,7 @@
     "complete_session": "セッション完了",
     "finalize_persona": "ペルソナを確定",
     "creating": "生成中...",
-    "sync_complete": "SYNC COMPLETE.",
+    "sync_complete": "解析完了",
     "sync_description": "交流のリズムが解析されました。ペルソナを生成します。",
     "birth_year": "誕生年",
     "birth_year_placeholder": "例: 1990",
