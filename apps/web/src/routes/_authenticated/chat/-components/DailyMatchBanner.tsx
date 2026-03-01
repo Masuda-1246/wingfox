@@ -1,13 +1,10 @@
 import { FoxAvatar } from "@/components/icons/FoxAvatar";
-import {
-	useDailyMatchResults,
-	useMarkDailyResultsSeen,
-} from "@/lib/hooks/useDailyMatchResults";
+import { useDailyMatchResults } from "@/lib/hooks/useDailyMatchResults";
 import type { DailyMatchItem } from "@/lib/hooks/useDailyMatchResults";
 import { useRetryFoxConversation } from "@/lib/hooks/useFoxSearch";
 import { useQueryClient } from "@tanstack/react-query";
 import { m } from "framer-motion";
-import { Inbox, Loader2, Sparkles, X } from "lucide-react";
+import { Inbox, Loader2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -24,7 +21,6 @@ const getTopTopic = (match: DailyMatchItem): string | null => {
 export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	const { t } = useTranslation("chat");
 	const { data, isLoading } = useDailyMatchResults();
-	const markSeen = useMarkDailyResultsSeen();
 	const retryFoxConversation = useRetryFoxConversation();
 	const queryClient = useQueryClient();
 
@@ -42,25 +38,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	};
 
 	if (isLoading || !data) return null;
-
-	// バッチが存在しない場合は非表示
-	if (!data.batch_status) return null;
-
-	// 自分向けのマッチが1件もない場合は非表示
-	if (data.matches.length === 0) return null;
-
-	// 既読済みかつ新規でない場合は非表示
-	if (!data.is_new && data.batch_status === "completed") return null;
-
-	const isInProgress =
-		data.batch_status === "matching" ||
-		data.batch_status === "conversations_running";
-	const isCompleted = data.batch_status === "completed";
 	const hasMatches = data.matches.length > 0;
-
-	const handleDismiss = () => {
-		markSeen.mutate(undefined);
-	};
 
 	return (
 		<m.div
@@ -72,37 +50,16 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 			{/* ヘッダー */}
 			<div className="flex items-center justify-between mb-2">
 				<div className="flex items-center gap-1.5 text-sm font-bold">
-					{isInProgress ? (
-						<Loader2 className="w-4 h-4 animate-spin text-secondary" />
-					) : hasMatches ? (
+					{hasMatches ? (
 						<Sparkles className="w-4 h-4 text-secondary" />
 					) : (
 						<Inbox className="w-4 h-4 text-muted-foreground" />
 					)}
 					<span>
-						{hasMatches || isInProgress
-							? t("daily_match_title")
-							: t("daily_match_no_results")}
+						{hasMatches ? t("daily_match_title") : t("daily_match_no_results")}
 					</span>
 				</div>
-				{(isCompleted || (!isInProgress && !hasMatches)) && (
-					<button
-						type="button"
-						onClick={handleDismiss}
-						className="p-0.5 rounded-full hover:bg-muted transition-colors"
-						disabled={markSeen.isPending}
-					>
-						<X className="w-3.5 h-3.5 text-muted-foreground" />
-					</button>
-				)}
 			</div>
-
-			{/* 進行中メッセージ */}
-			{isInProgress && (
-				<p className="text-[10px] font-bold text-muted-foreground mb-1">
-					{t("daily_match_in_progress")}
-				</p>
-			)}
 
 			{/* マッチ一覧 */}
 			{hasMatches && (
@@ -166,17 +123,6 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 						</button>
 					))}
 				</div>
-			)}
-
-			{/* 詳細を見るボタン */}
-			{isCompleted && hasMatches && (
-				<button
-					type="button"
-					onClick={handleDismiss}
-					className="w-full mt-2 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors text-center"
-				>
-					{t("daily_match_dismiss")}
-				</button>
 			)}
 		</m.div>
 	);

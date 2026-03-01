@@ -1,5 +1,5 @@
 import { client } from "@/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 interface DailyMatchPartner {
 	nickname: string;
@@ -46,35 +46,5 @@ export function useDailyMatchResults(options?: { enabled?: boolean }) {
 			return json.data;
 		},
 		enabled: options?.enabled !== false,
-		// バッチ実行中は5秒ポーリング
-		refetchInterval: (query) => {
-			const status = query.state.data?.batch_status;
-			if (
-				status === "pending" ||
-				status === "matching" ||
-				status === "conversations_running"
-			) {
-				return 5000;
-			}
-			return false;
-		},
-	});
-}
-
-export function useMarkDailyResultsSeen() {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: async (date: string | undefined = undefined) => {
-			const res = await client.api.matching["daily-results"].seen.$post({
-				json: date ? { date } : {},
-			});
-			const json = (await res.json()) as { data: { updated: number } };
-			return json.data;
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: ["matching", "daily-results"],
-			});
-		},
 	});
 }

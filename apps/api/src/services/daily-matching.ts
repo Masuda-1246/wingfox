@@ -71,11 +71,11 @@ function allocateMatches(
  * 4. 全異性ペアのスコアを計算
  * 5. dealbreaker ペアを除外
  * 6. 公平分配アルゴリズムで割り当て
- * 7. matches + fox_conversations を作成
+ * 7. matches + daily_match_pairs + fox_conversations を作成
  */
 export async function executeDailyMatching(
 	supabase: SupabaseClient<Database>,
-	batchId: string,
+	matchDate: string,
 	maxPerUser = 1,
 ): Promise<DailyMatchingResult> {
 	// 1. confirmed ユーザーのプロフィール取得
@@ -179,7 +179,6 @@ export async function executeDailyMatching(
 				layer3: pair.layerScores.layer3,
 				feature_scores: pair.layerScores.featureScores,
 			} as Json,
-			batch_id: batchId,
 		};
 	});
 
@@ -198,6 +197,20 @@ export async function executeDailyMatching(
 		matchIds.push(matchId);
 
 		await saveFeatureScores(supabase, matchId, allocated[i].featureScores);
+
+		const { error: pairError } = await supabase.from("daily_match_pairs").insert({
+			match_id: matchId,
+			match_date: matchDate,
+		});
+		if (pairError) {
+			console.error(
+				`[executeDailyMatching] Failed to create daily_match_pair for match ${matchId}:`,
+				pairError,
+			);
+			await supabase.from("matches").delete().eq("id", matchId);
+			matchIds.pop();
+			continue;
+		}
 
 		const { error: fcError } = await supabase
 			.from("fox_conversations")
