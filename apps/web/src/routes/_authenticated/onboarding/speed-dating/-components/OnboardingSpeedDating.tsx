@@ -133,7 +133,7 @@ export function OnboardingSpeedDating() {
 	const regenerateDates = async () => {
 		if (isRegenerating || isStarting) return;
 		setIsRegenerating(true);
-		setGenerationError(null); // Clear previous errors
+		setGenerationError(null);
 		prefetchedFirstRef.current = null;
 		try {
 			const personasResult = await generatePersonas.mutateAsync();
@@ -239,22 +239,8 @@ export function OnboardingSpeedDating() {
 				</div>
 
 				<div className="grid grid-cols-12 gap-6">
-					<div
-						className={`relative col-span-12 rounded-2xl ${isRegenerating ? "p-[3px]" : ""}`}
-					>
-						{isRegenerating && (
-							<div
-								className="absolute inset-0 rounded-2xl animate-[spin_2s_linear_infinite]"
-								style={{
-									background:
-										"conic-gradient(from 0deg, var(--color-secondary) 0%, transparent 35%, var(--color-secondary) 70%, transparent 100%)",
-								}}
-								aria-hidden
-							/>
-						)}
-						<div
-							className={`relative z-10 overflow-hidden rounded-2xl border-2 border-secondary/20 bg-card shadow-lg shadow-secondary/5 ${isRegenerating ? "m-0" : ""}`}
-						>
+					<div className="relative col-span-12 rounded-2xl">
+						<div className="relative z-10 overflow-hidden rounded-2xl border-2 border-secondary/20 bg-card shadow-lg shadow-secondary/5">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-0">
 								<div className="p-6 md:p-8 space-y-4 bg-muted/30 border border-border border-b md:border-e-0 md:border-b-0">
 									<div className="flex items-center justify-between gap-3">
@@ -269,11 +255,7 @@ export function OnboardingSpeedDating() {
 										<button
 											type="button"
 											onClick={regenerateDates}
-											disabled={
-												isStarting ||
-												isRegenerating ||
-												generatePersonas.isPending
-											}
+											disabled={isStarting || isRegenerating || generatePersonas.isPending}
 											className="inline-flex items-center gap-2 rounded-full border-2 border-secondary/40 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/10 hover:border-secondary transition-colors disabled:opacity-40"
 										>
 											{isRegenerating ? (
@@ -335,11 +317,7 @@ export function OnboardingSpeedDating() {
 										<button
 											type="button"
 											onClick={startSpeedDate}
-											disabled={
-												isStarting ||
-												isRegenerating ||
-												generatePersonas.isPending
-											}
+											disabled={isStarting || isRegenerating || generatePersonas.isPending}
 											className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 disabled:hover:scale-100 shadow-md shadow-secondary/20"
 										>
 											{isStarting ? (
