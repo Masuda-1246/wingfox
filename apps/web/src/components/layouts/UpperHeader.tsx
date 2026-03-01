@@ -4,6 +4,7 @@ import { useAuthMe, useMarkNotificationSeen } from "@/lib/hooks/useAuthMe";
 import { useChatRequestNotifications } from "@/lib/hooks/useChatRequestNotifications";
 import { usePendingChatRequests } from "@/lib/hooks/useChatRequests";
 import type { PendingChatRequest } from "@/lib/hooks/useChatRequests";
+import { useDailyMatchResults } from "@/lib/hooks/useDailyMatchResults";
 import { useDirectChatRooms } from "@/lib/hooks/useDirectChats";
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -75,6 +76,10 @@ export function UpperHeader() {
 	const { user, signOut } = useAuth();
 	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
 	const markNotificationSeen = useMarkNotificationSeen();
+	const { data: dailyResults } = useDailyMatchResults({
+		enabled: Boolean(user),
+	});
+	const hasNewDailyMatch = dailyResults?.is_new ?? false;
 	const isAuthenticated = Boolean(user);
 
 	useChatRequestNotifications();
@@ -169,6 +174,11 @@ export function UpperHeader() {
 									{unseenCount > 0 && (
 										<span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
 											{unseenCount > 99 ? "99+" : unseenCount}
+										</span>
+									)}
+									{hasNewDailyMatch && (
+										<span className="absolute top-2.5 right-2.5 flex h-2 w-2">
+											<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
 										</span>
 									)}
 								</Button>
