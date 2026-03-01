@@ -78,7 +78,11 @@
 		"icon_apply": "適用する",
 		"icon_discard": "破棄",
 		"icon_apply_success": "アイコンを適用しました",
-		"icon_apply_error": "適用に失敗しました"
+		"icon_apply_error": "適用に失敗しました",
+		"tab_bio": "Bio",
+		"tab_personality": "分析",
+		"tab_dna": "DNA",
+		"tab_quiz": "クイズ"
 	},
 	"quiz": {
 		"title": "質問クイズ",
