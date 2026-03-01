@@ -4,7 +4,7 @@ import {
 	useMarkDailyResultsSeen,
 } from "@/lib/hooks/useDailyMatchResults";
 import type { DailyMatchItem } from "@/lib/hooks/useDailyMatchResults";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Inbox, Loader2, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -41,7 +41,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 		totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
 	return (
-		<motion.div
+		<m.div
 			initial={{ opacity: 0, y: -10 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, y: -10 }}
@@ -88,7 +88,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 						</span>
 					</div>
 					<div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-						<motion.div
+						<m.div
 							initial={{ width: 0 }}
 							animate={{ width: `${progressPercent}%` }}
 							transition={{ duration: 0.5, ease: "easeOut" }}
@@ -151,6 +151,6 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 					{t("daily_match_dismiss")}
 				</button>
 			)}
-		</motion.div>
+		</m.div>
 	);
 }
