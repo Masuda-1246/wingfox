@@ -13,6 +13,8 @@ import {
 } from "./matching";
 import { saveFeatureScores } from "./compatibility";
 
+const DAILY_BATCH_TOTAL_ROUNDS = 5;
+
 interface ScoredPair {
 	userA: string;
 	userB: string;
@@ -214,7 +216,11 @@ export async function executeDailyMatching(
 
 		const { error: fcError } = await supabase
 			.from("fox_conversations")
-			.insert({ match_id: matchId, status: "pending" });
+			.insert({
+				match_id: matchId,
+				status: "pending",
+				total_rounds: DAILY_BATCH_TOTAL_ROUNDS,
+			});
 		if (fcError) {
 			console.error(
 				`[executeDailyMatching] Failed to create fox_conversation for match ${matchId}:`,
