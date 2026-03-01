@@ -67,6 +67,7 @@ interface ChatSession {
 	partnerImage?: string;
 	lastMessage: string;
 	compatibilityScore: number | null;
+	topTopic: string | null;
 	status: "active" | "archived";
 	matchStatus: string;
 	messages: Message[];
@@ -125,6 +126,16 @@ function getTopicDistribution(
 	return dist;
 }
 
+function getTopTopic(details: unknown): string | null {
+	const dist = getTopicDistribution(details);
+	if (!dist) return null;
+	let top = dist[0];
+	for (const item of dist.slice(1)) {
+		if (item.percentage > top.percentage) top = item;
+	}
+	return top.topic;
+}
+
 /** メッセージをプレーンテキスト表示用に変換（Markdown記法を除去） */
 function messageToPlainText(text: string): string {
 	if (!text?.trim()) return text;
@@ -158,6 +169,7 @@ export function Chat() {
 		lastMessage: "",
 		compatibilityScore:
 			m.conversation_score != null ? (m.final_score ?? 0) : null,
+		topTopic: getTopTopic(m.score_details),
 		status: "active" as const,
 		matchStatus: m.status,
 		messages: [],
@@ -860,22 +872,11 @@ export function Chat() {
 														session.matchStatus === "fox_conversation_completed"
 													) {
 														return (
-															<div className="flex items-center gap-2 mt-1 min-h-[24px]">
-																<button
-																	type="button"
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		handleRetryFoxConversation(session.id);
-																	}}
-																	disabled={retryFoxConversation.isPending}
-																	className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
-																>
-																	{retryFoxConversation.isPending ? (
-																		<Loader2 className="w-3 h-3 animate-spin inline" />
-																	) : (
-																		t("retry_measurement", "再測定")
-																	)}
-																</button>
+															<div className="mt-1 min-h-[24px] flex items-center">
+																<span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
+																	{session.topTopic ??
+																		t("fox_search_completed_badge")}
+																</span>
 															</div>
 														);
 													}
