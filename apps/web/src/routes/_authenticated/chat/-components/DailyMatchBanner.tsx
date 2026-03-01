@@ -4,18 +4,42 @@ import {
 	useMarkDailyResultsSeen,
 } from "@/lib/hooks/useDailyMatchResults";
 import type { DailyMatchItem } from "@/lib/hooks/useDailyMatchResults";
+import { useRetryFoxConversation } from "@/lib/hooks/useFoxSearch";
+import { useQueryClient } from "@tanstack/react-query";
 import { m } from "framer-motion";
 import { Inbox, Loader2, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface DailyMatchBannerProps {
 	onMatchSelect: (matchId: string, foxConversationId: string | null) => void;
 }
 
+const getTopTopic = (match: DailyMatchItem): string | null => {
+	const dist = match.score_details?.conversation_analysis?.topic_distribution;
+	if (!dist || dist.length === 0) return null;
+	return [...dist].sort((a, b) => b.percentage - a.percentage)[0].topic;
+};
+
 export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	const { t } = useTranslation("chat");
 	const { data, isLoading } = useDailyMatchResults();
 	const markSeen = useMarkDailyResultsSeen();
+	const retryFoxConversation = useRetryFoxConversation();
+	const queryClient = useQueryClient();
+
+	const handleRetry = async (matchId: string) => {
+		try {
+			await retryFoxConversation.mutateAsync(matchId);
+			queryClient.invalidateQueries({
+				queryKey: ["matching", "daily-results"],
+			});
+			toast.success(t("fox_retry_started"));
+		} catch (e) {
+			console.error(e);
+			toast.error(t("fox_retry_error"));
+		}
+	};
 
 	if (isLoading || !data) return null;
 
@@ -34,11 +58,6 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	const handleDismiss = () => {
 		markSeen.mutate(undefined);
 	};
-
-	const completedCount = data.conversations_completed ?? 0;
-	const totalCount = data.total_matches ?? 0;
-	const progressPercent =
-		totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
 	return (
 		<m.div
@@ -75,29 +94,6 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 				)}
 			</div>
 
-			{/* 進行中プログレス */}
-			{isInProgress && (
-				<div className="mb-2">
-					<div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground mb-1">
-						<span>{t("daily_match_in_progress")}</span>
-						<span>
-							{t("daily_match_progress", {
-								completed: completedCount,
-								total: totalCount,
-							})}
-						</span>
-					</div>
-					<div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-						<m.div
-							initial={{ width: 0 }}
-							animate={{ width: `${progressPercent}%` }}
-							transition={{ duration: 0.5, ease: "easeOut" }}
-							className="h-full bg-secondary rounded-full"
-						/>
-					</div>
-				</div>
-			)}
-
 			{/* マッチ一覧 */}
 			{hasMatches && (
 				<div className="space-y-1.5">
@@ -118,15 +114,36 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 								<span className="text-xs font-bold truncate block">
 									{match.partner?.nickname ?? "マッチ"}
 								</span>
-								<span className="text-[10px] text-muted-foreground">
-									{match.status === "fox_conversation_in_progress"
-										? t("score_measuring")
-										: match.status === "fox_conversation_failed"
-											? t("match_status_fox_failed")
-											: match.fox_conversation_id
-												? t("daily_match_view_conversation")
-												: ""}
-								</span>
+								{match.status === "fox_conversation_in_progress" ? (
+									<span className="text-[10px] text-muted-foreground">
+										{t("score_measuring")}
+									</span>
+								) : match.status === "fox_conversation_failed" ? (
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											handleRetry(match.id);
+										}}
+										disabled={retryFoxConversation.isPending}
+										className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
+									>
+										{retryFoxConversation.isPending ? (
+											<Loader2 className="w-3 h-3 animate-spin inline" />
+										) : (
+											t("retry_measurement", "再測定")
+										)}
+									</button>
+								) : (
+									(() => {
+										const topTopic = getTopTopic(match);
+										return topTopic ? (
+											<span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
+												{topTopic}
+											</span>
+										) : null;
+									})()
+								)}
 							</div>
 							{match.final_score != null && (
 								<div className="text-xs font-black text-secondary shrink-0">
