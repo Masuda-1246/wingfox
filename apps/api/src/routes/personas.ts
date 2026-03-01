@@ -3,8 +3,9 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
+import { detectLangFromDocument } from "../lib/lang";
 import { chatComplete, MISTRAL_LARGE } from "../services/mistral";
-import { buildWingfoxSectionPrompt, CONSTRAINTS_CONTENT } from "../prompts/wingfox-generation";
+import { buildWingfoxSectionPrompt, getConstraintsContent } from "../prompts/wingfox-generation";
 import { getRandomIconUrlForGender } from "../lib/fox-icons";
 import { z } from "zod";
 
@@ -66,18 +67,23 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 		conversationExcerpts = conversationExcerpts.slice(0, WINGFOX_MAX_EXCERPT_CHARS);
 	}
 	const profileJson = JSON.stringify(profile, null, 2);
+	const lang = detectLangFromDocument(conversationExcerpts);
 	const sections: { section_id: string; content: string }[] = [];
 	for (const sectionId of WINGFOX_EDITABLE_SECTIONS) {
 		const title = sectionId;
-		const prompt = buildWingfoxSectionPrompt(sectionId, title, profileJson, conversationExcerpts || "（なし）");
+		const noDataFallback = lang === "en" ? "(none)" : "（なし）";
+		const prompt = buildWingfoxSectionPrompt(sectionId, title, profileJson, conversationExcerpts || noDataFallback, lang);
 		let content = await chatComplete(apiKey, [{ role: "user", content: prompt }], { model: MISTRAL_LARGE, maxTokens: 500 });
 		sections.push({ section_id: sectionId, content: content || `（${sectionId}）` });
 	}
+	const conversationRefLabel = lang === "en"
+		? "The following are reference logs extracted from speed dating conversations (read-only):"
+		: "以下はスピードデーティング会話から抽出した参照ログ（編集不可）:";
 	sections.push({
 		section_id: "conversation_references",
-		content: `以下はスピードデーティング会話から抽出した参照ログ（編集不可）:\n\n${conversationExcerpts}`,
+		content: `${conversationRefLabel}\n\n${conversationExcerpts}`,
 	});
-	sections.push({ section_id: "constraints", content: CONSTRAINTS_CONTENT });
+	sections.push({ section_id: "constraints", content: getConstraintsContent(lang) });
 	const compiledDocument = sections.map((s) => `## ${s.section_id}\n\n${s.content}`).join("\n\n");
 	const { data: userProfile } = await supabase.from("user_profiles").select("gender, nickname").eq("id", userId).single();
 	const iconUrl = getRandomIconUrlForGender(userProfile?.gender ?? "");
