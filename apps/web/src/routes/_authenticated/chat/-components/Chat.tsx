@@ -686,9 +686,6 @@ export function Chat() {
 				>
 					<div className="flex items-center justify-between mb-2 shrink-0">
 						<h2 className="text-2xl font-black tracking-tight">{t("title")}</h2>
-						<div className="text-[10px] font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full border border-secondary/20 uppercase">
-							{t("active")}
-						</div>
 					</div>
 					{/* Daily Match Banner */}
 					<DailyMatchBanner

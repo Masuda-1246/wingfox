@@ -257,7 +257,7 @@ matching.get("/daily-results", requireAuth, async (c) => {
 	// バッチに属するマッチを取得（自分が関与するもの）
 	const { data: batchMatches } = await supabase
 		.from("matches")
-		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, seen_by_a, seen_by_b, batch_id")
+		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, seen_by_a, seen_by_b, batch_id, score_details")
 		.eq("batch_id", batch.id)
 		.or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
 		.order("final_score", { ascending: false, nullsFirst: false });

@@ -27,7 +27,7 @@ import type {
 	WsRoundMessage,
 } from "./types";
 
-const TOTAL_ROUNDS = 15;
+const TOTAL_ROUNDS = 5;
 const MAX_RETRIES = 3;
 
 interface DOState {

@@ -16,6 +16,11 @@ interface DailyMatchItem {
 	conversation_score: number | null;
 	status: string;
 	fox_conversation_id: string | null;
+	score_details: {
+		conversation_analysis?: {
+			topic_distribution?: { topic: string; percentage: number }[];
+		};
+	} | null;
 }
 
 interface DailyMatchResultsData {

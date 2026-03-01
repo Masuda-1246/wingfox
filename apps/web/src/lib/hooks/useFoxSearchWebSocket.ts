@@ -30,7 +30,7 @@ export function useFoxSearchWebSocket(
 	const [state, setState] = useState<FoxSearchWsState>({
 		status: "disconnected",
 		current_round: 0,
-		total_rounds: 15,
+		total_rounds: 5,
 		messages: [],
 		scores: null,
 		analysis: null,
@@ -173,7 +173,7 @@ export function useFoxSearchWebSocket(
 			setState({
 				status: "disconnected",
 				current_round: 0,
-				total_rounds: 15,
+				total_rounds: 5,
 				messages: [],
 				scores: null,
 				analysis: null,
