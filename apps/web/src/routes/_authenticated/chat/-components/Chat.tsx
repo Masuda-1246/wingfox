@@ -704,27 +704,6 @@ export function Chat() {
 														</div>
 													);
 												}
-												if (session.matchStatus === "fox_conversation_completed") {
-													return (
-														<div className="flex items-center gap-2 mt-1 min-h-[24px]">
-															<button
-																type="button"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleRetryFoxConversation(session.id);
-																}}
-																disabled={retryFoxConversation.isPending}
-																className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/20 disabled:opacity-50"
-															>
-																{retryFoxConversation.isPending ? (
-																	<Loader2 className="w-3 h-3 animate-spin inline" />
-																) : (
-																	t("retry_measurement", "再測定")
-																)}
-															</button>
-														</div>
-													);
-												}
 												if (session.matchStatus === "chat_request_expired") {
 													return (
 														<div className="mt-1 min-h-[24px] flex items-center">

@@ -128,6 +128,18 @@ export async function runDailyBatch(
 					e,
 				);
 				conversationsFailed++;
+				// throwで抜けた場合、fc/matchのステータスがin_progressのまま残るので更新
+				await supabase
+					.from("fox_conversations")
+					.update({ status: "failed" })
+					.eq("id", conv.id);
+				await supabase
+					.from("matches")
+					.update({
+						status: "fox_conversation_failed",
+						updated_at: new Date().toISOString(),
+					})
+					.eq("id", conv.match_id);
 			}
 
 			// 進捗を更新

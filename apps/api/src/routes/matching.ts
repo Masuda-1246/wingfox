@@ -85,6 +85,8 @@ matching.get("/results", requireAuth, async (c) => {
 				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
 				.eq("id", m.id);
 			resolvedStatus.set(m.id, "fox_conversation_failed");
+		} else if (fc?.status === "in_progress") {
+			// 会話が正常に実行中 → 何もしない（stuckチェックをスキップ）
 		} else if (m.created_at < stuckCutoff) {
 			// created_at から STUCK_MATCH_MINUTES 分を超えていたら stuck とみなす
 			await supabase.from("fox_conversations").update({ status: "failed" }).eq("match_id", m.id);
@@ -178,6 +180,8 @@ matching.get("/results/:id", requireAuth, async (c) => {
 				.update({ status: "fox_conversation_failed", updated_at: new Date().toISOString() })
 				.eq("id", id);
 			status = "fox_conversation_failed";
+		} else if (fc.status === "in_progress") {
+			// 会話が正常に実行中 → 何もしない（stuckチェックをスキップ）
 		} else if (match.created_at < stuckCutoff) {
 			await supabase.from("fox_conversations").update({ status: "failed" }).eq("match_id", id);
 			await supabase
