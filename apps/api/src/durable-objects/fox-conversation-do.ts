@@ -69,6 +69,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
+		console.log(`[FoxConversationDO:fetch] ${request.method} ${url.pathname}`);
 
 		if (request.method === "POST" && url.pathname === "/init") {
 			return this.handleInit(request);
@@ -90,20 +91,24 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			staggerDelayMs?: number;
 		};
 
+		console.log(`[FoxConversationDO:init] START conversationId=${conversationId} matchId=${matchId}`);
+
 		const supabase = this.getSupabase();
 
 		// Load match participants
-		const { data: match } = await supabase
+		const { data: match, error: matchError } = await supabase
 			.from("matches")
 			.select("user_a_id, user_b_id")
 			.eq("id", matchId)
 			.single();
 		if (!match) {
+			console.error(`[FoxConversationDO:init] Match not found matchId=${matchId} error=`, matchError);
 			return new Response("Match not found", { status: 404 });
 		}
+		console.log(`[FoxConversationDO:init] Match loaded userA=${match.user_a_id} userB=${match.user_b_id}`);
 
 		// Load personas
-		const [{ data: personaA }, { data: personaB }] = await Promise.all([
+		const [{ data: personaA, error: personaAError }, { data: personaB, error: personaBError }] = await Promise.all([
 			supabase
 				.from("personas")
 				.select("compiled_document, name")
@@ -119,6 +124,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		]);
 
 		if (!personaA?.compiled_document || !personaB?.compiled_document) {
+			console.error(`[FoxConversationDO:init] Persona not found personaA=${!!personaA?.compiled_document} personaB=${!!personaB?.compiled_document} errorA=`, personaAError, "errorB=", personaBError);
 			await supabase
 				.from("fox_conversations")
 				.update({ status: "failed" })
@@ -129,6 +135,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.eq("id", matchId);
 			return new Response("Persona not found", { status: 400 });
 		}
+		console.log(`[FoxConversationDO:init] Personas loaded nameA=${personaA.name} nameB=${personaB.name}`);
 
 		// Update conversation status
 		await supabase
@@ -156,9 +163,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		// Start alarm with optional stagger delay
 		const delay = staggerDelayMs ?? 0;
 		await this.ctx.storage.setAlarm(Date.now() + delay);
-		if (delay > 0) {
-			console.log(`[FoxConversationDO] ${conversationId} stagger delay: ${delay}ms`);
-		}
+		console.log(`[FoxConversationDO:init] DONE state saved, alarm set delay=${delay}ms conversationId=${conversationId}`);
 
 		return new Response("OK", { status: 200 });
 	}
@@ -167,24 +172,33 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 
 	async alarm(): Promise<void> {
 		const state = await this.ctx.storage.get<DOState>("state");
-		if (!state || state.status !== "in_progress") return;
+		if (!state || state.status !== "in_progress") {
+			console.log(`[FoxConversationDO:alarm] SKIP state=${state?.status ?? "no state"}`);
+			return;
+		}
 
 		const supabase = this.getSupabase();
 		const apiKey = this.env.MISTRAL_API_KEY;
 		if (!apiKey) {
+			console.error(`[FoxConversationDO:alarm] MISTRAL_API_KEY not configured conversationId=${state.conversationId}`);
 			await this.failConversation(supabase, state, "MISTRAL_API_KEY not configured");
 			return;
 		}
 
 		const nextRound = state.currentRound + 1;
+		console.log(`[FoxConversationDO:alarm] START conversationId=${state.conversationId} round=${nextRound}/${TOTAL_ROUNDS} retryCount=${state.retryCount}`);
 
 		// Idempotency: check DB round
-		const { data: conv } = await supabase
+		const { data: conv, error: convError } = await supabase
 			.from("fox_conversations")
 			.select("current_round")
 			.eq("id", state.conversationId)
 			.single();
+		if (convError) {
+			console.error(`[FoxConversationDO:alarm] Failed to fetch conversation from DB conversationId=${state.conversationId}`, convError);
+		}
 		if (conv && conv.current_round >= nextRound) {
+			console.log(`[FoxConversationDO:alarm] Idempotency skip: DB round=${conv.current_round} >= nextRound=${nextRound}`);
 			// Already processed, skip to next
 			if (nextRound < TOTAL_ROUNDS) {
 				state.currentRound = nextRound;
@@ -209,28 +223,38 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 						.join("\n\n")
 				: lang === "en" ? "Introduce yourself and ask the other person a question." : "自己紹介と、相手に一言聞いてください。";
 
+			console.log(`[FoxConversationDO:alarm] Calling LLM speaker=${speaker} historyLen=${state.history.length} conversationId=${state.conversationId}`);
+
 			const raw = await chatComplete(apiKey, [
 				{ role: "system", content: systemPrompt },
 				{ role: "user", content: context },
-			], { maxTokens: 60 });
+			], { maxTokens: 500 });
+
+			console.log(`[FoxConversationDO:alarm] LLM response received rawLen=${raw?.length ?? 0} conversationId=${state.conversationId}`);
 
 			const fallback = lang === "en" ? "(No response)" : "（応答なし）";
 			const content = (raw && truncateFoxMessage(raw)) || fallback;
 			const speakerUserId = speaker === "A" ? state.userA : state.userB;
 
 			// Insert message to DB
-			await supabase.from("fox_conversation_messages").insert({
+			const { error: insertError } = await supabase.from("fox_conversation_messages").insert({
 				conversation_id: state.conversationId,
 				speaker_user_id: speakerUserId,
 				content,
 				round_number: nextRound,
 			});
+			if (insertError) {
+				console.error(`[FoxConversationDO:alarm] Failed to insert message conversationId=${state.conversationId} round=${nextRound}`, insertError);
+			}
 
 			// Update current_round in DB
-			await supabase
+			const { error: updateError } = await supabase
 				.from("fox_conversations")
 				.update({ current_round: nextRound })
 				.eq("id", state.conversationId);
+			if (updateError) {
+				console.error(`[FoxConversationDO:alarm] Failed to update current_round conversationId=${state.conversationId} round=${nextRound}`, updateError);
+			}
 
 			// Broadcast to connected WebSocket clients
 			const roundMsg: WsRoundMessage = {
@@ -247,16 +271,20 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			state.retryCount = 0;
 			await this.ctx.storage.put("state", state);
 
+			console.log(`[FoxConversationDO:alarm] Round ${nextRound} DONE conversationId=${state.conversationId}`);
+
 			if (nextRound < TOTAL_ROUNDS) {
 				// Schedule next round with jitter to desynchronize multiple DOs
 				const jitter = Math.floor(Math.random() * 500);
 				await this.ctx.storage.setAlarm(Date.now() + 500 + jitter);
 			} else {
 				// Final round — compute scores
+				console.log(`[FoxConversationDO:alarm] All rounds completed, computing scores conversationId=${state.conversationId}`);
 				await this.computeScores(supabase, apiKey, state);
 			}
 		} catch (err) {
 			state.retryCount++;
+			console.error(`[FoxConversationDO:alarm] ERROR round=${nextRound} retryCount=${state.retryCount}/${MAX_RETRIES} conversationId=${state.conversationId} error=`, err);
 			if (state.retryCount >= MAX_RETRIES) {
 				await this.failConversation(supabase, state, `Max retries exceeded: ${err}`);
 			} else {
@@ -271,9 +299,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				const delay = is429
 					? 5000 * state.retryCount + jitter
 					: 2000 * state.retryCount + jitter;
-				if (is429) {
-					console.warn(`[FoxConversationDO] 429 rate limit hit, retry ${state.retryCount} in ${delay}ms`);
-				}
+				console.warn(`[FoxConversationDO:alarm] Scheduling retry ${state.retryCount} in ${delay}ms is429=${is429} conversationId=${state.conversationId}`);
 				await this.ctx.storage.setAlarm(Date.now() + delay);
 			}
 		}
@@ -284,12 +310,18 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		apiKey: string,
 		state: DOState,
 	): Promise<void> {
+		console.log(`[FoxConversationDO:computeScores] START conversationId=${state.conversationId}`);
 		try {
-			const { data: allMsgs } = await supabase
+			const { data: allMsgs, error: msgsError } = await supabase
 				.from("fox_conversation_messages")
 				.select("speaker_user_id, content, round_number")
 				.eq("conversation_id", state.conversationId)
 				.order("round_number");
+
+			if (msgsError) {
+				console.error(`[FoxConversationDO:computeScores] Failed to fetch messages conversationId=${state.conversationId}`, msgsError);
+			}
+			console.log(`[FoxConversationDO:computeScores] Messages loaded count=${allMsgs?.length ?? 0} conversationId=${state.conversationId}`);
 
 			const logText = (allMsgs ?? [])
 				.map(
@@ -331,6 +363,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			let analysis: Record<string, unknown> = {};
 			let conversationFeatureScores: FeatureScore[] = [];
 			try {
+				console.log(`[FoxConversationDO:computeScores] Calling LLM for score conversationId=${state.conversationId}`);
 				const scoreLang = state.lang ?? "ja";
 				const scorePrompt = buildConversationScorePrompt(logText, scoreLang);
 				const scoreRaw = await chatComplete(
@@ -338,7 +371,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					[{ role: "user", content: scorePrompt }],
 					{ maxTokens: 1024, responseFormat: { type: "json_object" } },
 				);
+				console.log(`[FoxConversationDO:computeScores] LLM score response rawLen=${scoreRaw?.length ?? 0} conversationId=${state.conversationId}`);
 				const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
+				console.log(`[FoxConversationDO:computeScores] Score parsed score=${parsed.score} conversationId=${state.conversationId}`);
 				conversationScore = parsed.score;
 				analysis = {
 					excitement_level: parsed.excitement_level,
@@ -401,6 +436,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			}
 
 			try {
+				console.log(`[FoxConversationDO:computeScores] 3-layer scoring START conversationId=${state.conversationId} featureScoreCount=${conversationFeatureScores.length}`);
 				// Save conversation feature scores
 				if (conversationFeatureScores.length > 0) {
 					await saveFeatureScores(supabase, state.matchId, conversationFeatureScores);
@@ -458,7 +494,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				};
 			}
 
-			await supabase
+			console.log(`[FoxConversationDO:computeScores] Updating match finalScore=${finalScore} conversationScore=${conversationScore} conversationId=${state.conversationId}`);
+
+			const { error: matchUpdateError } = await supabase
 				.from("matches")
 				.update({
 					conversation_score: conversationScore,
@@ -468,8 +506,11 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					updated_at: new Date().toISOString(),
 				})
 				.eq("id", state.matchId);
+			if (matchUpdateError) {
+				console.error(`[FoxConversationDO:computeScores] Failed to update match conversationId=${state.conversationId}`, matchUpdateError);
+			}
 
-			await supabase
+			const { error: convUpdateError } = await supabase
 				.from("fox_conversations")
 				.update({
 					status: "completed",
@@ -478,6 +519,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 					completed_at: new Date().toISOString(),
 				})
 				.eq("id", state.conversationId);
+			if (convUpdateError) {
+				console.error(`[FoxConversationDO:computeScores] Failed to update fox_conversations conversationId=${state.conversationId}`, convUpdateError);
+			}
 
 			// Broadcast completion
 			state.status = "completed";
@@ -488,7 +532,10 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				scores: { conversation_score: conversationScore, final_score: finalScore },
 				analysis,
 			});
+
+			console.log(`[FoxConversationDO:computeScores] DONE conversationId=${state.conversationId} finalScore=${finalScore}`);
 		} catch (err) {
+			console.error(`[FoxConversationDO:computeScores] FATAL ERROR conversationId=${state.conversationId}`, err);
 			await this.failConversation(
 				supabase,
 				state,
@@ -502,7 +549,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		state: DOState,
 		reason: string,
 	): Promise<void> {
-		console.error(`[FoxConversationDO] Failed: ${reason}`);
+		console.error(`[FoxConversationDO:fail] conversationId=${state.conversationId} matchId=${state.matchId} round=${state.currentRound} reason=${reason}`);
 		state.status = "failed";
 		await this.ctx.storage.put("state", state);
 
@@ -566,6 +613,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 	}
 
 	private async handleAuth(ws: WebSocket, token: string): Promise<void> {
+		console.log(`[FoxConversationDO:auth] START token=${token.slice(0, 10)}...`);
 		const supabaseAuth = this.getSupabaseAuth();
 		const {
 			data: { user },
@@ -573,6 +621,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		} = await supabaseAuth.auth.getUser(token);
 
 		if (error || !user) {
+			console.warn(`[FoxConversationDO:auth] Auth failed error=`, error);
 			ws.send(
 				JSON.stringify({ type: "error", message: "Authentication failed" }),
 			);
@@ -582,13 +631,14 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 
 		// Resolve user_profile.id from auth_user_id
 		const supabase = this.getSupabase();
-		const { data: profile } = await supabase
+		const { data: profile, error: profileError } = await supabase
 			.from("user_profiles")
 			.select("id")
 			.eq("auth_user_id", user.id)
 			.single();
 
 		if (!profile) {
+			console.warn(`[FoxConversationDO:auth] Profile not found authUserId=${user.id} error=`, profileError);
 			ws.send(
 				JSON.stringify({ type: "error", message: "User profile not found" }),
 			);
@@ -603,6 +653,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			profile.id !== state.userA &&
 			profile.id !== state.userB
 		) {
+			console.warn(`[FoxConversationDO:auth] Access denied profileId=${profile.id} userA=${state.userA} userB=${state.userB}`);
 			ws.send(
 				JSON.stringify({ type: "error", message: "Access denied" }),
 			);
@@ -610,6 +661,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			return;
 		}
 
+		console.log(`[FoxConversationDO:auth] OK profileId=${profile.id} conversationId=${state?.conversationId}`);
 		// Mark as authenticated
 		ws.serializeAttachment({ authenticated: true, userId: profile.id });
 

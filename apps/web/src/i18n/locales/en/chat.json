@@ -78,5 +78,12 @@
 	"direct_chat_request_error": "Failed to send chat request",
 	"fox_retry_button": "Retry",
 	"fox_retry_started": "Fox conversation restarted",
-	"fox_retry_error": "Retry failed"
+	"fox_retry_error": "Retry failed",
+	"daily_match_title": "Today's Match Results!",
+	"daily_match_in_progress": "Foxes are chatting...",
+	"daily_match_progress": "{{completed}}/{{total}} completed",
+	"daily_match_view_details": "View Details",
+	"daily_match_dismiss": "Dismiss",
+	"daily_match_no_results": "No new matches today",
+	"daily_match_view_conversation": "View Fox chat >"
 }

@@ -48,6 +48,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { DailyMatchBanner } from "./DailyMatchBanner";
 
 interface Message {
 	id: string;
@@ -185,6 +186,9 @@ export function Chat() {
 	const [activeFoxConvMap, setActiveFoxConvMap] = useState<
 		Record<string, string>
 	>({});
+	const [dailyMatchFoxConvMap, setDailyMatchFoxConvMap] = useState<
+		Record<string, string>
+	>({});
 	const activeFoxConvIds = useMemo(
 		() => Object.values(activeFoxConvMap),
 		[activeFoxConvMap],
@@ -244,7 +248,10 @@ export function Chat() {
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
 	// Use fox_conversation_id mapped to the currently selected match, or fall back to match detail
 	const foxConversationId =
-		activeFoxConvMap[activeSessionId] ?? detail?.fox_conversation_id ?? null;
+		activeFoxConvMap[activeSessionId] ??
+		dailyMatchFoxConvMap[activeSessionId] ??
+		detail?.fox_conversation_id ??
+		null;
 	const isFoxConvLive = Boolean(activeFoxConvMap[activeSessionId]);
 	const partnerId = detail?.partner_id ?? null;
 	const partnerName =
@@ -631,11 +638,17 @@ export function Chat() {
 		if (
 			list.length > 0 &&
 			(!activeSessionId || !list.some((m) => m.id === activeSessionId)) &&
-			!activeFoxConvMap[activeSessionId]
+			!activeFoxConvMap[activeSessionId] &&
+			!dailyMatchFoxConvMap[activeSessionId]
 		) {
 			setActiveSessionId(list[0].id);
 		}
-	}, [matchingData?.data, activeSessionId, activeFoxConvMap]);
+	}, [
+		matchingData?.data,
+		activeSessionId,
+		activeFoxConvMap,
+		dailyMatchFoxConvMap,
+	]);
 
 	const handleReport = () => {
 		setShowReportModal(false);
@@ -677,6 +690,23 @@ export function Chat() {
 							{t("active")}
 						</div>
 					</div>
+					{/* Daily Match Banner */}
+					<DailyMatchBanner
+						onMatchSelect={(matchId, foxConversationId) => {
+							setActiveSessionId(matchId);
+							if (foxConversationId) {
+								setDailyMatchFoxConvMap((prev) => ({
+									...prev,
+									[matchId]: foxConversationId,
+								}));
+							}
+							setActiveTab("fox");
+							if (isMobile) setMobileView("chat");
+							queryClient.invalidateQueries({
+								queryKey: ["matching", "results"],
+							});
+						}}
+					/>
 					{/* Fox Search Button & Progress */}
 					<div className="mb-3 shrink-0">
 						<button
