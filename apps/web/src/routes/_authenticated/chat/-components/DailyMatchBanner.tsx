@@ -46,6 +46,9 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	// バッチが存在しない場合は非表示
 	if (!data.batch_status) return null;
 
+	// 自分向けのマッチが1件もない場合は非表示
+	if (data.matches.length === 0) return null;
+
 	// 既読済みかつ新規でない場合は非表示
 	if (!data.is_new && data.batch_status === "completed") return null;
 
