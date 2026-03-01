@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Foxx — How It Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; box-sizing: border-box; }
+body {
+	min-height: 100vh;
+	display: grid;
+	place-items: center;
+	background:
+		radial-gradient(900px 500px at 20% 20%, rgba(67,231,255,0.08), transparent),
+		radial-gradient(800px 500px at 80% 80%, rgba(244,114,182,0.08), transparent),
+		#0d0f1a;
+	font-family: 'Nunito', sans-serif;
+	color: #f4f5ff;
+}
+.slide {
+	width: min(96vw, 1400px);
+	aspect-ratio: 16 / 9;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 48px;
+	padding: 48px 56px;
+	border-radius: 32px;
+	background: rgba(255,255,255,0.02);
+	border: 1px solid rgba(255,255,255,0.08);
+}
+h1 {
+	font-size: clamp(1.8rem, 3vw, 3rem);
+	font-weight: 900;
+	text-align: center;
+	letter-spacing: -0.03em;
+}
+h1 span { color: #43e7ff; }
+
+.flow {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	width: 100%;
+	max-width: 1200px;
+	justify-content: center;
+}
+
+.step {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	flex: 0 0 170px;
+}
+
+.bubble {
+	width: 100px;
+	height: 100px;
+	border-radius: 30px;
+	display: grid;
+	place-items: center;
+	font-size: 50px;
+	background: #181b2e;
+	border: 2px solid rgba(255,255,255,0.1);
+	transition: transform 0.2s;
+}
+.bubble:hover { transform: scale(1.1) rotate(-3deg); }
+
+.step:nth-child(1) .bubble { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 24px rgba(251,191,36,0.12); }
+.step:nth-child(3) .bubble { border-color: rgba(167,139,250,0.5); box-shadow: 0 0 24px rgba(167,139,250,0.12); }
+.step:nth-child(5) .bubble { border-color: rgba(244,114,182,0.5); box-shadow: 0 0 24px rgba(244,114,182,0.12); }
+.step:nth-child(7) .bubble { border-color: rgba(251,146,60,0.5); box-shadow: 0 0 24px rgba(251,146,60,0.12); }
+.step:nth-child(9) .bubble { border-color: rgba(134,239,172,0.5); box-shadow: 0 0 24px rgba(134,239,172,0.12); }
+
+.label {
+	font-size: 15px;
+	font-weight: 800;
+	text-align: center;
+	line-height: 1.25;
+}
+.step:nth-child(1) .label { color: #fbbf24; }
+.step:nth-child(3) .label { color: #a78bfa; }
+.step:nth-child(5) .label { color: #f472b6; }
+.step:nth-child(7) .label { color: #fb923c; }
+.step:nth-child(9) .label { color: #86efac; }
+
+.arrow {
+	flex: 0 0 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	color: rgba(255,255,255,0.2);
+	margin-top: -28px;
+}
+
+.footer {
+	font-size: 15px;
+	color: #8b90b0;
+	text-align: center;
+	font-weight: 700;
+}
+.footer em {
+	font-style: normal;
+	color: #43e7ff;
+}
+</style>
+</head>
+<body>
+<main class="slide">
+	<h1>How <span>Foxx</span> Works</h1>
+
+	<div class="flow">
+		<div class="step">
+			<div class="bubble">✏️</div>
+			<div class="label">Vibe Check<br/>Quiz</div>
+		</div>
+		<div class="arrow">→</div>
+
+		<div class="step">
+			<div class="bubble">🎙️</div>
+			<div class="label">Voice Date<br/>with AI</div>
+		</div>
+		<div class="arrow">→</div>
+
+		<div class="step">
+			<div class="bubble">🧬</div>
+			<div class="label">AI Builds<br/>Your Profile</div>
+		</div>
+		<div class="arrow">→</div>
+
+		<div class="step">
+			<div class="bubble">🦊</div>
+			<div class="label">Your Fox<br/>Finds Matches</div>
+		</div>
+		<div class="arrow">→</div>
+
+		<div class="step">
+			<div class="bubble">💌</div>
+			<div class="label">Real<br/>Connection</div>
+		</div>
+	</div>
+
+	<p class="footer">You talk to AI → AI understands you → <em>your fox does the matchmaking</em></p>
+</main>
+</body>
+</html>

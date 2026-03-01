@@ -1,6 +1,0 @@
-#!/bin/sh
-# コミット前に format → ステージ → build & check（CI と揃える）
-
-pnpm exec turbo run format --no-daemon
-git add -u
-pnpm exec turbo run build check --no-daemon
