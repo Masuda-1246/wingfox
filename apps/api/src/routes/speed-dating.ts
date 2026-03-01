@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
+import { detectLangFromDocument } from "../lib/lang";
 import { chatComplete } from "../services/mistral";
 import { buildVirtualPersonaPrompt } from "../prompts/virtual-persona";
 import { getRandomIconUrlForGender } from "../lib/fox-icons";
@@ -62,14 +63,6 @@ function detectLangFromHeader(c: { req: { header: (name: string) => string | und
 	return accept.startsWith("en") ? "en" : "ja";
 }
 
-/** Detect the language a persona was generated in by checking for Japanese content */
-function detectLangFromDocument(compiledDocument: string): "ja" | "en" {
-	// Count Japanese characters (hiragana, katakana, CJK) in the content
-	const jpChars = (compiledDocument.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g) ?? []).length;
-	// If significant Japanese content exists, treat as Japanese
-	if (jpChars > 20) return "ja";
-	return "en";
-}
 
 const SECTION_ORDER = [
 	"core_identity",

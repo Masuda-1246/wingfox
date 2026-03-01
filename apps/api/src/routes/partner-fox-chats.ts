@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
+import { detectLangFromDocument } from "../lib/lang";
 import { chatComplete } from "../services/mistral";
 import { buildSpeedDatingSystemPrompt } from "../prompts/speed-dating";
 import { z } from "zod";
@@ -38,7 +39,8 @@ partnerFoxChats.post("/", requireAuth, async (c) => {
 		.eq("persona_type", "wingfox")
 		.single();
 	const { data: partnerProfile } = await supabase.from("user_profiles").select("nickname").eq("id", partnerUserId).single();
-	const partnerName = partnerProfile?.nickname ?? "相手";
+	const lang = partnerPersona?.compiled_document ? detectLangFromDocument(partnerPersona.compiled_document) : "ja";
+	const partnerName = partnerProfile?.nickname ?? (lang === "en" ? "Partner" : "相手");
 	const { data: chat, error } = await supabase
 		.from("partner_fox_chats")
 		.insert({ match_id: parsed.data.match_id, user_id: userId, partner_user_id: partnerUserId })
@@ -46,13 +48,17 @@ partnerFoxChats.post("/", requireAuth, async (c) => {
 		.single();
 	if (error || !chat) return jsonError(c, "INTERNAL_ERROR", "Failed to create chat");
 	await supabase.from("matches").update({ status: "partner_chat_started", updated_at: new Date().toISOString() }).eq("id", parsed.data.match_id);
-	let firstContent = "よろしくお願いします。";
+	let firstContent = lang === "en" ? "Nice to meet you." : "よろしくお願いします。";
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (apiKey && partnerPersona?.compiled_document) {
-		const systemPrompt = `${buildSpeedDatingSystemPrompt(partnerPersona.compiled_document)}\n\n相手のユーザーから直接話しかけられています。${partnerName}さんならこう話すだろう、という形で自然に挨拶してください。挨拶は短く1文で。『こんにちは』は一度だけか、省略してもよい。`;
+		const greetingInstruction = lang === "en"
+			? `\n\nThe user is speaking to you directly. Greet them naturally as ${partnerName} would. Keep it to one short sentence. Say "hello" at most once, or skip it.`
+			: `\n\n相手のユーザーから直接話しかけられています。${partnerName}さんならこう話すだろう、という形で自然に挨拶してください。挨拶は短く1文で。『こんにちは』は一度だけか、省略してもよい。`;
+		const systemPrompt = `${buildSpeedDatingSystemPrompt(partnerPersona.compiled_document, lang)}${greetingInstruction}`;
+		const userPrompt = lang === "en" ? "Say hello." : "挨拶をしてください。";
 		firstContent = await chatComplete(apiKey, [
 			{ role: "system", content: systemPrompt },
-			{ role: "user", content: "挨拶をしてください。" },
+			{ role: "user", content: userPrompt },
 		]);
 	}
 	const { data: firstMsg } = await supabase
@@ -76,7 +82,7 @@ partnerFoxChats.get("/:id", requireAuth, async (c) => {
 	const { data: chat, error } = await supabase.from("partner_fox_chats").select("*").eq("id", id).eq("user_id", userId).single();
 	if (error || !chat) return jsonError(c, "NOT_FOUND", "Chat not found");
 	const { data: partner } = await supabase.from("user_profiles").select("nickname").eq("id", chat.partner_user_id).single();
-	return jsonData(c, { ...chat, partner: partner ?? { nickname: "相手" } });
+	return jsonData(c, { ...chat, partner: partner ?? { nickname: "Partner" } });
 });
 
 /** GET /api/partner-fox-chats/:id/messages */
@@ -116,10 +122,11 @@ partnerFoxChats.post("/:id/messages", requireAuth, async (c) => {
 		.eq("chat_id", id)
 		.order("created_at");
 	const messagesForAi = (history ?? []).map((m) => ({ role: m.role === "user" ? "user" as const : "assistant" as const, content: m.content }));
-	let foxContent = "（応答を生成できませんでした）";
+	const lang = persona?.compiled_document ? detectLangFromDocument(persona.compiled_document) : "ja";
+	let foxContent = lang === "en" ? "(Failed to generate response)" : "（応答を生成できませんでした）";
 	const apiKey = c.env.MISTRAL_API_KEY;
 	if (apiKey && persona?.compiled_document) {
-		const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document);
+		const systemPrompt = buildSpeedDatingSystemPrompt(persona.compiled_document, lang);
 		foxContent = await chatComplete(apiKey, [{ role: "system", content: systemPrompt }, ...messagesForAi], { maxTokens: 512 });
 	}
 	const { data: foxMsg } = await supabase
