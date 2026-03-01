@@ -96,8 +96,7 @@ export function buildVirtualPersonaPrompt(
 	lang: "ja" | "en" = "ja",
 	personaGender: "male" | "female" = "female",
 ): string {
-	// Seed from current time + persona type for randomness across calls
-	const seed = Date.now() ^ (personaType === "virtual_similar" ? 7 : personaType === "virtual_complementary" ? 13 : 23);
+	const seed = Math.floor(Math.random() * 2147483647);
 
 	const isEn = lang === "en";
 	const occupations = isEn ? EN_OCCUPATIONS : JA_OCCUPATIONS;

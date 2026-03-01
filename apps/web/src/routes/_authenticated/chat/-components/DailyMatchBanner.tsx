@@ -38,7 +38,10 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 	};
 
 	if (isLoading || !data) return null;
-	const hasMatches = data.matches.length > 0;
+	const matches = data.matches.filter(
+		(match) => match.fox_conversation_id !== null,
+	);
+	const hasMatches = matches.length > 0;
 
 	return (
 		<m.div
@@ -49,7 +52,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 			{/* マッチ一覧 */}
 			{hasMatches && (
 				<div className="space-y-1.5">
-					{data.matches.map((match: DailyMatchItem) => (
+					{matches.map((match: DailyMatchItem) => (
 						<button
 							key={match.id}
 							type="button"
