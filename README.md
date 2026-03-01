@@ -31,6 +31,10 @@
    - Web: http://localhost:3000
    - API: See each app's configuration
 
+## デモ
+
+2分間でアプリを紹介する際のシナリオは [docs/demo-scenario-2min.md](docs/demo-scenario-2min.md) を参照してください。テストアカウントの準備は [scripts/README.md](scripts/README.md) の `create-user-with-fox.sh` を利用できます。
+
 ## CI と PR マージブロック
 
 - **pre-commit**: コミット前に `pnpm format` と `pnpm build` が自動で実行されます。

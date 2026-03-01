@@ -112,7 +112,7 @@ export async function searchAndStartFoxConversation(
 		.insert({
 			match_id: match.id,
 			status: "pending",
-			total_rounds: 5,
+			total_rounds: 10,
 			current_round: 0,
 		})
 		.select("id")
@@ -130,7 +130,7 @@ export async function searchAndStartFoxConversation(
 	};
 }
 
-const MAX_MULTIPLE_MATCHES = 3;
+const MAX_MULTIPLE_MATCHES = 1;
 
 export async function searchAndStartMultipleFoxConversations(
 	supabase: SupabaseClient<Database>,
@@ -247,7 +247,7 @@ export async function searchAndStartMultipleFoxConversations(
 				.insert({
 					match_id: match.id,
 					status: "pending",
-					total_rounds: 5,
+					total_rounds: 10,
 					current_round: 0,
 				})
 				.select("id")
