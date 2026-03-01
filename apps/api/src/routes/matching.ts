@@ -30,7 +30,9 @@ matching.get("/results", requireAuth, async (c) => {
 
 	let q = supabase
 		.from("matches")
-		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, created_at")
+		.select(
+			"id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, score_details, created_at",
+		)
 		.or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
 		.order("final_score", { ascending: false, nullsFirst: false });
 	if (statusFilter) {
@@ -113,6 +115,7 @@ matching.get("/results", requireAuth, async (c) => {
 			final_score: m.final_score,
 			profile_score: m.profile_score,
 			conversation_score: m.conversation_score,
+			score_details: m.score_details,
 			common_tags: [] as string[],
 			status,
 			fox_conversation_status: fcMap.get(m.id)?.status ?? null,

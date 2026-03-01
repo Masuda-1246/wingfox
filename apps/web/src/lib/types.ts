@@ -64,6 +64,7 @@ export interface MatchResultItem {
 	final_score: number | null;
 	profile_score: number | null;
 	conversation_score: number | null;
+	score_details: unknown;
 	common_tags: string[];
 	status: string;
 	fox_conversation_status: string | null;
