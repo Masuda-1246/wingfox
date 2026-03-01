@@ -39,13 +39,14 @@ export function useRequestDirectChat() {
 	});
 }
 
-export function usePendingChatRequests() {
+export function usePendingChatRequests(options?: { refetchInterval?: number }) {
 	return useQuery({
 		queryKey: ["chat-requests", "pending"],
 		queryFn: async (): Promise<PendingChatRequest[]> => {
 			const res = await chatRequestsApi.$get();
 			return unwrapApiResponse<PendingChatRequest[]>(res);
 		},
+		refetchInterval: options?.refetchInterval,
 	});
 }
 
@@ -63,9 +64,9 @@ export function useRespondChatRequest() {
 			return unwrapApiResponse(res);
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["chat-requests"] });
+			void queryClient.refetchQueries({ queryKey: ["chat-requests"] });
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
-			queryClient.invalidateQueries({ queryKey: ["direct-chats"] });
+			void queryClient.refetchQueries({ queryKey: ["direct-chats"] });
 		},
 	});
 }

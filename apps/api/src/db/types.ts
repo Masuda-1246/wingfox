@@ -23,6 +23,7 @@ export type Database = {
 					language: string;
 					avatar_url: string | null;
 					onboarding_status: string;
+					notification_seen_at: string | null;
 					created_at: string;
 					updated_at: string;
 				};
@@ -35,6 +36,7 @@ export type Database = {
 					language?: string;
 					avatar_url?: string | null;
 					onboarding_status?: string;
+					notification_seen_at?: string | null;
 					created_at?: string;
 					updated_at?: string;
 				};
