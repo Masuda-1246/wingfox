@@ -81,31 +81,47 @@ export async function runFoxConversation(
 		return;
 	}
 	const [userA, userB] = [match.user_a_id, match.user_b_id];
-	const { data: personaA } = await supabase
-		.from("personas")
-		.select("compiled_document, name")
-		.eq("user_id", userA)
-		.eq("persona_type", "wingfox")
-		.single();
-	const { data: personaB } = await supabase
-		.from("personas")
-		.select("compiled_document, name")
-		.eq("user_id", userB)
-		.eq("persona_type", "wingfox")
-		.single();
+	const [{ data: personaA }, { data: personaB }, { data: userProfiles }] = await Promise.all([
+		supabase
+			.from("personas")
+			.select("compiled_document, name")
+			.eq("user_id", userA)
+			.eq("persona_type", "wingfox")
+			.single(),
+		supabase
+			.from("personas")
+			.select("compiled_document, name")
+			.eq("user_id", userB)
+			.eq("persona_type", "wingfox")
+			.single(),
+		supabase.from("user_profiles").select("id, gender").in("id", [userA, userB]),
+	]);
 	if (!personaA?.compiled_document || !personaB?.compiled_document) {
 		console.error(`[runFoxConversation] Persona missing for conversation ${conversationId}: personaA=${!!personaA?.compiled_document}, personaB=${!!personaB?.compiled_document}`);
 		await supabase.from("fox_conversations").update({ status: "failed" }).eq("id", conversationId);
 		await supabase.from("matches").update({ status: "fox_conversation_failed" }).eq("id", conv.match_id);
 		return;
 	}
+	const genderByUserId = new Map<string, string | null>(
+		(userProfiles ?? []).map((row) => [row.id, row.gender]),
+	);
 	await supabase
 		.from("fox_conversations")
 		.update({ status: "in_progress", started_at: new Date().toISOString() })
 		.eq("id", conversationId);
 	const lang = detectLangFromDocument(personaA.compiled_document);
-	const systemA = buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "", lang);
-	const systemB = buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "", lang);
+	const systemA = buildFoxConversationSystemPrompt(
+		personaA.compiled_document,
+		personaA.name ?? "",
+		lang,
+		genderByUserId.get(userA),
+	);
+	const systemB = buildFoxConversationSystemPrompt(
+		personaB.compiled_document,
+		personaB.name ?? "",
+		lang,
+		genderByUserId.get(userB),
+	);
 
 	// Build history from existing messages (for retry: resume from existing)
 	const history: { speaker: "A" | "B"; content: string }[] = (existingMsgs ?? []).map((m) => ({

@@ -1,5 +1,27 @@
 # Scripts
 
+## run-daily-batch.sh
+
+`/api/internal/daily-batch/execute` を呼び出して、日次バッチ（マッチング + FOX会話）を手動実行するスクリプト。
+
+```bash
+# その日のバッチを実行
+./scripts/run-daily-batch.sh
+
+# 日付を指定して実行
+./scripts/run-daily-batch.sh --date 2026-03-01
+
+# 完了まで待機（ステータスポーリング）
+./scripts/run-daily-batch.sh --wait --interval 3
+```
+
+- デフォルトの API URL は `http://localhost:3001`（`--api-base-url` で変更可能）。
+- `--wait` を付けると `/api/internal/daily-batch/status` をポーリングして `completed/failed` まで待機します。
+- `Batch already exists for date`（HTTP 409）の場合は警告表示して終了します（`--wait` 指定時は既存バッチの状態を追跡）。
+- 前提条件: `curl` / `jq`、および API サーバーが起動済みであること。
+
+---
+
 ## register-all-test-accounts.sh
 
 `TEST_ACCOUNTS.md` に記載の全 40 アカウントを一括で登録するスクリプト。共通パスワードは `testpass123`。内部で `create-user-with-fox.sh` を 1 件ずつ呼び出します。

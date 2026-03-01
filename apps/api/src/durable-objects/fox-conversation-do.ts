@@ -108,7 +108,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		console.log(`[FoxConversationDO:init] Match loaded userA=${match.user_a_id} userB=${match.user_b_id}`);
 
 		// Load personas
-		const [{ data: personaA, error: personaAError }, { data: personaB, error: personaBError }] = await Promise.all([
+		const [{ data: personaA, error: personaAError }, { data: personaB, error: personaBError }, { data: userProfiles }] = await Promise.all([
 			supabase
 				.from("personas")
 				.select("compiled_document, name")
@@ -121,6 +121,10 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.eq("user_id", match.user_b_id)
 				.eq("persona_type", "wingfox")
 				.single(),
+			supabase
+				.from("user_profiles")
+				.select("id, gender")
+				.in("id", [match.user_a_id, match.user_b_id]),
 		]);
 
 		if (!personaA?.compiled_document || !personaB?.compiled_document) {
@@ -136,6 +140,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			return new Response("Persona not found", { status: 400 });
 		}
 		console.log(`[FoxConversationDO:init] Personas loaded nameA=${personaA.name} nameB=${personaB.name}`);
+		const genderByUserId = new Map<string, string | null>(
+			(userProfiles ?? []).map((row) => [row.id, row.gender]),
+		);
 
 		// Update conversation status
 		await supabase
@@ -150,8 +157,18 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			matchId,
 			userA: match.user_a_id,
 			userB: match.user_b_id,
-			systemA: buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "", lang),
-			systemB: buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "", lang),
+			systemA: buildFoxConversationSystemPrompt(
+				personaA.compiled_document,
+				personaA.name ?? "",
+				lang,
+				genderByUserId.get(match.user_a_id),
+			),
+			systemB: buildFoxConversationSystemPrompt(
+				personaB.compiled_document,
+				personaB.name ?? "",
+				lang,
+				genderByUserId.get(match.user_b_id),
+			),
 			lang,
 			history: [],
 			currentRound: 0,
