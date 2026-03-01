@@ -28,15 +28,20 @@ export interface DirectChatRoom {
 	match_id: string;
 	partner?: { nickname: string; avatar_url: string | null };
 	last_message?: { content: string; created_at: string; sender_id: string };
+	unread_count?: number;
+	/** Unread messages from partner that arrived after user's notification_seen_at (for badge). */
+	unread_count_after_seen?: number;
+	status?: string;
 }
 
-export function useDirectChatRooms() {
+export function useDirectChatRooms(options?: { refetchInterval?: number }) {
 	return useQuery({
 		queryKey: ["direct-chats"],
 		queryFn: async (): Promise<DirectChatRoom[]> => {
 			const res = await directChatsApi.$get();
 			return unwrapApiResponse<DirectChatRoom[]>(res);
 		},
+		refetchInterval: options?.refetchInterval,
 	});
 }
 
@@ -96,12 +101,14 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 				if (!old || typeof old !== "object" || !("pages" in old)) return old;
 				const o = old as { pages: Array<{ data: unknown[] }> };
 				if (!o.pages?.[0]) return old;
+				// Append at end of first page (chronological order: newest at end) so new message appears at bottom
 				return {
 					...o,
 					pages: [
 						{
 							...o.pages[0],
 							data: [
+								...o.pages[0].data,
 								{
 									id: `optimistic-${Date.now()}`,
 									sender_id: "me",
@@ -110,7 +117,6 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 									is_read: false,
 									created_at: new Date().toISOString(),
 								},
-								...o.pages[0].data,
 							],
 						},
 						...o.pages.slice(1),

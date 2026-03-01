@@ -1,0 +1,13 @@
+{
+	"dm_request_received": "DMリクエストが届きました",
+	"dm_request_accepted": "DMリクエストが承認されました",
+	"dm_request_declined": "DMリクエストが拒否されました",
+	"dm_new_message": "新しいメッセージが届きました",
+	"dm_message_from": "{{name}}さんからメッセージが届きました",
+	"dm_message_from_in_list": "{{name}}さんからメッセージが届いています",
+	"dm_request_from": "{{name}}さんからDMリクエスト",
+	"notifications_empty": "通知はありません",
+	"go_to_chat": "チャットへ",
+	"dm_requests_section": "DMリクエスト",
+	"dm_messages_section": "新着メッセージ"
+}

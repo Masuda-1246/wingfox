@@ -1,0 +1,13 @@
+{
+	"dm_request_received": "You have a new DM request",
+	"dm_request_accepted": "Your DM request was accepted",
+	"dm_request_declined": "Your DM request was declined",
+	"dm_new_message": "You have a new message",
+	"dm_message_from": "{{name}} sent you a message",
+	"dm_message_from_in_list": "You have a new message from {{name}}",
+	"dm_request_from": "DM request from {{name}}",
+	"notifications_empty": "No notifications",
+	"go_to_chat": "Go to chat",
+	"dm_requests_section": "DM requests",
+	"dm_messages_section": "New messages"
+}

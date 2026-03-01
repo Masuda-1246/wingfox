@@ -13,6 +13,13 @@ const postMessageSchema = z.object({ content: z.string().min(1).max(1000) });
 directChats.get("/", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const supabase = getSupabaseClient(c.env);
+	const { data: profile } = await supabase
+		.from("user_profiles")
+		.select("notification_seen_at")
+		.eq("id", userId)
+		.single();
+	const notificationSeenAt = profile?.notification_seen_at ?? null;
+
 	const { data: myMatches } = await supabase.from("matches").select("id, user_a_id, user_b_id").or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
 	const matchIds = (myMatches ?? []).map((m) => m.id);
 	const { data: rooms } = await supabase.from("direct_chat_rooms").select("id, match_id").eq("status", "active").in("match_id", matchIds);
@@ -42,11 +49,25 @@ directChats.get("/", requireAuth, async (c) => {
 				.eq("room_id", r.id)
 				.neq("sender_id", userId)
 				.eq("is_read", false);
+			const unreadCount = count ?? 0;
+			let unreadCountAfterSeen = unreadCount;
+			if (notificationSeenAt) {
+				const { count: countAfter } = await supabase
+					.from("direct_chat_messages")
+					.select("id", { count: "exact", head: true })
+					.eq("room_id", r.id)
+					.neq("sender_id", userId)
+					.eq("is_read", false)
+					.gt("created_at", notificationSeenAt);
+				unreadCountAfterSeen = countAfter ?? 0;
+			}
 			return {
 				id: r.id,
+				match_id: r.match_id,
 				partner: partner ? { nickname: partner.nickname, avatar_url: partner.avatar_url } : null,
 				last_message: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at, is_mine: lastMsg.sender_id === userId } : null,
-				unread_count: count ?? 0,
+				unread_count: unreadCount,
+				unread_count_after_seen: unreadCountAfterSeen,
 				status: "active",
 			};
 		}),
