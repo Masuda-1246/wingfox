@@ -23,6 +23,7 @@ import { m } from "framer-motion";
 import {
 	Brain,
 	ClipboardList,
+	Dna,
 	Edit2,
 	Heart,
 	ImageIcon,
@@ -44,6 +45,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import Markdown from "react-markdown";
 import { toast } from "sonner";
 
 type QuizOptionItem = { value: string; label: string };
@@ -245,7 +247,7 @@ function PersonalityAnalysisCard({
 	}
 
 	return (
-		<Card className="col-span-1 md:col-span-2 p-6">
+		<Card className="p-6">
 			<div className="flex items-center gap-2 mb-1">
 				<Brain className="w-5 h-5 text-secondary" />
 				<h3 className="font-bold text-lg">
@@ -702,7 +704,7 @@ function PersonasMeBioCard({
 	noProfileLabel: string;
 }) {
 	return (
-		<Card className="col-span-1 md:col-span-2 p-6 flex flex-col h-full">
+		<Card className="p-6 flex flex-col h-full">
 			<div className="flex items-center gap-2 mb-4">
 				<User className="w-5 h-5 text-secondary" />
 				<h3 className="font-bold text-lg">{t("me.bio_title")}</h3>
@@ -714,12 +716,12 @@ function PersonasMeBioCard({
 					className="min-h-[150px] text-base leading-relaxed resize-none bg-accent/10"
 					placeholder={placeholder}
 				/>
-			) : (
-				<div className="prose prose-sm max-w-none">
-					<p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-						{profileText || noProfileLabel}
-					</p>
+			) : profileText ? (
+				<div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed">
+					<Markdown>{profileText}</Markdown>
 				</div>
+			) : (
+				<p className="text-sm text-muted-foreground">{noProfileLabel}</p>
 			)}
 		</Card>
 	);
@@ -741,7 +743,7 @@ function PersonasMeInteractionCard({
 
 	if (hasDna && dnaScores) {
 		return (
-			<Card className="col-span-1 md:col-span-2 p-6">
+			<Card className="p-6">
 				<div className="flex items-center gap-2 mb-4">
 					<Zap className="w-5 h-5 text-secondary" />
 					<h3 className="font-bold text-lg">{t("me.interaction_dna_title")}</h3>
@@ -761,7 +763,7 @@ function PersonasMeInteractionCard({
 
 	const tags = profileData?.personality_tags;
 	return (
-		<Card className="col-span-1 md:col-span-2 p-6">
+		<Card className="p-6">
 			<div className="flex items-center gap-2 mb-4">
 				<Tag className="w-5 h-5 text-tertiary" />
 				<h3 className="font-bold text-lg">{t("me.traits_title")}</h3>
@@ -817,7 +819,7 @@ function PersonasMeQuizCard({
 		Array.isArray(quizAnswersData) && quizAnswersData.length > 0;
 
 	return (
-		<Card className="col-span-1 md:col-span-2 p-6">
+		<Card className="p-6">
 			<div className="flex items-center justify-between gap-2 mb-4">
 				<div className="flex items-center gap-2">
 					<ClipboardList className="w-5 h-5 text-secondary" />
@@ -987,6 +989,10 @@ export function PersonasMe() {
 		useQuizAnswers();
 	const submitQuiz = useSubmitQuizAnswers();
 
+	const [activeTab, setActiveTab] = useState<
+		"bio" | "personality" | "dna" | "quiz"
+	>("bio");
+
 	const [formState, formDispatch] = useReducer(formReducer, {
 		isEditing: false,
 		profileText: "",
@@ -1130,40 +1136,100 @@ export function PersonasMe() {
 					}}
 				/>
 
-				<div className="col-span-1 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
-					<PersonasMeBioCard
-						t={t}
-						profileText={
-							formState.isEditing ? formState.profileText : coreContent
-						}
-						isEditing={formState.isEditing}
-						onProfileTextChange={(value) =>
-							formDispatch({ type: "SET_PROFILE_TEXT", payload: value })
-						}
-						placeholder={t("me.bio_placeholder")}
-						noProfileLabel={t("me.no_profile")}
-					/>
+				<div className="col-span-1 md:col-span-8 space-y-6">
+					{/* Tab navigation */}
+					<nav className="flex gap-1 rounded-xl bg-muted/50 p-1">
+						{(
+							[
+								{
+									key: "bio",
+									label: t("me.tab_bio"),
+									icon: <User className="w-4 h-4" />,
+								},
+								{
+									key: "personality",
+									label: t("me.tab_personality"),
+									icon: <Brain className="w-4 h-4" />,
+								},
+								{
+									key: "dna",
+									label: t("me.tab_dna"),
+									icon: <Dna className="w-4 h-4" />,
+								},
+								{
+									key: "quiz",
+									label: t("me.tab_quiz"),
+									icon: <ClipboardList className="w-4 h-4" />,
+								},
+							] as const
+						).map((tab) => (
+							<button
+								key={tab.key}
+								type="button"
+								onClick={() => setActiveTab(tab.key)}
+								className={cn(
+									"flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+									activeTab === tab.key
+										? "bg-background text-foreground shadow-sm"
+										: "text-muted-foreground hover:text-foreground hover:bg-background/50",
+								)}
+							>
+								{tab.icon}
+								<span className="hidden sm:inline">{tab.label}</span>
+							</button>
+						))}
+					</nav>
 
-					{profileData && (
-						<PersonalityAnalysisCard profile={profileData} t={t} />
+					{/* Tab content */}
+					{activeTab === "bio" && (
+						<PersonasMeBioCard
+							t={t}
+							profileText={
+								formState.isEditing ? formState.profileText : coreContent
+							}
+							isEditing={formState.isEditing}
+							onProfileTextChange={(value) =>
+								formDispatch({ type: "SET_PROFILE_TEXT", payload: value })
+							}
+							placeholder={t("me.bio_placeholder")}
+							noProfileLabel={t("me.no_profile")}
+						/>
 					)}
 
-					<PersonasMeInteractionCard profileData={profileData ?? null} t={t} />
+					{activeTab === "personality" &&
+						(profileData ? (
+							<PersonalityAnalysisCard profile={profileData} t={t} />
+						) : (
+							<Card className="p-6">
+								<p className="text-sm text-muted-foreground">
+									{t("me.no_analysis")}
+								</p>
+							</Card>
+						))}
 
-					<PersonasMeQuizCard
-						t={t}
-						quizAnswersData={quizAnswersData}
-						quizAnswersLoading={quizAnswersLoading}
-						quizEditMode={quizState.editMode}
-						quizAnswers={quizState.answers}
-						sortedQuestions={sortedQuestions}
-						answersMap={answersMap}
-						onOpenEdit={openQuizEdit}
-						onQuizSelect={handleQuizSelect}
-						onQuizSave={handleQuizSave}
-						onQuizCancel={() => quizDispatch({ type: "CLOSE_EDIT" })}
-						submitPending={submitQuiz.isPending}
-					/>
+					{activeTab === "dna" && (
+						<PersonasMeInteractionCard
+							profileData={profileData ?? null}
+							t={t}
+						/>
+					)}
+
+					{activeTab === "quiz" && (
+						<PersonasMeQuizCard
+							t={t}
+							quizAnswersData={quizAnswersData}
+							quizAnswersLoading={quizAnswersLoading}
+							quizEditMode={quizState.editMode}
+							quizAnswers={quizState.answers}
+							sortedQuestions={sortedQuestions}
+							answersMap={answersMap}
+							onOpenEdit={openQuizEdit}
+							onQuizSelect={handleQuizSelect}
+							onQuizSave={handleQuizSave}
+							onQuizCancel={() => quizDispatch({ type: "CLOSE_EDIT" })}
+							submitPending={submitQuiz.isPending}
+						/>
+					)}
 				</div>
 			</div>
 		</div>

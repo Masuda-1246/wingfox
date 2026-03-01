@@ -78,7 +78,11 @@
 		"icon_apply": "Apply",
 		"icon_discard": "Discard",
 		"icon_apply_success": "Icon applied",
-		"icon_apply_error": "Failed to apply icon"
+		"icon_apply_error": "Failed to apply icon",
+		"tab_bio": "Bio",
+		"tab_personality": "Personality",
+		"tab_dna": "DNA",
+		"tab_quiz": "Quiz"
 	},
 	"quiz": {
 		"title": "Question Quiz",
