@@ -14,6 +14,7 @@ export interface AuthMe {
 	birth_year?: number | null;
 	onboarding_status: string;
 	avatar_url?: string | null;
+	notification_seen_at?: string | null;
 }
 
 export function authMeQueryOptions() {
@@ -43,6 +44,24 @@ export function useUpdateAuthMe() {
 		}) => {
 			const res = await client.api.auth.me.$put({ json: body });
 			return unwrapApiResponse<AuthMe>(res);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+		},
+	});
+}
+
+/** Mark notification dropdown as seen (updates notification_seen_at in DB). Call when user opens the notification dropdown. */
+export function useMarkNotificationSeen() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async () => {
+			const res = await (
+				client.api.auth.me as {
+					"notification-seen": { $post: () => Promise<Response> };
+				}
+			)["notification-seen"].$post();
+			return unwrapApiResponse<{ notification_seen_at: string }>(res);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["auth", "me"] });

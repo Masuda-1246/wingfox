@@ -1,6 +1,6 @@
 import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useAuth } from "@/lib/auth";
-import { useAuthMe } from "@/lib/hooks/useAuthMe";
+import { useAuthMe, useMarkNotificationSeen } from "@/lib/hooks/useAuthMe";
 import { useChatRequestNotifications } from "@/lib/hooks/useChatRequestNotifications";
 import { usePendingChatRequests } from "@/lib/hooks/useChatRequests";
 import type { PendingChatRequest } from "@/lib/hooks/useChatRequests";
@@ -70,11 +70,11 @@ export function UpperHeader() {
 	const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 	const userMenuRef = useRef<HTMLDivElement>(null);
 	const notificationRef = useRef<HTMLDivElement>(null);
-	const lastSeenNotificationCountRef = useRef(0);
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { user, signOut } = useAuth();
 	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
+	const markNotificationSeen = useMarkNotificationSeen();
 	const isAuthenticated = Boolean(user);
 
 	useChatRequestNotifications();
@@ -90,26 +90,31 @@ export function UpperHeader() {
 	const roomsWithUnread = directChatRooms.filter(
 		(r) => (r.unread_count ?? 0) > 0,
 	);
+	const notificationSeenAt = authMe?.notification_seen_at ?? null;
+	// Unseen = 通知を開いた時刻より後に来たものだけ（DB の notification_seen_at で永続化）
+	const unseenPendingCount = notificationSeenAt
+		? pendingRequests.filter(
+				(r) => new Date(r.created_at) > new Date(notificationSeenAt),
+			).length
+		: pendingCount;
+	const unseenDmCount = directChatRooms.filter(
+		(r) => (r.unread_count_after_seen ?? r.unread_count ?? 0) > 0,
+	).length;
+	const unseenCount = unseenPendingCount + unseenDmCount;
 	const totalNotificationCount = pendingCount + roomsWithUnread.length;
-	const unseenCount = Math.max(
-		0,
-		totalNotificationCount - lastSeenNotificationCountRef.current,
-	);
 
-	// 通知を開いた時点で「確認した」とみなし、バッジを消す（閉じたあとも消えたまま。新規が来たらまた表示）
+	// 通知を開いた時点で DB に「確認した」を記録し、バッジを消す（リロードしても復活しない）
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 開いた瞬間だけ mark したいので isNotificationOpen のみ依存
 	useEffect(() => {
 		if (isNotificationOpen) {
-			lastSeenNotificationCountRef.current = totalNotificationCount;
+			markNotificationSeen.mutate(undefined, {
+				onSettled: () => {
+					void refetchPending();
+					void refetchRooms();
+				},
+			});
 		}
-	}, [isNotificationOpen, totalNotificationCount]);
-
-	// Refetch notification counts when opening the dropdown so badge is up to date
-	useEffect(() => {
-		if (isNotificationOpen) {
-			void refetchPending();
-			void refetchRooms();
-		}
-	}, [isNotificationOpen, refetchPending, refetchRooms]);
+	}, [isNotificationOpen]);
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {

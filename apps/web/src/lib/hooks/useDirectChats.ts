@@ -29,6 +29,8 @@ export interface DirectChatRoom {
 	partner?: { nickname: string; avatar_url: string | null };
 	last_message?: { content: string; created_at: string; sender_id: string };
 	unread_count?: number;
+	/** Unread messages from partner that arrived after user's notification_seen_at (for badge). */
+	unread_count_after_seen?: number;
 	status?: string;
 }
 

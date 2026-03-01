@@ -42,7 +42,7 @@ auth.get("/me", requireAuth, async (c) => {
 	const supabase = getSupabaseClient(c.env);
 	const { data, error } = await supabase
 		.from("user_profiles")
-		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url")
+		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url, notification_seen_at")
 		.eq("id", userId)
 		.single();
 	if (error || !data) {
@@ -73,12 +73,29 @@ auth.put("/me", requireAuth, async (c) => {
 		.from("user_profiles")
 		.update(updates)
 		.eq("id", userId)
-		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url")
+		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url, notification_seen_at")
 		.single();
 	if (error) {
 		return jsonError(c, "INTERNAL_ERROR", "Failed to update profile");
 	}
 	return jsonData(c, data);
+});
+
+/** POST /api/auth/me/notification-seen - mark notification dropdown as seen (updates notification_seen_at) */
+auth.post("/me/notification-seen", requireAuth, async (c) => {
+	const userId = c.get("user_id");
+	const supabase = getSupabaseClient(c.env);
+	const now = new Date().toISOString();
+	const { data, error } = await supabase
+		.from("user_profiles")
+		.update({ notification_seen_at: now })
+		.eq("id", userId)
+		.select("id, notification_seen_at")
+		.single();
+	if (error) {
+		return jsonError(c, "INTERNAL_ERROR", "Failed to update notification seen");
+	}
+	return jsonData(c, { notification_seen_at: data?.notification_seen_at ?? now });
 });
 
 /** Delete account (requires auth) */
