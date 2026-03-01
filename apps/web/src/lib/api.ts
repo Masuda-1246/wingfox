@@ -19,7 +19,10 @@ export async function unwrapApiResponse<T>(res: Response): Promise<T> {
 		| { data: T }
 		| { error: { code: string; message: string } };
 	if (!res.ok) {
-		const error = "error" in json ? json.error : { code: "UNKNOWN", message: res.statusText };
+		const error =
+			"error" in json
+				? json.error
+				: { code: "UNKNOWN", message: res.statusText };
 		throw new ApiError(error.message, res.status, error.code);
 	}
 	if ("error" in json) {

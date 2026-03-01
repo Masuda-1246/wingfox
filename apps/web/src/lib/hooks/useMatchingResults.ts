@@ -37,14 +37,19 @@ export function useMatchingResults(
 	});
 }
 
-export function useMatchingResult(id: string | undefined | null, options?: { enabled?: boolean }) {
+export function useMatchingResult(
+	id: string | undefined | null,
+	options?: { enabled?: boolean },
+) {
 	return useQuery({
 		queryKey: ["matching", "results", id],
 		queryFn: async (): Promise<MatchResultDetail> => {
 			if (!id) throw new Error("Match id required");
-			const res = await client.api.matching.results[":id"].$get({ param: { id } });
+			const res = await client.api.matching.results[":id"].$get({
+				param: { id },
+			});
 			return unwrapApiResponse<MatchResultDetail>(res);
 		},
-		enabled: Boolean(id) && (options?.enabled !== false),
+		enabled: Boolean(id) && options?.enabled !== false,
 	});
 }

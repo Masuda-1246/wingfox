@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 export type SpeedDateStatus = "idle" | "connecting" | "talking" | "done";
 
 export interface TranscriptEntry {
+	id?: string;
 	source: "user" | "ai";
 	message: string;
 	timestamp: number;
@@ -88,6 +89,7 @@ export function useSpeedDate() {
 			setTranscript((prev) => [
 				...prev,
 				{
+					id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
 					source: source === "ai" ? "ai" : "user",
 					message,
 					timestamp: Date.now(),
@@ -103,50 +105,61 @@ export function useSpeedDate() {
 	const conversationRef = useRef(conversation);
 	conversationRef.current = conversation;
 
-	const startDate = useCallback(async (config: SpeedDateConfig) => {
-		setTranscript([]);
-		setRemainingMs(DURATION_MS);
-		setError(null);
-		setStatus("connecting");
-		hasConnectedRef.current = false;
-		clearConnectTimeout();
-		try {
-			// Request microphone permission first for a clearer error
-			await navigator.mediaDevices.getUserMedia({ audio: true });
-			connectTimeoutRef.current = setTimeout(() => {
-				if (!hasConnectedRef.current) {
-					console.error("[SpeedDate] Connection timeout");
-					setError("接続に時間がかかっています。ネットワークを確認して、もう一度お試しください。");
-					setStatus("idle");
-					void conversationRef.current.endSession().catch(() => undefined);
-				}
-			}, CONNECT_TIMEOUT_MS);
-			if (config.agentId) {
-				await conversationRef.current.startSession({
-					agentId: config.agentId,
-					connectionType: config.connectionType ?? "websocket",
-					overrides: config.overrides,
-				});
-			} else if (config.signedUrl) {
-				await conversationRef.current.startSession({
-					signedUrl: config.signedUrl,
-					overrides: config.overrides,
-				});
-			} else {
-				throw new Error("agentId or signedUrl is required");
-			}
-		} catch (err) {
+	const startDate = useCallback(
+		async (config: SpeedDateConfig) => {
+			setTranscript([]);
+			setRemainingMs(DURATION_MS);
+			setError(null);
+			setStatus("connecting");
+			hasConnectedRef.current = false;
 			clearConnectTimeout();
-			console.error("[SpeedDate] Failed to start session:", err);
-			const msg = err instanceof Error ? err.message : String(err);
-			if (msg.includes("Permission") || msg.includes("NotAllowedError") || msg.includes("dismissed")) {
-				setError("マイクのアクセスを許可してください。ブラウザのアドレスバーからマイクを許可できます。");
-			} else {
-				setError(msg || "セッションの開始に失敗しました");
+			try {
+				// Request microphone permission first for a clearer error
+				await navigator.mediaDevices.getUserMedia({ audio: true });
+				connectTimeoutRef.current = setTimeout(() => {
+					if (!hasConnectedRef.current) {
+						console.error("[SpeedDate] Connection timeout");
+						setError(
+							"接続に時間がかかっています。ネットワークを確認して、もう一度お試しください。",
+						);
+						setStatus("idle");
+						void conversationRef.current.endSession().catch(() => undefined);
+					}
+				}, CONNECT_TIMEOUT_MS);
+				if (config.agentId) {
+					await conversationRef.current.startSession({
+						agentId: config.agentId,
+						connectionType: config.connectionType ?? "websocket",
+						overrides: config.overrides,
+					});
+				} else if (config.signedUrl) {
+					await conversationRef.current.startSession({
+						signedUrl: config.signedUrl,
+						overrides: config.overrides,
+					});
+				} else {
+					throw new Error("agentId or signedUrl is required");
+				}
+			} catch (err) {
+				clearConnectTimeout();
+				console.error("[SpeedDate] Failed to start session:", err);
+				const msg = err instanceof Error ? err.message : String(err);
+				if (
+					msg.includes("Permission") ||
+					msg.includes("NotAllowedError") ||
+					msg.includes("dismissed")
+				) {
+					setError(
+						"マイクのアクセスを許可してください。ブラウザのアドレスバーからマイクを許可できます。",
+					);
+				} else {
+					setError(msg || "セッションの開始に失敗しました");
+				}
+				setStatus("idle");
 			}
-			setStatus("idle");
-		}
-	}, [clearConnectTimeout]);
+		},
+		[clearConnectTimeout],
+	);
 
 	const endDate = useCallback(async () => {
 		clearConnectTimeout();

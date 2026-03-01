@@ -66,7 +66,9 @@ export function useResetProfile() {
 	return useMutation({
 		mutationFn: async () => {
 			const res = await client.api.profiles.me.reset.$post();
-			return unwrapApiResponse<{ message: string; onboarding_status: string }>(res);
+			return unwrapApiResponse<{ message: string; onboarding_status: string }>(
+				res,
+			);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["profiles", "me"] });

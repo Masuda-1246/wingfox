@@ -1,14 +1,20 @@
+import { type TranscriptEntry, useSpeedDate } from "@/hooks/use-speed-date";
+import type { ApiError } from "@/lib/api";
+import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
+import { useGenerateProfile } from "@/lib/hooks/useProfile";
 import {
 	useCompleteSpeedDatingSession,
-	useSpeedDatingSignedUrl,
 	useSpeedDatingSessions,
+	useSpeedDatingSignedUrl,
 } from "@/lib/hooks/useSpeedDating";
-import { useGenerateProfile } from "@/lib/hooks/useProfile";
-import { useGenerateWingfoxPersona } from "@/lib/hooks/usePersonasApi";
-import { ApiError } from "@/lib/api";
-import { useSpeedDate, type TranscriptEntry } from "@/hooks/use-speed-date";
+import {
+	type PersistedPersona,
+	clearSpeedDatingSession,
+	loadSpeedDatingSession,
+	saveSpeedDatingSession,
+} from "@/lib/speed-dating-session-storage";
 import { useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
 	CheckCircle2,
 	Loader2,
@@ -20,14 +26,17 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-	clearSpeedDatingSession,
-	loadSpeedDatingSession,
-	saveSpeedDatingSession,
-	type PersistedPersona,
-} from "@/lib/speed-dating-session-storage";
 
 type GenerationPhase = "profile" | "wingfox" | "complete" | "error";
+
+/** Strip markdown formatting (bold, italic, headers) from AI transcript text */
+function stripMarkdown(text: string): string {
+	return text
+		.replace(/\*{1,3}(.+?)\*{1,3}/g, "$1") // **bold**, *italic*, ***both***
+		.replace(/_{1,3}(.+?)_{1,3}/g, "$1") // __bold__, _italic_
+		.replace(/^#{1,6}\s+/gm, "") // ## headers
+		.replace(/`([^`]+)`/g, "$1"); // `code`
+}
 
 const DATE_BACKGROUNDS = [
 	"https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1920&q=80&auto=format",
@@ -63,9 +72,12 @@ export function SpeedDatingSessionPage() {
 	const [personas, setPersonas] = useState<PersistedPersona[]>([]);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [personaIndex, setPersonaIndex] = useState(0);
-	const [phase, setPhase] = useState<"loading" | "connecting" | "chat" | "next" | "finalizing">("loading");
+	const [phase, setPhase] = useState<
+		"loading" | "connecting" | "chat" | "next" | "finalizing"
+	>("loading");
 	const [loadingMessage, setLoadingMessage] = useState("");
-	const [generationPhase, setGenerationPhase] = useState<GenerationPhase>("profile");
+	const [generationPhase, setGenerationPhase] =
+		useState<GenerationPhase>("profile");
 	const [generationError, setGenerationError] = useState<string | null>(null);
 	const completeSession = useCompleteSpeedDatingSession(sessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
@@ -76,6 +88,7 @@ export function SpeedDatingSessionPage() {
 		transcriptRef.current = transcript;
 	}, [transcript]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: transcript is the intentional trigger to scroll on new messages
 	useEffect(() => {
 		if (!scrollRef.current) return;
 		scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -89,11 +102,15 @@ export function SpeedDatingSessionPage() {
 			setSessionId(stored.sessionId);
 			setPersonaIndex(stored.personaIndex);
 			setPhase("connecting");
-			setLoadingMessage(t("speed_dating.preparing_chat", { name: stored.personas[stored.personaIndex].name }));
+			setLoadingMessage(
+				t("speed_dating.preparing_chat", {
+					name: stored.personas[stored.personaIndex].name,
+				}),
+			);
 			return;
 		}
 		// No stored state: go back to start
-		navigate({ to: "/onboarding/speed-dating" as "/onboarding/speed-dating" });
+		navigate({ to: "/onboarding/speed-dating" as const });
 	}, [navigate, t]);
 
 	// When we have sessionId and phase is connecting: get signed URL and start voice
@@ -117,14 +134,23 @@ export function SpeedDatingSessionPage() {
 					console.error("[SpeedDatingSession] getSignedUrl failed", err);
 					toast.error(t("speed_dating.error_voice_failed"));
 					clearSpeedDatingSession();
-					navigate({ to: "/onboarding/speed-dating" as "/onboarding/speed-dating" });
+					navigate({ to: "/onboarding/speed-dating" as const });
 				}
 			}
 		})();
 		return () => {
 			cancelled = true;
 		};
-	}, [phase, sessionId, personaIndex, personas]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [
+		phase,
+		sessionId,
+		personaIndex,
+		personas,
+		getSignedUrl.mutateAsync,
+		navigate,
+		startDate,
+		t,
+	]);
 
 	const runGeneration = useCallback(async () => {
 		setGenerationPhase("profile");
@@ -140,7 +166,9 @@ export function SpeedDatingSessionPage() {
 		} catch (e) {
 			console.error("[SpeedDatingSession] Generation failed:", e);
 			const err = e as ApiError;
-			setGenerationError(err?.message ?? t("speed_dating.generation_failed_desc"));
+			setGenerationError(
+				err?.message ?? t("speed_dating.generation_failed_desc"),
+			);
 			setGenerationPhase("error");
 		}
 	}, [generateProfile, generateWingfox, navigate, t]);
@@ -154,7 +182,10 @@ export function SpeedDatingSessionPage() {
 		if (handledDoneRef.current) return;
 		handledDoneRef.current = true;
 
-		const transcriptData = transcriptRef.current.map((e) => ({ source: e.source, message: e.message }));
+		const transcriptData = transcriptRef.current.map((e) => ({
+			source: e.source,
+			message: e.message,
+		}));
 		const persistPromise = completeSession.mutateAsync(transcriptData);
 
 		const run = async () => {
@@ -163,11 +194,17 @@ export function SpeedDatingSessionPage() {
 					const nextIndex = personaIndex + 1;
 					const nextPersona = personas[nextIndex];
 					if (!nextPersona) return;
-					setLoadingMessage(t("speed_dating.preparing_chat", { name: nextPersona.name }));
+					setLoadingMessage(
+						t("speed_dating.preparing_chat", { name: nextPersona.name }),
+					);
 					setPhase("next");
 
-					const nextSession = (await createSession.mutateAsync(nextPersona.id)) as { session_id: string };
-					const signedUrlData = await getSignedUrl.mutateAsync(nextSession.session_id);
+					const nextSession = (await createSession.mutateAsync(
+						nextPersona.id,
+					)) as { session_id: string };
+					const signedUrlData = await getSignedUrl.mutateAsync(
+						nextSession.session_id,
+					);
 
 					void persistPromise.catch((e) => {
 						console.error("[SpeedDatingSession] persist failed", e);
@@ -201,13 +238,25 @@ export function SpeedDatingSessionPage() {
 			}
 		};
 		run();
-	}, [voiceStatus, personaIndex, personas]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [
+		voiceStatus,
+		personaIndex,
+		personas,
+		completeSession.mutateAsync,
+		getSignedUrl.mutateAsync,
+		createSession.mutateAsync,
+		resetVoice,
+		runGeneration,
+		t,
+		startDate,
+	]);
 
 	const handleEndConversation = useCallback(() => endDate(), [endDate]);
 
 	const currentName = personas[personaIndex]?.name ?? "";
 	const isLowTime = remainingMs < 30_000;
-	const isVoiceActive = voiceStatus === "talking" || voiceStatus === "connecting";
+	const isVoiceActive =
+		voiceStatus === "talking" || voiceStatus === "connecting";
 
 	const GENERATION_STEPS = [
 		{ key: "profile" as const, label: t("speed_dating.step_profile") },
@@ -241,9 +290,12 @@ export function SpeedDatingSessionPage() {
 
 						<div className="text-center space-y-2">
 							<h3 className="text-xl font-bold">
-								{generationPhase === "profile" && t("speed_dating.generating_profile")}
-								{generationPhase === "wingfox" && t("speed_dating.generating_wingfox")}
-								{generationPhase === "complete" && t("speed_dating.generation_complete")}
+								{generationPhase === "profile" &&
+									t("speed_dating.generating_profile")}
+								{generationPhase === "wingfox" &&
+									t("speed_dating.generating_wingfox")}
+								{generationPhase === "complete" &&
+									t("speed_dating.generation_complete")}
 							</h3>
 						</div>
 
@@ -259,7 +311,9 @@ export function SpeedDatingSessionPage() {
 								return (
 									<div key={s.key} className="flex items-center gap-3">
 										{i > 0 && (
-											<div className={`w-8 h-0.5 ${isDone ? "bg-green-500" : "bg-muted"}`} />
+											<div
+												className={`w-8 h-0.5 ${isDone ? "bg-green-500" : "bg-muted"}`}
+											/>
 										)}
 										<div className="flex items-center gap-2">
 											<div
@@ -279,7 +333,9 @@ export function SpeedDatingSessionPage() {
 													i + 1
 												)}
 											</div>
-											<span className={`text-sm font-medium ${isDone ? "text-green-600" : isActive ? "text-foreground" : "text-muted-foreground"}`}>
+											<span
+												className={`text-sm font-medium ${isDone ? "text-green-600" : isActive ? "text-foreground" : "text-muted-foreground"}`}
+											>
 												{s.label}
 											</span>
 										</div>
@@ -292,7 +348,9 @@ export function SpeedDatingSessionPage() {
 					<>
 						<XCircle className="w-16 h-16 text-red-500" />
 						<div className="text-center space-y-2">
-							<h3 className="text-xl font-bold">{t("speed_dating.generation_failed_title")}</h3>
+							<h3 className="text-xl font-bold">
+								{t("speed_dating.generation_failed_title")}
+							</h3>
 							<p className="text-sm text-muted-foreground max-w-md">
 								{generationError ?? t("speed_dating.generation_failed_desc")}
 							</p>
@@ -386,7 +444,9 @@ export function SpeedDatingSessionPage() {
 				<div className="flex flex-col items-center gap-4 mb-8">
 					<div
 						className={`w-24 h-24 rounded-full border-4 flex items-center justify-center text-3xl font-bold text-white transition-all ${
-							isSpeaking ? "border-secondary bg-secondary/20 shadow-lg shadow-secondary/30 scale-110" : "border-white/30 bg-white/10"
+							isSpeaking
+								? "border-secondary bg-secondary/20 shadow-lg shadow-secondary/30 scale-110"
+								: "border-white/30 bg-white/10"
 						}`}
 					>
 						{currentName[0] ?? "?"}
@@ -396,7 +456,9 @@ export function SpeedDatingSessionPage() {
 						{voiceStatus === "connecting" && (
 							<div className="flex items-center gap-2 mt-1">
 								<Loader2 className="w-3 h-3 animate-spin text-white/60" />
-								<p className="text-sm text-white/60">{t("speed_dating.connecting")}</p>
+								<p className="text-sm text-white/60">
+									{t("speed_dating.connecting")}
+								</p>
 							</div>
 						)}
 						{voiceStatus === "talking" && (
@@ -410,17 +472,23 @@ export function SpeedDatingSessionPage() {
 											<span className="block h-5 w-1 animate-pulse rounded-full bg-secondary [animation-delay:100ms]" />
 											<span className="block h-3 w-1 animate-pulse rounded-full bg-secondary [animation-delay:250ms]" />
 										</div>
-										<span className="text-xs text-secondary">{t("speed_dating.speaking")}</span>
+										<span className="text-xs text-secondary">
+											{t("speed_dating.speaking")}
+										</span>
 									</>
 								) : (
-									<span className="text-xs text-white/60">{t("speed_dating.listening")}</span>
+									<span className="text-xs text-white/60">
+										{t("speed_dating.listening")}
+									</span>
 								)}
 							</div>
 						)}
 						{voiceStatus === "idle" && (
 							<div className="flex items-center gap-2 mt-1">
 								<Loader2 className="w-3 h-3 animate-spin text-white/60" />
-								<p className="text-sm text-white/60">{t("speed_dating.starting_voice")}</p>
+								<p className="text-sm text-white/60">
+									{t("speed_dating.starting_voice")}
+								</p>
 							</div>
 						)}
 					</div>
@@ -444,21 +512,25 @@ export function SpeedDatingSessionPage() {
 									: t("speed_dating.waiting_conversation")}
 							</p>
 						)}
-						{transcript.map((entry, i) => (
-							<motion.div
-								key={`${entry.timestamp}-${i}`}
+						{transcript.map((entry) => (
+							<m.div
+								key={entry.id ?? `${entry.timestamp}-${entry.source}`}
 								initial={{ opacity: 0, y: 5 }}
 								animate={{ opacity: 1, y: 0 }}
 								className={`flex ${entry.source === "ai" ? "justify-start" : "justify-end"}`}
 							>
 								<div
 									className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-										entry.source === "ai" ? "bg-white/15 text-white" : "bg-secondary text-white"
+										entry.source === "ai"
+											? "bg-white/15 text-white"
+											: "bg-secondary text-white"
 									}`}
 								>
-									{entry.message}
+									{entry.source === "ai"
+										? stripMarkdown(entry.message)
+										: entry.message}
 								</div>
-							</motion.div>
+							</m.div>
 						))}
 					</div>
 				</div>

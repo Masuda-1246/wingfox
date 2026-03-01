@@ -1,13 +1,24 @@
 import { client } from "@/api-client";
 import { unwrapApiResponse } from "@/lib/api";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 const directChatsApi = client.api["direct-chats"] as {
 	$get: () => Promise<Response>;
 	":id": {
 		messages: {
-			$get: (opts: { param: { id: string }; query?: { limit?: number; cursor?: string } }) => Promise<Response>;
-			$post: (opts: { param: { id: string }; json: { content: string } }) => Promise<Response>;
+			$get: (opts: {
+				param: { id: string };
+				query?: { limit?: number; cursor?: string };
+			}) => Promise<Response>;
+			$post: (opts: {
+				param: { id: string };
+				json: { content: string };
+			}) => Promise<Response>;
 		};
 	};
 };
@@ -81,14 +92,15 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 			const queryKey = ["direct-chats", roomId, "messages"];
 			await queryClient.cancelQueries({ queryKey });
 			const previous = queryClient.getQueryData(queryKey);
-			queryClient.setQueryData(queryKey, (old: any) => {
-				if (!old?.pages) return old;
-				const firstPage = old.pages[0];
+			queryClient.setQueryData(queryKey, (old: unknown) => {
+				if (!old || typeof old !== "object" || !("pages" in old)) return old;
+				const o = old as { pages: Array<{ data: unknown[] }> };
+				if (!o.pages?.[0]) return old;
 				return {
-					...old,
+					...o,
 					pages: [
 						{
-							...firstPage,
+							...o.pages[0],
 							data: [
 								{
 									id: `optimistic-${Date.now()}`,
@@ -98,10 +110,10 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 									is_read: false,
 									created_at: new Date().toISOString(),
 								},
-								...firstPage.data,
+								...o.pages[0].data,
 							],
 						},
-						...old.pages.slice(1),
+						...o.pages.slice(1),
 					],
 				};
 			});
@@ -109,11 +121,16 @@ export function useSendDirectChatMessage(roomId: string | undefined | null) {
 		},
 		onError: (_err, _content, context) => {
 			if (context?.previous) {
-				queryClient.setQueryData(["direct-chats", roomId, "messages"], context.previous);
+				queryClient.setQueryData(
+					["direct-chats", roomId, "messages"],
+					context.previous,
+				);
 			}
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["direct-chats", roomId, "messages"] });
+			queryClient.invalidateQueries({
+				queryKey: ["direct-chats", roomId, "messages"],
+			});
 			queryClient.invalidateQueries({ queryKey: ["direct-chats"] });
 		},
 	});

@@ -1,14 +1,9 @@
+import { useAuth } from "@/lib/auth";
 import { useAuthMe, useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { useProfileMe, useUpdateProfileMe } from "@/lib/hooks/useProfile";
 import { cn } from "@/lib/utils";
-import {
-	Globe,
-	Languages,
-	LogOut,
-	Save,
-	Trash2,
-	User,
-} from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Globe, Languages, LogOut, Save, Trash2, User } from "lucide-react";
 import { forwardRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -144,6 +139,8 @@ function SectionHeader({
 
 export function Settings() {
 	const { t, i18n } = useTranslation("settings");
+	const navigate = useNavigate();
+	const { signOut } = useAuth();
 	const { data: profile, isLoading, error } = useProfileMe();
 	useUpdateProfileMe();
 	const { data: authMe } = useAuthMe();
@@ -165,25 +162,32 @@ export function Settings() {
 			};
 			setBasicInfo({
 				nickname: authMe.nickname ?? "",
-				gender: authMe.gender ? genderMap[authMe.gender] ?? "" : "",
+				gender: authMe.gender ? (genderMap[authMe.gender] ?? "") : "",
 				birthYear: authMe.birth_year != null ? String(authMe.birth_year) : "",
 			});
 		}
 	}, [authMe]);
 
-
 	const handleSaveBasicInfo = async () => {
-		const genderApiMap: Record<string, "male" | "female" | "other" | "undisclosed"> = {
+		const genderApiMap: Record<
+			string,
+			"male" | "female" | "other" | "undisclosed"
+		> = {
 			男性: "male",
 			女性: "female",
 			その他: "other",
 			未回答: "undisclosed",
 		};
-		const gender = basicInfo.gender ? genderApiMap[basicInfo.gender] ?? "undisclosed" : "undisclosed";
+		const gender = basicInfo.gender
+			? (genderApiMap[basicInfo.gender] ?? "undisclosed")
+			: "undisclosed";
 		const birthYearNum = basicInfo.birthYear.trim()
 			? Number(basicInfo.birthYear)
 			: null;
-		if (birthYearNum != null && (Number.isNaN(birthYearNum) || birthYearNum < 1900 || birthYearNum > 2100)) {
+		if (
+			birthYearNum != null &&
+			(Number.isNaN(birthYearNum) || birthYearNum < 1900 || birthYearNum > 2100)
+		) {
 			toast.error(t("save_error"));
 			return;
 		}
@@ -198,6 +202,12 @@ export function Settings() {
 			console.error(err);
 			toast.error(t("save_error"));
 		}
+	};
+
+	const handleLogout = async () => {
+		await signOut();
+		toast.success(t("logout_success", "Signed out successfully"));
+		navigate({ to: "/login" });
 	};
 
 	const handleDeleteAccount = async () => {
@@ -217,7 +227,9 @@ export function Settings() {
 	if (error) {
 		return (
 			<div className="p-4 md:p-6 max-w-7xl mx-auto">
-				<p className="text-destructive">プロフィールの読み込みに失敗しました。</p>
+				<p className="text-destructive">
+					プロフィールの読み込みに失敗しました。
+				</p>
 			</div>
 		);
 	}
@@ -313,14 +325,16 @@ export function Settings() {
 								label: t("language_en"),
 							},
 						].map((option) => (
-							<div
+							<button
+								type="button"
 								key={option.id}
+								tabIndex={0}
 								onClick={() => i18n.changeLanguage(option.id)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") i18n.changeLanguage(option.id);
 								}}
 								className={cn(
-									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all",
+									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all w-full text-left",
 									i18n.language === option.id
 										? "bg-primary/10 border-primary shadow-sm"
 										: "bg-transparent border-transparent hover:bg-accent",
@@ -335,7 +349,7 @@ export function Settings() {
 									)}
 								/>
 								<p className="text-sm font-medium">{option.label}</p>
-							</div>
+							</button>
 						))}
 					</div>
 				</Card>
@@ -353,15 +367,13 @@ export function Settings() {
 								{t("danger_description")}
 							</p>
 							<div className="mt-6 flex flex-wrap gap-4">
-								<Button
-									variant="destructive"
-									onClick={handleDeleteAccount}
-								>
+								<Button variant="destructive" onClick={handleDeleteAccount}>
 									{t("delete_account")}
 								</Button>
 								<Button
 									variant="ghost"
 									className="text-muted-foreground"
+									onClick={handleLogout}
 								>
 									<LogOut className="w-4 h-4 mr-2" />
 									{t("logout")}

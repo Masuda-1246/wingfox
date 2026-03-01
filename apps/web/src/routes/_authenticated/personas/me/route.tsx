@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ContentPending } from "@/components/route-pending";
-import { PersonasMe } from "./-components/PersonasMe";
-import { queryClient } from "@/lib/query-client";
 import { client } from "@/api-client";
+import { ContentPending } from "@/components/route-pending";
 import { unwrapApiResponse } from "@/lib/api";
+import { queryClient } from "@/lib/query-client";
 import type { PersonaListItem, ProfileMe } from "@/lib/types";
+import { createFileRoute } from "@tanstack/react-router";
+import { PersonasMe } from "./-components/PersonasMe";
 
 export const Route = createFileRoute("/_authenticated/personas/me")({
 	pendingComponent: ContentPending,
@@ -17,7 +17,9 @@ export const Route = createFileRoute("/_authenticated/personas/me")({
 			queryClient.ensureQueryData({
 				queryKey: ["personas", "list", "wingfox"],
 				queryFn: async () => {
-					const res = await client.api.personas.$get({ query: { persona_type: "wingfox" } });
+					const res = await client.api.personas.$get({
+						query: { persona_type: "wingfox" },
+					});
 					return unwrapApiResponse<PersonaListItem[]>(res);
 				},
 			}),
@@ -45,7 +47,11 @@ export const Route = createFileRoute("/_authenticated/personas/me")({
 		]);
 
 		// Now prefetch sections if we got a persona (second wave, but persona data is in cache)
-		const personas = queryClient.getQueryData<PersonaListItem[]>(["personas", "list", "wingfox"]);
+		const personas = queryClient.getQueryData<PersonaListItem[]>([
+			"personas",
+			"list",
+			"wingfox",
+		]);
 		const personaId = personas && personas.length > 0 ? personas[0].id : null;
 		if (personaId) {
 			await queryClient.ensureQueryData({

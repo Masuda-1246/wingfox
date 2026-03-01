@@ -82,7 +82,7 @@ const SECTION_ORDER = [
 
 function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "female"; sections: Record<string, string> } {
 	const sections: Record<string, string> = {};
-	let name = "ペルソナ";
+	let name = "";
 	let gender: "male" | "female" = "female";
 	const lines = text.split("\n");
 	let currentSection = "";
@@ -90,7 +90,7 @@ function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "f
 
 	for (const line of lines) {
 		if (line.startsWith("name:")) {
-			name = line.replace(/^name:\s*/, "").trim();
+			name = line.replace(/^name:\s*/, "").trim().replace(/[*_#`"'"'「」]/g, "");
 			continue;
 		}
 		if (line.startsWith("gender:")) {
@@ -126,7 +126,17 @@ function parsePersonaMarkdown(text: string): { name: string; gender: "male" | "f
 	if (currentSection) {
 		sections[currentSection] = currentContent.join("\n").trim();
 	}
-	return { name, gender, sections };
+
+	// Fallback: if the LLM embedded the name inside the core identity text
+	// instead of outputting it as a separate "name:" line, try to extract it.
+	if (!name && sections.core_identity) {
+		const nameMatch = sections.core_identity.match(/(?:名前|name)[：:]\s*(.+?)(?:[。.、,\n]|$)/i);
+		if (nameMatch?.[1]) {
+			name = nameMatch[1].trim().replace(/[*_#`"'"'「」]/g, "");
+		}
+	}
+
+	return { name: name || "ペルソナ", gender, sections };
 }
 
 /** POST /api/speed-dating/personas - generate 3 virtual personas */
@@ -314,12 +324,13 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 	);
 
 	// Generate first message + fetch signed URL in parallel
+	const cleanName = persona.name.replace(/[*_#`"'"']/g, "");
 	const firstMessagePromise = (async () => {
 		const apiKey = c.env.MISTRAL_API_KEY;
 		if (!apiKey) return null;
 		const fmPrompt = lang === "en"
-			? `You are ${persona.name}. You just sat down for a speed date. Based on this persona document, write a SHORT, fun, natural opening line (1-2 sentences max). Don't just say "nice to meet you" — reference something from your personality, mood, or a recent experience to make it interesting. Be casual and warm. Speak as if you're actually talking out loud.\n\nPersona:\n${persona.compiled_document}\n\nWrite ONLY the opening line, nothing else.`
-			: `あなたは${persona.name}です。スピードデートに来たばかりです。以下のペルソナ情報をもとに、短くて面白い第一声を書いてください（1〜2文）。ただの「はじめまして、よろしく」ではなく、自分の性格・今の気分・最近の出来事などに触れて個性的に。実際に声に出して話すようなカジュアルなトーンで。\n\nペルソナ:\n${persona.compiled_document}\n\n第一声だけを出力してください。`;
+			? `You are ${cleanName} at a speed dating event. Write your opening greeting (1-2 sentences). Start by saying hi and your name, then add ONE short casual comment about your mood or how you're feeling tonight. Keep it simple and natural — like how a real person would greet a stranger on a first date. No Markdown.\n\nExample tone: "Hey, I'm Sakura! I just came from work so I'm a little tired, but honestly excited to be here."\n\nPersona for reference (use lightly — do NOT quote or describe details from this):\n${persona.compiled_document}\n\nWrite ONLY the greeting. Plain text, 1-2 sentences max.`
+			: `あなたは${cleanName}です。スピードデートの席に着いたところです。最初の挨拶を1〜2文で書いてください。まず「はじめまして、${cleanName}です」のように名乗ってから、今の気分やひとことだけ軽く添えてください。初対面の人に話しかけるような自然なトーンで。変に凝ったり個性的にしようとしないで、普通の挨拶で大丈夫です。Markdown記法は使わないでください。\n\n参考例:「はじめまして、さくらです！仕事帰りでちょっと疲れてるけど、楽しみにしてました〜」\n\nペルソナ情報（軽く参考にする程度で、ここから引用したり詳細を語らないこと）:\n${persona.compiled_document}\n\n挨拶だけをプレーンテキストで出力してください。1〜2文まで。`;
 		try {
 			return await chatComplete(apiKey, [{ role: "user", content: fmPrompt }], { maxTokens: 100 });
 		} catch {
@@ -348,8 +359,8 @@ speedDating.get("/sessions/:id/signed-url", requireAuth, async (c) => {
 
 	const generatedFirstMessage = await firstMessagePromise;
 	const fallback = lang === "en"
-		? `Hi! I'm ${persona.name}. Nice to meet you!`
-		: `はじめまして！${persona.name}です。よろしくね！`;
+		? `Hi! I'm ${cleanName}. Nice to meet you!`
+		: `はじめまして！${cleanName}です。よろしくね！`;
 	const firstMessage = generatedFirstMessage?.trim() || fallback;
 	const elMs = Date.now() - elStartedAt;
 	if (!elRes.ok) {

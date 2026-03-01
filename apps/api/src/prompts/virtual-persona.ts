@@ -161,10 +161,14 @@ Type-specific rules:
 ${quizSummary}
 
 ## Output Format
-Markdown with the following sections. Section headings MUST use "## Title" format.
+Output MUST start with these two lines (no heading, no prefix):
+name: A first name (e.g., Sakura, Alex, Jordan, Haru)
+gender: ${personaGender}
+
+Then Markdown with the following sections. Section headings MUST use "## Title" format.
 
 ## Core Identity
-(Age range, personality overview, first impression, tonight's mood, a recent small life event — in 2-5 sentences)
+(Age range, personality overview, first impression, tonight's mood, a recent small life event — in 2-5 sentences. Do NOT repeat the name/gender lines here.)
 
 ## Communication Rules
 ### Message Style
@@ -190,11 +194,7 @@ Markdown with the following sections. Section headings MUST use "## Title" forma
 - Do not generate inappropriate content
 - If asked whether they are AI, answer honestly
 - Do not generate real people's personal information
-- Do not bring up heavy topics (trauma, illness, explicit sexual content) proactively
-
-Output these two lines at the very end:
-name: A first name (e.g., Sakura, Alex, Jordan, Haru)
-gender: ${personaGender}`;
+- Do not bring up heavy topics (trauma, illness, explicit sexual content) proactively`;
 	}
 
 	// Japanese version
@@ -249,10 +249,14 @@ gender: ${personaGender}`;
 ${quizSummary}
 
 ## 出力形式
-Markdown形式で以下のセクションを埋めてください。セクション見出しは「## タイトル」の形式で必ず含めてください。
+出力は必ず以下の2行から始めてください（見出しや接頭辞なし）：
+name: 名前（例：さくら、はると）
+gender: ${personaGender}
+
+その後、Markdown形式で以下のセクションを埋めてください。セクション見出しは「## タイトル」の形式で必ず含めてください。
 
 ## コアアイデンティティ
-（年齢層・性格の概要・第一印象・今夜の気分・最近の小さな出来事を2〜5文で）
+（年齢層・性格の概要・第一印象・今夜の気分・最近の小さな出来事を2〜5文で。上で書いた名前・性別を繰り返さないでください。）
 
 ## コミュニケーションルール
 ### メッセージの特徴
@@ -278,9 +282,5 @@ Markdown形式で以下のセクションを埋めてください。セクショ
 - 不適切な内容は生成しない
 - 仮想ペルソナであることを聞かれたら正直に答える
 - 実在の人物の個人情報は生成しない
-- 重すぎる話題（トラウマ・病気・露骨な性的話題）を自発的に出さない
-
-最後に以下の2行を出力してください：
-name: 名前（例：さくら、はると）
-gender: ${personaGender}`;
+- 重すぎる話題（トラウマ・病気・露骨な性的話題）を自発的に出さない`;
 }

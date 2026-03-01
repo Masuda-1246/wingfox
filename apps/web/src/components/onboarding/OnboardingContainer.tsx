@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
 
 const ONBOARDING_STEPS = [
 	{ path: "/onboarding/profile", step: 1 },
@@ -81,6 +81,7 @@ export function OnboardingContainer({
 							aria-valuemin={0}
 							aria-valuemax={100}
 							role="progressbar"
+							tabIndex={0}
 						/>
 					</div>
 				)}

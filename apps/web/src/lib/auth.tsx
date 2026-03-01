@@ -1,12 +1,12 @@
 import { supabase } from "@/lib/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 import {
+	type ReactNode,
 	createContext,
 	useCallback,
 	useContext,
 	useEffect,
 	useState,
-	type ReactNode,
 } from "react";
 
 type AuthState = {
@@ -60,7 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const signIn = useCallback(async (email: string, password: string) => {
-		const { error } = await supabase.auth.signInWithPassword({ email, password });
+		const { error } = await supabase.auth.signInWithPassword({
+			email,
+			password,
+		});
 		return { error: error ? { message: error.message } : null };
 	}, []);
 
@@ -87,9 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		signOut,
 	};
 
-	return (
-		<AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-	);
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

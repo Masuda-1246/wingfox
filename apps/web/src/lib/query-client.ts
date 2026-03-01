@@ -1,5 +1,5 @@
-import { QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
+import { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export const queryClient = new QueryClient({
