@@ -9,7 +9,7 @@ import { Loader2, Sparkles, X, Inbox } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface DailyMatchBannerProps {
-	onMatchSelect: (matchId: string) => void;
+	onMatchSelect: (matchId: string, foxConversationId: string | null) => void;
 }
 
 export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
@@ -105,7 +105,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 						<button
 							key={match.id}
 							type="button"
-							onClick={() => onMatchSelect(match.id)}
+							onClick={() => onMatchSelect(match.id, match.fox_conversation_id)}
 							className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-secondary/10 transition-colors text-left"
 						>
 							<FoxAvatar
@@ -124,7 +124,9 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 										? t("score_measuring")
 										: match.status === "fox_conversation_failed"
 											? t("match_status_fox_failed")
-											: ""}
+											: match.fox_conversation_id
+												? t("daily_match_view_conversation")
+												: ""}
 								</span>
 							</div>
 							{match.final_score != null && (

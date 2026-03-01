@@ -164,6 +164,7 @@ export function Chat() {
 	const isMobile = useIsMobile();
 	const [mobileView, setMobileView] = useState<'list' | 'chat' | 'analysis'>('list');
 	const [activeFoxConvMap, setActiveFoxConvMap] = useState<Record<string, string>>({});
+	const [dailyMatchFoxConvMap, setDailyMatchFoxConvMap] = useState<Record<string, string>>({});
 	const activeFoxConvIds = useMemo(() => Object.values(activeFoxConvMap), [activeFoxConvMap]);
 	const anyFoxConvLive = activeFoxConvIds.length > 0;
 	const blockUser = useBlockUser();
@@ -210,7 +211,10 @@ export function Chat() {
 	const detail = matchDetail.data;
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
 	// Use fox_conversation_id mapped to the currently selected match, or fall back to match detail
-	const foxConversationId = activeFoxConvMap[activeSessionId] ?? detail?.fox_conversation_id ?? null;
+	const foxConversationId = activeFoxConvMap[activeSessionId]
+		?? dailyMatchFoxConvMap[activeSessionId]
+		?? detail?.fox_conversation_id
+		?? null;
 	const isFoxConvLive = Boolean(activeFoxConvMap[activeSessionId]);
 	const partnerId = detail?.partner_id ?? null;
 	const partnerName = detail?.partner?.nickname ?? sessions.find((s) => s.id === activeSessionId)?.partnerName ?? "";
@@ -505,10 +509,10 @@ export function Chat() {
 	// Set first match as active when matches load or current session is removed (stable deps to avoid re-run every render)
 	useEffect(() => {
 		const list = matchingData?.data ?? [];
-		if (list.length > 0 && (!activeSessionId || !list.some((m) => m.id === activeSessionId)) && !activeFoxConvMap[activeSessionId]) {
+		if (list.length > 0 && (!activeSessionId || !list.some((m) => m.id === activeSessionId)) && !activeFoxConvMap[activeSessionId] && !dailyMatchFoxConvMap[activeSessionId]) {
 			setActiveSessionId(list[0].id);
 		}
-	}, [matchingData?.data, activeSessionId, activeFoxConvMap]);
+	}, [matchingData?.data, activeSessionId, activeFoxConvMap, dailyMatchFoxConvMap]);
 
 	const handleReport = () => {
 		setShowReportModal(false);
@@ -548,9 +552,14 @@ export function Chat() {
 					</div>
 					{/* Daily Match Banner */}
 					<DailyMatchBanner
-						onMatchSelect={(matchId) => {
+						onMatchSelect={(matchId, foxConversationId) => {
 							setActiveSessionId(matchId);
+							if (foxConversationId) {
+								setDailyMatchFoxConvMap((prev) => ({ ...prev, [matchId]: foxConversationId }));
+							}
+							setActiveTab("fox");
 							if (isMobile) setMobileView('chat');
+							queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
 						}}
 					/>
 					{/* Fox Search Button & Progress */}

@@ -84,5 +84,6 @@
 	"daily_match_progress": "{{completed}}/{{total}} 完了",
 	"daily_match_view_details": "詳細を見る",
 	"daily_match_dismiss": "閉じる",
-	"daily_match_no_results": "本日の新しいマッチはありませんでした"
+	"daily_match_no_results": "本日の新しいマッチはありませんでした",
+	"daily_match_view_conversation": "Fox会話を見る >"
 }
