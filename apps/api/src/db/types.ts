@@ -19,6 +19,8 @@ export type Database = {
 					auth_user_id: string;
 					nickname: string;
 					gender: string | null;
+					birth_year: number | null;
+					language: string;
 					avatar_url: string | null;
 					onboarding_status: string;
 					notification_seen_at: string | null;
@@ -30,6 +32,8 @@ export type Database = {
 					auth_user_id: string;
 					nickname: string;
 					gender?: string | null;
+					birth_year?: number | null;
+					language?: string;
 					avatar_url?: string | null;
 					onboarding_status?: string;
 					notification_seen_at?: string | null;
@@ -233,36 +237,18 @@ export type Database = {
 				Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
 				Relationships: [];
 			};
-			daily_match_batches: {
+			daily_match_pairs: {
 				Row: {
-					id: string;
-					batch_date: string;
-					status: string;
-					total_users: number;
-					users_matched: number;
-					total_matches: number;
-					conversations_completed: number;
-					conversations_failed: number;
-					error_message: string | null;
-					started_at: string | null;
-					completed_at: string | null;
+					match_id: string;
+					match_date: string;
 					created_at: string;
 				};
 				Insert: {
-					id?: string;
-					batch_date: string;
-					status?: string;
-					total_users?: number;
-					users_matched?: number;
-					total_matches?: number;
-					conversations_completed?: number;
-					conversations_failed?: number;
-					error_message?: string | null;
-					started_at?: string | null;
-					completed_at?: string | null;
+					match_id: string;
+					match_date: string;
 					created_at?: string;
 				};
-				Update: Partial<Database["public"]["Tables"]["daily_match_batches"]["Insert"]>;
+				Update: Partial<Database["public"]["Tables"]["daily_match_pairs"]["Insert"]>;
 				Relationships: [];
 			};
 			matches: {
@@ -276,9 +262,6 @@ export type Database = {
 					score_details: Json;
 					layer_scores: Json;
 					status: string;
-					batch_id: string | null;
-					seen_by_a: boolean;
-					seen_by_b: boolean;
 					created_at: string;
 					updated_at: string;
 				};
@@ -292,9 +275,6 @@ export type Database = {
 					score_details?: Json;
 					layer_scores?: Json;
 					status?: string;
-					batch_id?: string | null;
-					seen_by_a?: boolean;
-					seen_by_b?: boolean;
 					created_at?: string;
 					updated_at?: string;
 				};

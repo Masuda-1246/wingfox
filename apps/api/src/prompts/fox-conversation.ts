@@ -2,44 +2,115 @@ export function buildFoxConversationSystemPrompt(
 	compiledDocument: string,
 	personaName: string,
 	lang: "ja" | "en" = "ja",
+	personaGender?: string | null,
 ): string {
+	const conversationName = normalizeConversationPersonaName(personaName);
+	const identityInstruction = buildConversationIdentityInstruction(
+		conversationName,
+		personaGender,
+		lang,
+	);
+
 	if (lang === "en") {
-		const nameInstruction =
-			personaName.trim().length > 0
-				? `Your name is "${personaName}". In conversation, refer to yourself as "${personaName}" or use first-person pronouns that fit the persona. Do not call yourself a "wingfox".\n\n`
-				: "";
-		return `You are the user's AI persona. ${nameInstruction}Have a conversation as the character described in the persona document below.
+		return `You are the user's AI persona. ${identityInstruction}Have a conversation as the character described in the persona document below.
 
 ${compiledDocument}
 
 Rules:
-- [MOST IMPORTANT] Keep each reply to around 50 characters. Never exceed 80 characters. Write only one sentence. Long replies are cut off due to token limits.
-- You are chatting with another fox persona, so ask questions naturally and share small self-disclosures
-- Keep it snappy like a short chat — avoid long discussions or explanations, use short sentences
+- [MOST IMPORTANT] Keep each reply around 50 characters. Never exceed 80 characters. Write only 1-2 sentences.
+- This is a conversation with someone you're getting to know as a friend. Ask and answer naturally, include small self-disclosures, stay relaxed, and keep the tone light and enjoyable.
+- Keep it snappy like a short chat — avoid long discussions or explanations, use short sentences.
 - Always end with a complete sentence. Never cut off mid-sentence
 - Do not use Markdown (no **bold**, ## headers, etc.). Write plain text only. Do not prefix with "**Name:**"
-- Greetings (hello, hi, etc.) only once at the very start. Do not repeat greetings from turn 2 onward
-- Follow the speaking style and tone from the "conversation reference" section of the persona document
-- Do not generate inappropriate content`;
+- Start with a light greeting, then continue naturally.
+- Do not say inappropriate content. You may naturally talk about your gender, age, hobbies, and things you like.`;
 	}
 
-	const nameInstruction =
-		personaName.trim().length > 0
-			? `あなたの名前は「${personaName}」です。会話では自分を「${personaName}」またはペルソナに合った一人称（僕・私・俺など）で話してください。「ウィングフォックス」とは名乗らないでください。\n\n`
-			: "";
-	return `あなたはユーザーのAIペルソナです。${nameInstruction}以下のペルソナドキュメントに基づいて、その人物として会話してください。
+	return `${identityInstruction}以下のルールに沿って会話してください。
 
 ${compiledDocument}
 
 ルール:
-- 【最重要】1回の返信は50字程度に収める。絶対に80字を超えない。1文だけ書く。長い返信はトークン制限で切れるため禁止。
-- 相手のフォックスとの会話なので、自然に質問し、自己開示を交える
+- 【最重要】1回の返信は50字程度に収める。絶対に80字を超えない。1~2文だけ書く。
+- これから友達になる人との会話なので、その場の自然な質問と返答・自己開示を行う。緊張せずにリラックスして話すように。話す内容は友達同士のように、楽しくて軽やかなものに。
 - 一言二言の短いチャットのように、テンポよく切り返す。長い議論や説明は避け、短文で会話する
 - 必ず完結した一文で終えること。文の途中で切らない
 - Markdown記法（**太字**や##見出しなど）は使わない。プレーンテキストのみで書く。名前の前に「**名前:**」のような形式は使わない
-- 挨拶（こんにちは等）は会話の最初の1回だけ。2ターン目以降は挨拶を繰り返さない
-- ペルソナドキュメントの「会話リファレンス」セクションの話し方・口調を基準にすること
-- 不適切な内容は生成しない`;
+- 最初に軽く挨拶をして、それ以降は自然な会話を続ける。
+- 不適切な内容は言わないこと。自分の性別・年齢・趣味・好きなものなどは自由に話してよい。`;
+}
+
+function normalizeConversationPersonaName(rawName: string): string {
+	const trimmed = rawName.trim();
+	// Keep stored persona names intact in DB; remove legacy suffix only for fox-to-fox dialogs.
+	const withoutSuffix = trimmed.replace(/\s*fox$/i, "").trim();
+	return withoutSuffix.length > 0 ? withoutSuffix : trimmed;
+}
+
+function buildConversationIdentityInstruction(
+	conversationName: string,
+	personaGender: string | null | undefined,
+	lang: "ja" | "en",
+): string {
+	const normalized = normalizeConversationGender(personaGender);
+	const hasName = conversationName.length > 0;
+	const hasGender = normalized !== "undisclosed";
+
+	if (lang === "en") {
+		const parts: string[] = [];
+		if (hasGender) {
+			const label = normalized === "other" ? "other" : normalized;
+			if (hasName) {
+				parts.push(
+					`Your name is "${conversationName}", and your gender is "${label}". In conversation, refer to yourself as "${conversationName}" or use natural first-person pronouns. Choose first-person pronouns and tone naturally so they do not feel inconsistent with this context.`,
+				);
+			} else {
+				parts.push(
+					`Your gender context is "${label}". Choose first-person pronouns and tone naturally so they do not feel inconsistent with this context. Do not force mentioning gender.`,
+				);
+			}
+		} else if (hasName) {
+			parts.push(
+				`Your name is "${conversationName}". In conversation, refer to yourself as "${conversationName}" or use natural first-person pronouns.`,
+			);
+		}
+		return parts.length > 0 ? `${parts.join(" ")}\n\n` : "";
+	}
+
+	const parts: string[] = [];
+	if (hasGender) {
+		const label =
+			normalized === "male"
+				? "男性"
+				: normalized === "female"
+					? "女性"
+					: "その他";
+		if (hasName) {
+			parts.push(
+				`あなたの名前は「${conversationName}」で、性別は「${label}」です。会話では自分を「${conversationName}」または一人称（僕・私など）で話し、一人称や語調はこの情報と不自然に矛盾しないよう自然に選んでください。`,
+			);
+		} else {
+			parts.push(
+				`あなたの性別情報は「${label}」です。一人称や語調はこの情報と不自然に矛盾しないよう自然に選び、無理に言及しないでください。`,
+			);
+		}
+	} else if (hasName) {
+		parts.push(
+			`あなたの名前は「${conversationName}」です。会話では自分を「${conversationName}」または一人称（僕・私など）で話してください。`,
+		);
+	}
+	return parts.length > 0 ? `${parts.join(" ")}\n\n` : "";
+}
+
+function normalizeConversationGender(
+	rawGender: string | null | undefined,
+): "male" | "female" | "other" | "undisclosed" {
+	const g = (rawGender ?? "").trim().toLowerCase();
+	if (g === "male") return "male";
+	if (g === "female") return "female";
+	if (g === "other") return "other";
+	if (g === "undisclosed") return "undisclosed";
+	return "undisclosed";
 }
 
 export function buildConversationScorePrompt(conversationLog: string, lang: "ja" | "en" = "ja"): string {
@@ -93,7 +164,7 @@ Notes:
 - Output JSON only`;
 	}
 
-	return `以下の2人のウィングフォックス同士の会話ログを読んで、相性を分析してください。
+	return `以下の2人の会話ログを読んで、相性を分析してください。
 
 ## 会話ログ
 ${conversationLog}

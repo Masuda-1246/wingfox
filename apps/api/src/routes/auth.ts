@@ -42,7 +42,9 @@ auth.get("/me", requireAuth, async (c) => {
 	const supabase = getSupabaseClient(c.env);
 	const { data, error } = await supabase
 		.from("user_profiles")
-		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url, notification_seen_at")
+		.select(
+			"id, nickname, gender, birth_year, language, onboarding_status, avatar_url, notification_seen_at",
+		)
 		.eq("id", userId)
 		.single();
 	if (error || !data) {
@@ -55,9 +57,10 @@ const updateMeSchema = z.object({
 	nickname: z.string().min(1).max(100).optional(),
 	gender: z.enum(["male", "female", "other", "undisclosed"]).optional(),
 	birth_year: z.number().int().min(1900).max(2100).nullable().optional(),
+	language: z.enum(["ja", "en"]).optional(),
 });
 
-/** PUT /api/auth/me - update current user profile (nickname, gender, birth_year) */
+/** PUT /api/auth/me - update current user profile (nickname, gender, birth_year, language) */
 auth.put("/me", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const parsed = updateMeSchema.safeParse(await c.req.json());
@@ -69,11 +72,14 @@ auth.put("/me", requireAuth, async (c) => {
 	if (parsed.data.nickname !== undefined) updates.nickname = parsed.data.nickname;
 	if (parsed.data.gender !== undefined) updates.gender = parsed.data.gender;
 	if (parsed.data.birth_year !== undefined) updates.birth_year = parsed.data.birth_year;
+	if (parsed.data.language !== undefined) updates.language = parsed.data.language;
 	const { data, error } = await supabase
 		.from("user_profiles")
 		.update(updates)
 		.eq("id", userId)
-		.select("id, nickname, gender, birth_year, onboarding_status, avatar_url, notification_seen_at")
+		.select(
+			"id, nickname, gender, birth_year, language, onboarding_status, avatar_url, notification_seen_at",
+		)
 		.single();
 	if (error) {
 		return jsonError(c, "INTERNAL_ERROR", "Failed to update profile");

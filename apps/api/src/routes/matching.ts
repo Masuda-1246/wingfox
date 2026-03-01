@@ -4,6 +4,7 @@ import { getSupabaseClient } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { jsonData, jsonError } from "../lib/response";
 import { parseLimit, parseCursor } from "../lib/pagination";
+import { getTodayInTimeZone, TOKYO_TIMEZONE } from "../lib/date";
 
 const matching = new Hono<Env>();
 
@@ -237,33 +238,58 @@ matching.get("/daily-results", requireAuth, async (c) => {
 	const userId = c.get("user_id");
 	const supabase = getSupabaseClient(c.env);
 	const dateParam = c.req.query("date");
-	const batchDate = dateParam ?? new Date().toISOString().split("T")[0];
+	const batchDate = dateParam ?? getTodayInTimeZone(TOKYO_TIMEZONE);
 
-	// バッチ取得
-	const { data: batch } = await supabase
-		.from("daily_match_batches")
-		.select("id, batch_date, status, conversations_completed, conversations_failed, total_matches")
-		.eq("batch_date", batchDate)
-		.maybeSingle();
+	const { data: pairs, error: pairsError } = await supabase
+		.from("daily_match_pairs")
+		.select("match_id")
+		.eq("match_date", batchDate);
 
-	if (!batch) {
+	if (pairsError) {
+		return jsonError(c, "INTERNAL_ERROR", "Failed to fetch daily match pairs");
+	}
+
+	const dailyMatchIds = (pairs ?? []).map((pair) => pair.match_id);
+
+	if (dailyMatchIds.length === 0) {
 		return c.json({
 			data: {
 				batch_date: batchDate,
-				batch_status: null,
+				batch_status: "completed",
 				matches: [],
 				is_new: false,
+				conversations_completed: 0,
+				conversations_failed: 0,
+				total_matches: 0,
 			},
 		});
 	}
 
-	// バッチに属するマッチを取得（自分が関与するもの）
-	const { data: batchMatches } = await supabase
+	// 当日に作成された日次マッチのうち、自分が関与するものを取得
+	const { data: dayMatches, error: matchesError } = await supabase
 		.from("matches")
-		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, seen_by_a, seen_by_b, batch_id, score_details")
-		.eq("batch_id", batch.id)
+		.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, score_details")
+		.in("id", dailyMatchIds)
 		.or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
 		.order("final_score", { ascending: false, nullsFirst: false });
+
+	if (matchesError) {
+		return jsonError(c, "INTERNAL_ERROR", "Failed to fetch daily matches");
+	}
+
+	if (!dayMatches?.length) {
+		return c.json({
+			data: {
+				batch_date: batchDate,
+				batch_status: "completed",
+				matches: [],
+				is_new: false,
+				conversations_completed: 0,
+				conversations_failed: 0,
+				total_matches: 0,
+			},
+		});
+	}
 
 	// ブロックフィルタリング
 	const [{ data: blockedByMe }, { data: blockedMe }] = await Promise.all([
@@ -278,9 +304,23 @@ matching.get("/daily-results", requireAuth, async (c) => {
 	const partnerId = (m: { user_a_id: string; user_b_id: string }) =>
 		m.user_a_id === userId ? m.user_b_id : m.user_a_id;
 
-	const filtered = (batchMatches ?? []).filter(
+	const filtered = dayMatches.filter(
 		(m) => !blockedIds.has(partnerId(m)),
 	);
+
+	if (filtered.length === 0) {
+		return c.json({
+			data: {
+				batch_date: batchDate,
+				batch_status: "completed",
+				matches: [],
+				is_new: false,
+				conversations_completed: 0,
+				conversations_failed: 0,
+				total_matches: 0,
+			},
+		});
+	}
 
 	// パートナー情報取得
 	const partnerIds = filtered.map((m) => partnerId(m));
@@ -301,12 +341,6 @@ matching.get("/daily-results", requireAuth, async (c) => {
 	const personaIconMap = new Map((partnerPersonas ?? []).map((p) => [p.user_id, p.icon_url]));
 	const fcMap = new Map((foxConvs ?? []).map((f) => [f.match_id, f]));
 
-	// 未閲覧チェック
-	const hasUnseen = filtered.some((m) => {
-		if (m.user_a_id === userId) return !m.seen_by_a;
-		return !m.seen_by_b;
-	});
-
 	const results = filtered.map((m) => {
 		const pid = partnerId(m);
 		const partner = profileMap.get(pid);
@@ -326,56 +360,24 @@ matching.get("/daily-results", requireAuth, async (c) => {
 			conversation_score: m.conversation_score,
 			status: m.status,
 			fox_conversation_id: fc?.id ?? null,
+			score_details: m.score_details,
 		};
 	});
 
+	const conversationsCompleted = filtered.filter((m) => m.status === "fox_conversation_completed").length;
+	const conversationsFailed = filtered.filter((m) => m.status === "fox_conversation_failed").length;
+
 	return c.json({
 		data: {
-			batch_date: batch.batch_date,
-			batch_status: batch.status,
+			batch_date: batchDate,
+			batch_status: "completed",
 			matches: results,
-			is_new: hasUnseen,
-			conversations_completed: batch.conversations_completed,
-			conversations_failed: batch.conversations_failed,
-			total_matches: batch.total_matches,
+			is_new: results.length > 0,
+			conversations_completed: conversationsCompleted,
+			conversations_failed: conversationsFailed,
+			total_matches: results.length,
 		},
 	});
-});
-
-/** POST /api/matching/daily-results/seen — 閲覧済みマーク */
-matching.post("/daily-results/seen", requireAuth, async (c) => {
-	const userId = c.get("user_id");
-	const supabase = getSupabaseClient(c.env);
-	const body = (await c.req.json().catch(() => ({}))) as { date?: string };
-	const batchDate = body.date ?? new Date().toISOString().split("T")[0];
-
-	const { data: batch } = await supabase
-		.from("daily_match_batches")
-		.select("id")
-		.eq("batch_date", batchDate)
-		.maybeSingle();
-
-	if (!batch) return jsonData(c, { updated: 0 });
-
-	// user_a として参加しているマッチの seen_by_a を更新
-	const { data: asA } = await supabase
-		.from("matches")
-		.update({ seen_by_a: true })
-		.eq("batch_id", batch.id)
-		.eq("user_a_id", userId)
-		.eq("seen_by_a", false)
-		.select("id");
-
-	// user_b として参加しているマッチの seen_by_b を更新
-	const { data: asB } = await supabase
-		.from("matches")
-		.update({ seen_by_b: true })
-		.eq("batch_id", batch.id)
-		.eq("user_b_id", userId)
-		.eq("seen_by_b", false)
-		.select("id");
-
-	return jsonData(c, { updated: (asA?.length ?? 0) + (asB?.length ?? 0) });
 });
 
 export default matching;

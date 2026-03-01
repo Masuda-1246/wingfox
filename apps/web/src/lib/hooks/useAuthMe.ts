@@ -12,6 +12,7 @@ export interface AuthMe {
 	nickname: string;
 	gender?: string | null;
 	birth_year?: number | null;
+	language?: "ja" | "en";
 	onboarding_status: string;
 	avatar_url?: string | null;
 	notification_seen_at?: string | null;
@@ -41,6 +42,7 @@ export function useUpdateAuthMe() {
 			nickname?: string;
 			gender?: "male" | "female" | "other" | "undisclosed";
 			birth_year?: number | null;
+			language?: "ja" | "en";
 		}) => {
 			const res = await client.api.auth.me.$put({ json: body });
 			return unwrapApiResponse<AuthMe>(res);

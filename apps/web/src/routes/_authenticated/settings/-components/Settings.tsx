@@ -137,6 +137,10 @@ function SectionHeader({
 	);
 }
 
+function isCurrentLanguage(current: string, optionId: "ja" | "en") {
+	return current === optionId || (current ?? "").startsWith(`${optionId}-`);
+}
+
 export function Settings() {
 	const { t, i18n } = useTranslation("settings");
 	const navigate = useNavigate();
@@ -200,6 +204,19 @@ export function Settings() {
 			toast.success(t("updated_toast"));
 		} catch (err) {
 			console.error(err);
+			toast.error(t("save_error"));
+		}
+	};
+
+	const handleLanguageChange = async (nextLang: "ja" | "en") => {
+		if (isCurrentLanguage(i18n.language, nextLang)) return;
+		const prevLang = i18n.language;
+		await i18n.changeLanguage(nextLang);
+		try {
+			await updateAuthMe.mutateAsync({ language: nextLang });
+		} catch (err) {
+			console.error(err);
+			await i18n.changeLanguage(prevLang);
 			toast.error(t("save_error"));
 		}
 	};
@@ -317,11 +334,11 @@ export function Settings() {
 					<div className="space-y-4 mt-4">
 						{[
 							{
-								id: "ja",
+								id: "ja" as const,
 								label: t("language_ja"),
 							},
 							{
-								id: "en",
+								id: "en" as const,
 								label: t("language_en"),
 							},
 						].map((option) => (
@@ -329,13 +346,15 @@ export function Settings() {
 								type="button"
 								key={option.id}
 								tabIndex={0}
-								onClick={() => i18n.changeLanguage(option.id)}
+								onClick={() => void handleLanguageChange(option.id)}
 								onKeyDown={(e) => {
-									if (e.key === "Enter") i18n.changeLanguage(option.id);
+									if (e.key === "Enter") {
+										void handleLanguageChange(option.id);
+									}
 								}}
 								className={cn(
 									"cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all w-full text-left",
-									i18n.language === option.id
+									isCurrentLanguage(i18n.language, option.id)
 										? "bg-primary/10 border-primary shadow-sm"
 										: "bg-transparent border-transparent hover:bg-accent",
 								)}
@@ -343,7 +362,7 @@ export function Settings() {
 								<Globe
 									className={cn(
 										"w-5 h-5",
-										i18n.language === option.id
+										isCurrentLanguage(i18n.language, option.id)
 											? "text-primary"
 											: "text-muted-foreground",
 									)}
