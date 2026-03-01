@@ -41,6 +41,14 @@
 
 開発・テスト時に、UI 経由のオンボーディングフロー（ユーザー登録→クイズ→スピードデーティング→FOX 生成）をスキップして、即座に利用可能なユーザーを作成できます。
 
+### 英語版スクリプト
+
+英語のプロフィール/FOX セクション内容で作成したい場合は、`create-user-with-fox-en.sh` を使います（引数は同じ）。
+
+```bash
+./scripts/create-user-with-fox-en.sh --email en-user@test.com --password testpass123 --preset outdoor
+```
+
 ### 前提条件
 
 - `curl` と `jq` がインストールされていること

@@ -1,3 +1,5 @@
+import { useAuth } from "@/lib/auth";
+import { useUpdateAuthMe } from "@/lib/hooks/useAuthMe";
 import { cn } from "@/lib/utils";
 import { Globe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +16,8 @@ function isCurrentLanguage(current: string, optionId: string) {
 
 export function LanguageSwitcher({ className }: { className?: string }) {
 	const { t, i18n } = useTranslation("settings");
+	const { user } = useAuth();
+	const updateAuthMe = useUpdateAuthMe();
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
 
@@ -26,6 +30,25 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 		document.addEventListener("mousedown", handleClickOutside);
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
+
+	const handleLanguageChange = async (nextLang: "ja" | "en") => {
+		if (isCurrentLanguage(i18n.language, nextLang)) {
+			setOpen(false);
+			return;
+		}
+		const prevLang = i18n.language;
+		await i18n.changeLanguage(nextLang);
+		setOpen(false);
+
+		// Persist preference only when signed in.
+		if (!user) return;
+		try {
+			await updateAuthMe.mutateAsync({ language: nextLang });
+		} catch (err) {
+			console.error(err);
+			await i18n.changeLanguage(prevLang);
+		}
+	};
 
 	return (
 		<div ref={ref} className={cn("relative", className)}>
@@ -53,10 +76,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 							role="option"
 							aria-selected={isCurrentLanguage(i18n.language, option.id)}
 							type="button"
-							onClick={() => {
-								i18n.changeLanguage(option.id);
-								setOpen(false);
-							}}
+							onClick={() => void handleLanguageChange(option.id)}
 							className={cn(
 								"flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
 								isCurrentLanguage(i18n.language, option.id)

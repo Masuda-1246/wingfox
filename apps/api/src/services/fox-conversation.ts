@@ -5,7 +5,7 @@ import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
 import { truncateFoxMessage } from "../lib/truncate";
-import { detectLangFromDocument } from "../lib/lang";
+import { resolveConversationLangFromUserSettings } from "../lib/lang";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -94,7 +94,7 @@ export async function runFoxConversation(
 			.eq("user_id", userB)
 			.eq("persona_type", "wingfox")
 			.single(),
-		supabase.from("user_profiles").select("id, gender").in("id", [userA, userB]),
+		supabase.from("user_profiles").select("id, gender, language").in("id", [userA, userB]),
 	]);
 	if (!personaA?.compiled_document || !personaB?.compiled_document) {
 		console.error(`[runFoxConversation] Persona missing for conversation ${conversationId}: personaA=${!!personaA?.compiled_document}, personaB=${!!personaB?.compiled_document}`);
@@ -105,11 +105,18 @@ export async function runFoxConversation(
 	const genderByUserId = new Map<string, string | null>(
 		(userProfiles ?? []).map((row) => [row.id, row.gender]),
 	);
+	const languageByUserId = new Map<string, string | null>(
+		(userProfiles ?? []).map((row) => [row.id, row.language]),
+	);
 	await supabase
 		.from("fox_conversations")
 		.update({ status: "in_progress", started_at: new Date().toISOString() })
 		.eq("id", conversationId);
-	const lang = detectLangFromDocument(personaA.compiled_document);
+	const lang = resolveConversationLangFromUserSettings(
+		languageByUserId.get(userA),
+		languageByUserId.get(userB),
+		personaA.compiled_document,
+	);
 	const systemA = buildFoxConversationSystemPrompt(
 		personaA.compiled_document,
 		personaA.name ?? "",

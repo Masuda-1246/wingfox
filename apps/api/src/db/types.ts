@@ -19,6 +19,8 @@ export type Database = {
 					auth_user_id: string;
 					nickname: string;
 					gender: string | null;
+					birth_year: number | null;
+					language: string;
 					avatar_url: string | null;
 					onboarding_status: string;
 					created_at: string;
@@ -29,6 +31,8 @@ export type Database = {
 					auth_user_id: string;
 					nickname: string;
 					gender?: string | null;
+					birth_year?: number | null;
+					language?: string;
 					avatar_url?: string | null;
 					onboarding_status?: string;
 					created_at?: string;

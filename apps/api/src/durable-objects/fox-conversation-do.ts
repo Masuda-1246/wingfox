@@ -8,7 +8,7 @@ import {
 	buildConversationScorePrompt,
 } from "../prompts/fox-conversation";
 import { truncateFoxMessage } from "../lib/truncate";
-import { detectLangFromDocument } from "../lib/lang";
+import { resolveConversationLangFromUserSettings } from "../lib/lang";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -123,7 +123,7 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.single(),
 			supabase
 				.from("user_profiles")
-				.select("id, gender")
+				.select("id, gender, language")
 				.in("id", [match.user_a_id, match.user_b_id]),
 		]);
 
@@ -143,6 +143,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 		const genderByUserId = new Map<string, string | null>(
 			(userProfiles ?? []).map((row) => [row.id, row.gender]),
 		);
+		const languageByUserId = new Map<string, string | null>(
+			(userProfiles ?? []).map((row) => [row.id, row.language]),
+		);
 
 		// Update conversation status
 		await supabase
@@ -151,7 +154,11 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			.eq("id", conversationId);
 
 		// Save state to durable storage
-		const lang = detectLangFromDocument(personaA.compiled_document);
+		const lang = resolveConversationLangFromUserSettings(
+			languageByUserId.get(match.user_a_id),
+			languageByUserId.get(match.user_b_id),
+			personaA.compiled_document,
+		);
 		const state: DOState = {
 			conversationId,
 			matchId,
