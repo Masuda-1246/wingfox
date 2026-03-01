@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="apps/web/public/logo.png" alt="WingFox" width="120" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/Hono-🔥-E36002?logo=hono&logoColor=white" alt="Hono" />
+  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Mistral_AI-Powered-FF7000?logo=data:image/svg+xml;base64,&logoColor=white" alt="Mistral AI" />
+  <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+</p>
+
 # WingFox - AI Matchmaking Agent
 
 Your personal fox AI that finds your ideal partner.
