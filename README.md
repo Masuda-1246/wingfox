@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/Hono-🔥-E36002?logo=hono&logoColor=white" alt="Hono" />
+  <img src="https://img.shields.io/badge/Hono-4.9.6-E36002?logo=hono&logoColor=white" alt="Hono" />
   <img src="https://img.shields.io/badge/Vite-6.1.0-646CFF?logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/TanStack_Router-1.121.2-FF4154?logoColor=white" alt="TanStack Router" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-4.0.6-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
@@ -15,7 +15,7 @@
 
 # WingFox - AI Matchmaking Agent
 
-**本番URL**: https://wingfox.single-quatro.workers.dev
+**Production URL**: https://wingfox.single-quatro.workers.dev
 
 Your personal fox AI that finds your ideal partner.
 
@@ -55,7 +55,7 @@ Matches are evaluated on five dimensions derived from Interaction DNA:
 | ビルドツール | Vite | 6.1.0 |
 | スタイリング | Tailwind CSS | 4.0.6 |
 | UI コンポーネント | shadcn/ui + Radix UI | - |
-| バックエンド | Hono (Cloudflare Workers) | - |
+| バックエンド | Hono (Cloudflare Workers) | 4.9.6 |
 | データベース / 認証 | Supabase (PostgreSQL) | - |
 | AI | Mistral API | - |
 | リンター / フォーマッター | Biome | 1.9.4 |
