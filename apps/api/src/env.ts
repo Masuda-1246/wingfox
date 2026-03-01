@@ -1,5 +1,5 @@
 /** Minimal DO namespace interface so env.ts compiles without @cloudflare/workers-types */
-interface DONamespace {
+export interface DONamespace {
 	idFromName(name: string): unknown;
 	get(id: unknown): { fetch(req: Request): Promise<Response> };
 }
