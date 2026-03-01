@@ -95,7 +95,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 			</div>
 
 			{/* 進行中メッセージ */}
-			{isInProgress && !hasMatches && (
+			{isInProgress && (
 				<p className="text-[10px] font-bold text-muted-foreground mb-1">
 					{t("daily_match_in_progress")}
 				</p>
