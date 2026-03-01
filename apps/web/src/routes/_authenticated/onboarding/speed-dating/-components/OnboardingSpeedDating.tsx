@@ -255,7 +255,11 @@ export function OnboardingSpeedDating() {
 										<button
 											type="button"
 											onClick={regenerateDates}
-											disabled={isStarting || isRegenerating || generatePersonas.isPending}
+											disabled={
+												isStarting ||
+												isRegenerating ||
+												generatePersonas.isPending
+											}
 											className="inline-flex items-center gap-2 rounded-full border-2 border-secondary/40 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/10 hover:border-secondary transition-colors disabled:opacity-40"
 										>
 											{isRegenerating ? (
@@ -317,7 +321,11 @@ export function OnboardingSpeedDating() {
 										<button
 											type="button"
 											onClick={startSpeedDate}
-											disabled={isStarting || isRegenerating || generatePersonas.isPending}
+											disabled={
+												isStarting ||
+												isRegenerating ||
+												generatePersonas.isPending
+											}
 											className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 disabled:hover:scale-100 shadow-md shadow-secondary/20"
 										>
 											{isStarting ? (
