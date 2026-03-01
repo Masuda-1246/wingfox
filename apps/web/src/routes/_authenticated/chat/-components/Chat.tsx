@@ -27,6 +27,7 @@ import {
 } from "@/lib/hooks/usePartnerFoxChats";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import { AnimatePresence, m } from "framer-motion";
 import {
 	AlertTriangle,
@@ -37,6 +38,7 @@ import {
 	Mail,
 	MessageCircle,
 	PieChart,
+	RefreshCw,
 	Search,
 	Send,
 	ShieldAlert,
@@ -172,9 +174,22 @@ export function Chat() {
 		});
 	}, [sessions]);
 
-	const [activeSessionId, setActiveSessionId] = useState<string>(
-		sessions[0]?.id ?? "",
-	);
+	const search = useSearch({ from: "/_authenticated/chat" });
+	const [activeSessionId, setActiveSessionId] = useState<string>("");
+
+	// Sync activeSessionId from URL (deep link) or sessions: initial from search.match_id or first session; fix if current selection not in list
+	useEffect(() => {
+		if (sessions.length === 0) return;
+		const validFromSearch =
+			search.match_id && sessions.some((s) => s.id === search.match_id);
+		if (activeSessionId === "" && validFromSearch && search.match_id) {
+			setActiveSessionId(search.match_id);
+		} else if (activeSessionId === "" && sessions[0]) {
+			setActiveSessionId(sessions[0].id);
+		} else if (!sessions.some((s) => s.id === activeSessionId) && sessions[0]) {
+			setActiveSessionId(sessions[0].id);
+		}
+	}, [sessions, search.match_id, activeSessionId]);
 	const [inputValue, setInputValue] = useState("");
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showUnmatchModal, setShowUnmatchModal] = useState(false);
@@ -304,23 +319,32 @@ export function Chat() {
 		Boolean(pendingRequestForMatch);
 
 	// Auto-select appropriate tab when match status changes (do not switch to partner_fox when only completed)
+	// When there's a pending DM request for this match, show "direct" tab so user sees approve/decline buttons.
+	// When match status is direct_chat_requested (request sent, no room yet), always show "direct" tab so both
+	// requester sees "waiting" and responder sees approve/decline as soon as pendingRequestForMatch loads.
 	useEffect(() => {
 		if (directChatRoomId) {
 			setActiveTab("direct");
 		} else if (
+			pendingRequestForMatch ||
+			detail?.status === "direct_chat_requested"
+		) {
+			setActiveTab("direct");
+		} else if (
 			partnerFoxChatId ||
 			(detail?.status &&
-				[
-					"partner_chat_started",
-					"direct_chat_requested",
-					"direct_chat_active",
-				].includes(detail.status))
+				["partner_chat_started", "direct_chat_active"].includes(detail.status))
 		) {
 			setActiveTab("partner_fox");
 		} else {
 			setActiveTab("fox");
 		}
-	}, [directChatRoomId, partnerFoxChatId, detail?.status]);
+	}, [
+		directChatRoomId,
+		partnerFoxChatId,
+		detail?.status,
+		pendingRequestForMatch,
+	]);
 
 	// Resolve messages for active session based on active tab
 	const activeMessages: Message[] = useMemo(() => {
@@ -980,6 +1004,41 @@ export function Chat() {
 							)}
 							<button
 								type="button"
+								onClick={async () => {
+									if (activeTab === "direct" && directChatRoomId) {
+										await directMessages.refetch();
+										queryClient.invalidateQueries({
+											queryKey: ["direct-chats"],
+										});
+										toast.success(t("reload_talk"));
+									} else if (activeTab === "partner_fox" && partnerFoxChatId) {
+										await partnerFoxMessages.refetch();
+										toast.success(t("reload_talk"));
+									} else if (activeTab === "fox" && foxConversationId) {
+										await foxMessages.refetch();
+										toast.success(t("reload_talk"));
+									}
+								}}
+								disabled={
+									(activeTab === "direct" && directMessages.isRefetching) ||
+									(activeTab === "partner_fox" &&
+										partnerFoxMessages.isRefetching) ||
+									(activeTab === "fox" && foxMessages.isRefetching)
+								}
+								className="p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+								title={t("reload_talk")}
+							>
+								{(activeTab === "direct" && directMessages.isRefetching) ||
+								(activeTab === "partner_fox" &&
+									partnerFoxMessages.isRefetching) ||
+								(activeTab === "fox" && foxMessages.isRefetching) ? (
+									<Loader2 className="w-5 h-5 animate-spin" />
+								) : (
+									<RefreshCw className="w-5 h-5" />
+								)}
+							</button>
+							<button
+								type="button"
 								onClick={() => setShowUnmatchModal(true)}
 								className="p-2 text-muted-foreground hover:text-orange-500 transition-colors"
 								title={t("unmatch")}
@@ -1067,26 +1126,7 @@ export function Chat() {
 						{activeTab === "direct" &&
 							!directChatRoomId &&
 							(() => {
-								// State B: Request already sent (requester side)
-								if (
-									detail?.chat_request_status === "pending" ||
-									detail?.status === "direct_chat_requested"
-								) {
-									return (
-										<div className="flex flex-col items-center justify-center py-16 text-center">
-											<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-												<Clock className="w-8 h-8 text-muted-foreground" />
-											</div>
-											<h3 className="text-lg font-black mb-2">
-												{t("direct_chat_request_sent")}
-											</h3>
-											<p className="text-sm text-muted-foreground">
-												{t("direct_chat_request_pending")}
-											</p>
-										</div>
-									);
-								}
-								// State: Received request (responder side)
+								// State: Received request (responder side) — check FIRST so we show approve/decline when user received the request
 								if (pendingRequestForMatch) {
 									return (
 										<div className="flex flex-col items-center justify-center py-16 text-center">
@@ -1111,7 +1151,8 @@ export function Chat() {
 																action: "accept",
 															});
 															toast.success(t("direct_chat_accepted"));
-															queryClient.invalidateQueries({
+															// Refetch match detail so direct_chat_room_id is available and chat UI shows immediately
+															await queryClient.refetchQueries({
 																queryKey: [
 																	"matching",
 																	"results",
@@ -1150,6 +1191,25 @@ export function Chat() {
 													{t("direct_chat_decline")}
 												</button>
 											</div>
+										</div>
+									);
+								}
+								// State B: Request already sent (requester side)
+								if (
+									detail?.chat_request_status === "pending" ||
+									detail?.status === "direct_chat_requested"
+								) {
+									return (
+										<div className="flex flex-col items-center justify-center py-16 text-center">
+											<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+												<Clock className="w-8 h-8 text-muted-foreground" />
+											</div>
+											<h3 className="text-lg font-black mb-2">
+												{t("direct_chat_request_sent")}
+											</h3>
+											<p className="text-sm text-muted-foreground">
+												{t("direct_chat_request_pending")}
+											</p>
 										</div>
 									);
 								}

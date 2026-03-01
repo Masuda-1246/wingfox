@@ -1,6 +1,10 @@
 import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useAuth } from "@/lib/auth";
 import { useAuthMe } from "@/lib/hooks/useAuthMe";
+import { useChatRequestNotifications } from "@/lib/hooks/useChatRequestNotifications";
+import { usePendingChatRequests } from "@/lib/hooks/useChatRequests";
+import type { PendingChatRequest } from "@/lib/hooks/useChatRequests";
+import { useDirectChatRooms } from "@/lib/hooks/useDirectChats";
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, m } from "framer-motion";
@@ -61,13 +65,51 @@ function Button({
 
 export function UpperHeader() {
 	const { t } = useTranslation("common");
+	const { t: tNotif } = useTranslation("notification");
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+	const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 	const userMenuRef = useRef<HTMLDivElement>(null);
+	const notificationRef = useRef<HTMLDivElement>(null);
+	const lastSeenNotificationCountRef = useRef(0);
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { user, signOut } = useAuth();
 	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
 	const isAuthenticated = Boolean(user);
+
+	useChatRequestNotifications();
+	const { data: pendingRequests = [], refetch: refetchPending } =
+		usePendingChatRequests({
+			refetchInterval: 15_000,
+		});
+	const { data: directChatRooms = [], refetch: refetchRooms } =
+		useDirectChatRooms({
+			refetchInterval: 15_000,
+		});
+	const pendingCount = pendingRequests.length;
+	const roomsWithUnread = directChatRooms.filter(
+		(r) => (r.unread_count ?? 0) > 0,
+	);
+	const totalNotificationCount = pendingCount + roomsWithUnread.length;
+	const unseenCount = Math.max(
+		0,
+		totalNotificationCount - lastSeenNotificationCountRef.current,
+	);
+
+	// 通知を開いた時点で「確認した」とみなし、バッジを消す（閉じたあとも消えたまま。新規が来たらまた表示）
+	useEffect(() => {
+		if (isNotificationOpen) {
+			lastSeenNotificationCountRef.current = totalNotificationCount;
+		}
+	}, [isNotificationOpen, totalNotificationCount]);
+
+	// Refetch notification counts when opening the dropdown so badge is up to date
+	useEffect(() => {
+		if (isNotificationOpen) {
+			void refetchPending();
+			void refetchRooms();
+		}
+	}, [isNotificationOpen, refetchPending, refetchRooms]);
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -76,6 +118,12 @@ export function UpperHeader() {
 				!userMenuRef.current.contains(event.target as Node)
 			) {
 				setIsUserMenuOpen(false);
+			}
+			if (
+				notificationRef.current &&
+				!notificationRef.current.contains(event.target as Node)
+			) {
+				setIsNotificationOpen(false);
 			}
 		}
 		document.addEventListener("mousedown", handleClickOutside);
@@ -104,17 +152,101 @@ export function UpperHeader() {
 				<div className="flex items-center gap-2 shrink-0 ml-auto">
 					{isAuthenticated ? (
 						<>
-							<div className="relative">
+							<div className="relative" ref={notificationRef}>
 								<Button
 									variant="ghost"
 									size="icon"
 									className="relative text-muted-foreground hover:text-foreground"
+									onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+									aria-label={tNotif("dm_requests_section")}
 								>
 									<Bell className="w-5 h-5" />
-									<span className="absolute top-2.5 right-2.5 flex h-2 w-2">
-										<span className="relative inline-flex rounded-full h-2 w-2 bg-secondary" />
-									</span>
+									{unseenCount > 0 && (
+										<span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+											{unseenCount > 99 ? "99+" : unseenCount}
+										</span>
+									)}
 								</Button>
+
+								<AnimatePresence>
+									{isNotificationOpen && (
+										<m.div
+											initial={{ opacity: 0, y: 8, scale: 0.98 }}
+											animate={{ opacity: 1, y: 0, scale: 1 }}
+											exit={{ opacity: 0, y: 8, scale: 0.98 }}
+											transition={{ duration: 0.1, ease: "easeOut" }}
+											className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-card p-1.5 text-card-foreground"
+										>
+											{/* DM requests */}
+											<div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+												{tNotif("dm_requests_section")}
+											</div>
+											{pendingCount === 0 ? (
+												<div className="px-3 py-2 text-center text-xs text-muted-foreground">
+													—
+												</div>
+											) : (
+												<ul className="max-h-40 space-y-0.5 overflow-y-auto">
+													{pendingRequests.map((r: PendingChatRequest) => (
+														<li key={r.id}>
+															<Link
+																to="/chat"
+																search={{ match_id: r.match_id }}
+																className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-accent"
+																onClick={() => setIsNotificationOpen(false)}
+															>
+																<span className="font-medium">
+																	{tNotif("dm_request_from", {
+																		name: r.requester.nickname ?? "",
+																	})}
+																</span>
+																<span className="text-xs text-muted-foreground">
+																	{tNotif("go_to_chat")}
+																</span>
+															</Link>
+														</li>
+													))}
+												</ul>
+											)}
+
+											{/* New messages (unread DMs) */}
+											{roomsWithUnread.length > 0 && (
+												<>
+													<div className="mt-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+														{tNotif("dm_messages_section")}
+													</div>
+													<ul className="max-h-40 space-y-0.5 overflow-y-auto">
+														{roomsWithUnread.map((room) => (
+															<li key={room.id}>
+																<Link
+																	to="/chat"
+																	search={{ match_id: room.match_id }}
+																	className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-accent"
+																	onClick={() => setIsNotificationOpen(false)}
+																>
+																	<span className="font-medium">
+																		{tNotif("dm_message_from_in_list", {
+																			name: room.partner?.nickname ?? "",
+																		})}
+																	</span>
+																	<span className="text-xs text-muted-foreground">
+																		{tNotif("go_to_chat")}
+																	</span>
+																</Link>
+															</li>
+														))}
+													</ul>
+												</>
+											)}
+
+											{totalNotificationCount === 0 && (
+												<div className="px-3 py-4 text-center text-sm text-muted-foreground">
+													{tNotif("notifications_empty")}
+												</div>
+											)}
+										</m.div>
+									)}
+								</AnimatePresence>
 							</div>
 
 							<div className="relative ml-2" ref={userMenuRef}>

@@ -44,6 +44,7 @@ directChats.get("/", requireAuth, async (c) => {
 				.eq("is_read", false);
 			return {
 				id: r.id,
+				match_id: r.match_id,
 				partner: partner ? { nickname: partner.nickname, avatar_url: partner.avatar_url } : null,
 				last_message: lastMsg ? { content: lastMsg.content, created_at: lastMsg.created_at, is_mine: lastMsg.sender_id === userId } : null,
 				unread_count: count ?? 0,
