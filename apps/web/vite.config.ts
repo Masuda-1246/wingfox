@@ -16,6 +16,9 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    watch: {
+      ignored: ["**/src/routeTree.gen.ts"],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

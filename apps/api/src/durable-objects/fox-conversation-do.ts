@@ -8,6 +8,7 @@ import {
 	buildConversationScorePrompt,
 } from "../prompts/fox-conversation";
 import { truncateFoxMessage } from "../lib/truncate";
+import { detectLangFromDocument } from "../lib/lang";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -36,6 +37,7 @@ interface DOState {
 	userB: string;
 	systemA: string;
 	systemB: string;
+	lang: "ja" | "en";
 	history: { speaker: "A" | "B"; content: string }[];
 	currentRound: number;
 	status: "in_progress" | "completed" | "failed";
@@ -142,13 +144,15 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			.eq("id", conversationId);
 
 		// Save state to durable storage
+		const lang = detectLangFromDocument(personaA.compiled_document);
 		const state: DOState = {
 			conversationId,
 			matchId,
 			userA: match.user_a_id,
 			userB: match.user_b_id,
-			systemA: buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? ""),
-			systemB: buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? ""),
+			systemA: buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "", lang),
+			systemB: buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "", lang),
+			lang,
 			history: [],
 			currentRound: 0,
 			status: "in_progress",
@@ -208,13 +212,16 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			// Determine speaker
 			const speaker: "A" | "B" = nextRound % 2 === 1 ? "A" : "B";
 			const systemPrompt = speaker === "A" ? state.systemA : state.systemB;
+			const lang = state.lang ?? "ja";
+			const selfLabel = lang === "en" ? "Me" : "自分";
+			const otherLabel = lang === "en" ? "Them" : "相手";
 			const context = state.history.length
 				? state.history
 						.map((m) =>
-							m.speaker === speaker ? `自分: ${m.content}` : `相手: ${m.content}`,
+							m.speaker === speaker ? `${selfLabel}: ${m.content}` : `${otherLabel}: ${m.content}`,
 						)
 						.join("\n\n")
-				: "自己紹介と、相手に一言聞いてください。";
+				: lang === "en" ? "Introduce yourself and ask the other person a question." : "自己紹介と、相手に一言聞いてください。";
 
 			console.log(`[FoxConversationDO:alarm] Calling LLM speaker=${speaker} historyLen=${state.history.length} conversationId=${state.conversationId}`);
 
@@ -225,7 +232,8 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 
 			console.log(`[FoxConversationDO:alarm] LLM response received rawLen=${raw?.length ?? 0} conversationId=${state.conversationId}`);
 
-			const content = (raw && truncateFoxMessage(raw)) || "（応答なし）";
+			const fallback = lang === "en" ? "(No response)" : "（応答なし）";
+			const content = (raw && truncateFoxMessage(raw)) || fallback;
 			const speakerUserId = speaker === "A" ? state.userA : state.userB;
 
 			// Insert message to DB
@@ -356,7 +364,8 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			let conversationFeatureScores: FeatureScore[] = [];
 			try {
 				console.log(`[FoxConversationDO:computeScores] Calling LLM for score conversationId=${state.conversationId}`);
-				const scorePrompt = buildConversationScorePrompt(logText);
+				const scoreLang = state.lang ?? "ja";
+				const scorePrompt = buildConversationScorePrompt(logText, scoreLang);
 				const scoreRaw = await chatComplete(
 					apiKey,
 					[{ role: "user", content: scorePrompt }],

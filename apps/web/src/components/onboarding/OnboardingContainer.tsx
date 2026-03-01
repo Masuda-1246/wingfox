@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 
@@ -51,10 +52,11 @@ export function OnboardingContainer({
 	return (
 		<div
 			className={cn(
-				"min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6 bg-background",
+				"relative min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-6 bg-background",
 				className,
 			)}
 		>
+			<LanguageSwitcher className="absolute top-4 right-4" />
 			<div className={cn("w-full space-y-6", maxWidthClass[effectiveMaxWidth])}>
 				{!hideStepIndicator && (
 					<div className="flex items-center justify-center gap-2 pt-2">

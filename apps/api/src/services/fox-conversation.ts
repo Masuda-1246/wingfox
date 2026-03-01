@@ -5,6 +5,7 @@ import { chatComplete } from "./mistral";
 import { buildFoxConversationSystemPrompt } from "../prompts/fox-conversation";
 import { buildConversationScorePrompt } from "../prompts/fox-conversation";
 import { truncateFoxMessage } from "../lib/truncate";
+import { detectLangFromDocument } from "../lib/lang";
 import {
 	hasTraitScores,
 	getProfileScoreDetailsForUsers,
@@ -102,8 +103,9 @@ export async function runFoxConversation(
 		.from("fox_conversations")
 		.update({ status: "in_progress", started_at: new Date().toISOString() })
 		.eq("id", conversationId);
-	const systemA = buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "");
-	const systemB = buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "");
+	const lang = detectLangFromDocument(personaA.compiled_document);
+	const systemA = buildFoxConversationSystemPrompt(personaA.compiled_document, personaA.name ?? "", lang);
+	const systemB = buildFoxConversationSystemPrompt(personaB.compiled_document, personaB.name ?? "", lang);
 
 	// Build history from existing messages (for retry: resume from existing)
 	const history: { speaker: "A" | "B"; content: string }[] = (existingMsgs ?? []).map((m) => ({
@@ -114,13 +116,15 @@ export async function runFoxConversation(
 
 	for (let round = startRound; round <= TOTAL_ROUNDS_LOCAL; round++) {
 		const systemPrompt = currentSpeaker === "A" ? systemA : systemB;
+		const selfLabel = lang === "en" ? "Me" : "自分";
+		const otherLabel = lang === "en" ? "Them" : "相手";
 		const context = history.length
 			? history
 					.map((m) =>
-						m.speaker === currentSpeaker ? `自分: ${m.content}` : `相手: ${m.content}`,
+						m.speaker === currentSpeaker ? `${selfLabel}: ${m.content}` : `${otherLabel}: ${m.content}`,
 					)
 					.join("\n\n")
-			: "自己紹介と、相手に一言聞いてください。";
+			: lang === "en" ? "Introduce yourself and ask the other person a question." : "自己紹介と、相手に一言聞いてください。";
 		let raw: string | null = null;
 		const MAX_RETRIES = 3;
 		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -149,7 +153,8 @@ export async function runFoxConversation(
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 		}
-		const content = (raw && truncateFoxMessage(raw)) || "（応答なし）";
+		const fallback = lang === "en" ? "(No response)" : "（応答なし）";
+		const content = (raw && truncateFoxMessage(raw)) || fallback;
 		const speakerUserId = currentSpeaker === "A" ? userA : userB;
 		await supabase.from("fox_conversation_messages").insert({
 			conversation_id: conversationId,
@@ -185,7 +190,7 @@ export async function runFoxConversation(
 	let conversationFeatureScores: FeatureScore[] = [];
 
 	try {
-		const scorePrompt = buildConversationScorePrompt(logText);
+		const scorePrompt = buildConversationScorePrompt(logText, lang);
 		const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
 			maxTokens: 1024,
 			responseFormat: { type: "json_object" },
