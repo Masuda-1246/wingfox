@@ -5,7 +5,7 @@ import {
 } from "@/lib/hooks/useDailyMatchResults";
 import type { DailyMatchItem } from "@/lib/hooks/useDailyMatchResults";
 import { motion } from "framer-motion";
-import { Loader2, Sparkles, X, Inbox } from "lucide-react";
+import { Inbox, Loader2, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface DailyMatchBannerProps {
@@ -110,8 +110,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 						>
 							<FoxAvatar
 								iconUrl={
-									match.partner?.persona_icon_url ??
-									match.partner?.avatar_url
+									match.partner?.persona_icon_url ?? match.partner?.avatar_url
 								}
 								className="w-8 h-8 rounded-full object-cover shrink-0"
 							/>

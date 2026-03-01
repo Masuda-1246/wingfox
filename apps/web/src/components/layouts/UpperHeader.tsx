@@ -1,6 +1,7 @@
 import { WingfoxLogo } from "@/components/icons/WingfoxLogo";
 import { useAuth } from "@/lib/auth";
 import { useAuthMe } from "@/lib/hooks/useAuthMe";
+import { useDailyMatchResults } from "@/lib/hooks/useDailyMatchResults";
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, m } from "framer-motion";
@@ -15,7 +16,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useDailyMatchResults } from "@/lib/hooks/useDailyMatchResults";
 
 const CURRENT_USER_PLACEHOLDER = {
 	name: "User",
@@ -68,7 +68,9 @@ export function UpperHeader() {
 	const navigate = useNavigate();
 	const { user, signOut } = useAuth();
 	const { data: authMe } = useAuthMe({ enabled: Boolean(user) });
-	const { data: dailyResults } = useDailyMatchResults({ enabled: Boolean(user) });
+	const { data: dailyResults } = useDailyMatchResults({
+		enabled: Boolean(user),
+	});
 	const hasNewDailyMatch = dailyResults?.is_new ?? false;
 	const isAuthenticated = Boolean(user);
 

@@ -25,7 +25,6 @@ import {
 	usePartnerFoxChatMessages,
 	useSendPartnerFoxMessage,
 } from "@/lib/hooks/usePartnerFoxChats";
-import { DailyMatchBanner } from "./DailyMatchBanner";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, m } from "framer-motion";
@@ -49,6 +48,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { DailyMatchBanner } from "./DailyMatchBanner";
 
 interface Message {
 	id: string;
@@ -643,7 +643,12 @@ export function Chat() {
 		) {
 			setActiveSessionId(list[0].id);
 		}
-	}, [matchingData?.data, activeSessionId, activeFoxConvMap, dailyMatchFoxConvMap]);
+	}, [
+		matchingData?.data,
+		activeSessionId,
+		activeFoxConvMap,
+		dailyMatchFoxConvMap,
+	]);
 
 	const handleReport = () => {
 		setShowReportModal(false);
@@ -690,11 +695,16 @@ export function Chat() {
 						onMatchSelect={(matchId, foxConversationId) => {
 							setActiveSessionId(matchId);
 							if (foxConversationId) {
-								setDailyMatchFoxConvMap((prev) => ({ ...prev, [matchId]: foxConversationId }));
+								setDailyMatchFoxConvMap((prev) => ({
+									...prev,
+									[matchId]: foxConversationId,
+								}));
 							}
 							setActiveTab("fox");
-							if (isMobile) setMobileView('chat');
-							queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+							if (isMobile) setMobileView("chat");
+							queryClient.invalidateQueries({
+								queryKey: ["matching", "results"],
+							});
 						}}
 					/>
 					{/* Fox Search Button & Progress */}
