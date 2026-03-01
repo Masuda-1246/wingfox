@@ -3,14 +3,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/Hono-🔥-E36002?logo=hono&logoColor=white" alt="Hono" />
+  <img src="https://img.shields.io/badge/Vite-6.1.0-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/TanStack_Router-1.121.2-FF4154?logoColor=white" alt="TanStack Router" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4.0.6-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Mistral_AI-Powered-FF7000?logo=data:image/svg+xml;base64,&logoColor=white" alt="Mistral AI" />
   <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
 # WingFox - AI Matchmaking Agent
+
+**本番URL**: https://wingfox.single-quatro.workers.dev
 
 Your personal fox AI that finds your ideal partner.
 
@@ -40,6 +45,23 @@ Matches are evaluated on five dimensions derived from Interaction DNA:
 | Self-Disclosure Harmony | Mutual vulnerability and acceptance |
 | Thought Jump Rate | How similarly two people free-associate between topics |
 | Trust Factor | Consistency between stated preferences and actual behavior |
+
+## Tech Stack
+
+| カテゴリ | 技術 | バージョン |
+|---|---|---|
+| UI ライブラリ | React | 19.0.0 |
+| ルーティング | TanStack Router | 1.121.2 |
+| ビルドツール | Vite | 6.1.0 |
+| スタイリング | Tailwind CSS | 4.0.6 |
+| UI コンポーネント | shadcn/ui + Radix UI | - |
+| バックエンド | Hono (Cloudflare Workers) | - |
+| データベース / 認証 | Supabase (PostgreSQL) | - |
+| AI | Mistral API | - |
+| リンター / フォーマッター | Biome | 1.9.4 |
+| テスト | Vitest + Testing Library | 3.0.5 |
+| ランタイム | Node.js | 22 |
+| パッケージマネージャー | pnpm | 10.13.1 |
 
 ## Setup
 

@@ -4,7 +4,7 @@ import type { DailyMatchItem } from "@/lib/hooks/useDailyMatchResults";
 import { useRetryFoxConversation } from "@/lib/hooks/useFoxSearch";
 import { useQueryClient } from "@tanstack/react-query";
 import { m } from "framer-motion";
-import { Inbox, Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -45,22 +45,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 			initial={{ opacity: 0, y: -10 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, y: -10 }}
-			className="mb-3 shrink-0 rounded-2xl border border-secondary/30 bg-secondary/5 p-3"
 		>
-			{/* ヘッダー */}
-			<div className="flex items-center justify-between mb-2">
-				<div className="flex items-center gap-1.5 text-sm font-bold">
-					{hasMatches ? (
-						<Sparkles className="w-4 h-4 text-secondary" />
-					) : (
-						<Inbox className="w-4 h-4 text-muted-foreground" />
-					)}
-					<span>
-						{hasMatches ? t("daily_match_title") : t("daily_match_no_results")}
-					</span>
-				</div>
-			</div>
-
 			{/* マッチ一覧 */}
 			{hasMatches && (
 				<div className="space-y-1.5">
