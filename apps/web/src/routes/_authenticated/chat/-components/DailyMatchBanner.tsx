@@ -94,6 +94,13 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 				)}
 			</div>
 
+			{/* 進行中メッセージ */}
+			{isInProgress && !hasMatches && (
+				<p className="text-[10px] font-bold text-muted-foreground mb-1">
+					{t("daily_match_in_progress")}
+				</p>
+			)}
+
 			{/* マッチ一覧 */}
 			{hasMatches && (
 				<div className="space-y-1.5">
@@ -134,7 +141,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 											t("retry_measurement", "再測定")
 										)}
 									</button>
-								) : (
+								) : match.status === "fox_conversation_completed" ? (
 									(() => {
 										const topTopic = getTopTopic(match);
 										return topTopic ? (
@@ -143,7 +150,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 											</span>
 										) : null;
 									})()
-								)}
+								) : null}
 							</div>
 							{match.final_score != null && (
 								<div className="text-xs font-black text-secondary shrink-0">

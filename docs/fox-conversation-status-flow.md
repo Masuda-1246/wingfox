@@ -108,7 +108,7 @@
 |---|---|
 | `fox_conversation_in_progress` | スコア欄に「マッチ度測定中」（青パルス） |
 | `fox_conversation_failed` | 「会話失敗」バッジ（赤） + **「再測定」ボタン** |
-| **`fox_conversation_completed`** | **「再測定」ボタンのみ** ← ★問題箇所 |
+| **`fox_conversation_completed`** | **トピック分布の最も高い項目** |
 | `chat_request_expired` | 「リクエスト期限切れ」（黄） |
 | `chat_request_declined` | 「リクエスト辞退」（橙） |
 | その他 | lastMessage テキスト |
