@@ -35,6 +35,8 @@
 	"unmatch_success": "Successfully unmatched",
 	"unmatch_error": "Failed to unmatch",
 	"no_matches": "No matches found",
+	"empty_state_title": "No matches yet",
+	"empty_state_description": "Tap Explore Foxes above to find someone to chat with.",
 	"fox_search_button": "Explore Foxes",
 	"fox_search_searching": "Searching...",
 	"fox_search_in_progress": "Fox conversation in progress",

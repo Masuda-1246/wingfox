@@ -35,6 +35,8 @@
 	"unmatch_success": "マッチを解消しました",
 	"unmatch_error": "マッチ解消に失敗しました",
 	"no_matches": "マッチング結果がありません",
+	"empty_state_title": "まだマッチがいません",
+	"empty_state_description": "上の「Foxを探索する」から、話したい相手を探してみましょう。",
 	"fox_search_button": "Foxを探索する",
 	"fox_search_searching": "検索中...",
 	"fox_search_in_progress": "Fox会話が進行中です",
