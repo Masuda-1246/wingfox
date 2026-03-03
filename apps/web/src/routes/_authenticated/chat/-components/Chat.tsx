@@ -164,6 +164,7 @@ export function Chat() {
 	const queryClient = useQueryClient();
 	const { data: matchingData, isLoading } = useMatchingResults(
 		{
+			limit: 100,
 			status:
 				"fox_conversation_in_progress,fox_conversation_completed,fox_conversation_failed,partner_chat_started,direct_chat_requested,direct_chat_active,chat_request_expired,chat_request_declined",
 		},
@@ -198,30 +199,6 @@ export function Chat() {
 	const search = useSearch({ from: "/_authenticated/chat" });
 	const [activeSessionId, setActiveSessionId] = useState<string>("");
 
-	// Sync activeSessionId from URL (deep link) or sessions: initial from search.match_id or first session; fix if current selection not in list
-	useEffect(() => {
-		if (sessions.length === 0) return;
-		const validFromSearch =
-			search.match_id && sessions.some((s) => s.id === search.match_id);
-		if (activeSessionId === "" && validFromSearch && search.match_id) {
-			setActiveSessionId(search.match_id);
-		} else if (activeSessionId === "" && sessions[0]) {
-			// Prefer a session with completed scores so analysis panel shows real data (not placeholder 50%)
-			const withScore = sessions.find(
-				(s) =>
-					s.matchStatus === "fox_conversation_completed" &&
-					s.compatibilityScore != null,
-			);
-			setActiveSessionId((withScore ?? sessions[0]).id);
-		} else if (!sessions.some((s) => s.id === activeSessionId) && sessions[0]) {
-			const withScore = sessions.find(
-				(s) =>
-					s.matchStatus === "fox_conversation_completed" &&
-					s.compatibilityScore != null,
-			);
-			setActiveSessionId((withScore ?? sessions[0]).id);
-		}
-	}, [sessions, search.match_id, activeSessionId]);
 	const [inputValue, setInputValue] = useState("");
 	const [showReportModal, setShowReportModal] = useState(false);
 	const [showUnmatchModal, setShowUnmatchModal] = useState(false);
@@ -237,6 +214,35 @@ export function Chat() {
 		[activeFoxConvMap],
 	);
 	const anyFoxConvLive = activeFoxConvIds.length > 0;
+
+	// Sync activeSessionId from URL (deep link) or sessions; when not in list, reset unless current is measuring (Explore Fox just started)
+	useEffect(() => {
+		if (sessions.length === 0) return;
+		const validFromSearch =
+			search.match_id && sessions.some((s) => s.id === search.match_id);
+		if (activeSessionId === "" && validFromSearch && search.match_id) {
+			setActiveSessionId(search.match_id);
+		} else if (activeSessionId === "" && sessions[0]) {
+			const withScore = sessions.find(
+				(s) =>
+					s.matchStatus === "fox_conversation_completed" &&
+					s.compatibilityScore != null,
+			);
+			setActiveSessionId((withScore ?? sessions[0]).id);
+		} else if (
+			!sessions.some((s) => s.id === activeSessionId) &&
+			sessions[0] &&
+			!activeFoxConvMap[activeSessionId]
+		) {
+			const withScore = sessions.find(
+				(s) =>
+					s.matchStatus === "fox_conversation_completed" &&
+					s.compatibilityScore != null,
+			);
+			setActiveSessionId((withScore ?? sessions[0]).id);
+		}
+	}, [sessions, search.match_id, activeSessionId, activeFoxConvMap]);
+
 	const blockUser = useBlockUser();
 	const startFoxSearch = useStartFoxSearch();
 	const retryFoxConversation = useRetryFoxConversation();
@@ -274,8 +280,29 @@ export function Chat() {
 				newlyCompleted = true;
 			}
 		}
+		let timeoutId: number | undefined;
 		if (newlyCompleted) {
 			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+			const completedSessionIds = [...Object.keys(activeFoxConvMap)];
+			for (const sessionId of completedSessionIds) {
+				queryClient.invalidateQueries({
+					queryKey: ["matching", "results", sessionId],
+				});
+				queryClient.refetchQueries({
+					queryKey: ["matching", "results", sessionId],
+				});
+			}
+			// Backend may still be writing scores; refetch again after delay
+			if (completedSessionIds.length > 0) {
+				const ids = completedSessionIds;
+				timeoutId = window.setTimeout(() => {
+					for (const sessionId of ids) {
+						queryClient.refetchQueries({
+							queryKey: ["matching", "results", sessionId],
+						});
+					}
+				}, 2000);
+			}
 		}
 		const allDone =
 			activeFoxConvIds.length > 0 &&
@@ -284,12 +311,55 @@ export function Chat() {
 			setActiveFoxConvMap({});
 			completedIdsRef.current.clear();
 		}
-	}, [activeFoxConvIds, multiStatus.statusMap, queryClient]);
+		return () => {
+			if (timeoutId != null) window.clearTimeout(timeoutId);
+		};
+	}, [activeFoxConvIds, multiStatus.statusMap, queryClient, activeFoxConvMap]);
 
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
+	const prevActiveSessionIdRef = useRef<string>("");
+
+	// Refetch detail when switching to another chat so analysis panel isn’t stuck on stale/initial values
+	useEffect(() => {
+		if (!activeSessionId) return;
+		const prev = prevActiveSessionIdRef.current;
+		prevActiveSessionIdRef.current = activeSessionId;
+		if (prev !== "" && prev !== activeSessionId) {
+			queryClient.invalidateQueries({
+				queryKey: ["matching", "results", activeSessionId],
+			});
+			queryClient.refetchQueries({
+				queryKey: ["matching", "results", activeSessionId],
+			});
+			// Refetch list too so displaySession gets latest scores (e.g. completed while user was on another chat)
+			queryClient.invalidateQueries({ queryKey: ["matching", "results"] });
+			queryClient.refetchQueries({ queryKey: ["matching", "results"] });
+			const match = matches.find((m) => m.id === activeSessionId);
+			const fcId = match?.fox_conversation_id ?? null;
+			if (fcId) {
+				queryClient.invalidateQueries({
+					queryKey: ["fox-conversations", fcId, "messages"],
+				});
+			}
+		}
+	}, [activeSessionId, queryClient, matches]);
+
 	const directChatRoomId = detail?.direct_chat_room_id ?? null;
-	// Use fox_conversation_id from live map or match detail
+	// Refetch detail when list has newer score than detail (e.g. conversation just completed) so analysis panel is not stuck at initial value
+	const sessionFromList = sessions.find((s) => s.id === activeSessionId);
+	useEffect(() => {
+		if (!activeSessionId || !sessionFromList || !detail) return;
+		if (sessionFromList.matchStatus !== "fox_conversation_completed") return;
+		const listScore = sessionFromList.compatibilityScore ?? null;
+		const detailScore = detail.conversation_score ?? null;
+		if (listScore != null && detailScore === null) {
+			queryClient.refetchQueries({
+				queryKey: ["matching", "results", activeSessionId],
+			});
+		}
+	}, [activeSessionId, sessionFromList, detail, queryClient]);
+
 	const foxConversationId =
 		activeFoxConvMap[activeSessionId] ?? detail?.fox_conversation_id ?? null;
 	const isFoxConvLive = Boolean(activeFoxConvMap[activeSessionId]);
@@ -439,7 +509,15 @@ export function Chat() {
 		(s) => s.id === activeSessionId,
 	);
 	const displaySession: ChatSession = activeSession
-		? { ...activeSession, messages: activeMessages }
+		? {
+				...activeSession,
+				messages: activeMessages,
+				// Prefer detail score when available so analysis panel updates as soon as detail refetch completes (e.g. after measuring in background)
+				compatibilityScore:
+					detail?.conversation_score != null
+						? (detail?.final_score ?? activeSession.compatibilityScore)
+						: activeSession.compatibilityScore,
+			}
 		: ({
 				id: activeSessionId,
 				partnerName: partnerName || t("match_fallback"),
