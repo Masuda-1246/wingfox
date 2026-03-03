@@ -95,7 +95,10 @@ interface ScoreDetails {
 const TRAIT_AXES = [
 	{ key: "reciprocity" as const, labelKey: "trait_reciprocity" as const },
 	{ key: "humor_sharing" as const, labelKey: "trait_humor_sharing" as const },
-	{ key: "self_disclosure" as const, labelKey: "trait_self_disclosure" as const },
+	{
+		key: "self_disclosure" as const,
+		labelKey: "trait_self_disclosure" as const,
+	},
 	{
 		key: "emotional_responsiveness" as const,
 		labelKey: "trait_emotional_responsiveness" as const,
@@ -797,7 +800,7 @@ export function Chat() {
 							</div>
 						) : sortedSessions.length === 0 ? (
 							<p className="text-sm text-muted-foreground p-4">
-{t("no_matches")}
+								{t("no_matches")}
 							</p>
 						) : (
 							sortedSessions.map((session) => (
@@ -914,7 +917,7 @@ export function Chat() {
 														return (
 															<div className="mt-1 min-h-[24px] flex items-center">
 																<span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-																{t("match_status_request_expired")}
+																	{t("match_status_request_expired")}
 																</span>
 															</div>
 														);
@@ -923,7 +926,7 @@ export function Chat() {
 														return (
 															<div className="mt-1 min-h-[24px] flex items-center">
 																<span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
-																{t("match_status_request_declined")}
+																	{t("match_status_request_declined")}
 																</span>
 															</div>
 														);
