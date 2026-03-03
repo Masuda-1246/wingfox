@@ -1,0 +1,20 @@
+{
+	"description": "Talk with 3 dates for 2 minutes each by voice. Your persona will be built from the conversation records.",
+	"back": "Back",
+	"searching_guests": "Searching for tonight's guests...",
+	"session_save_error": "Failed to save session",
+	"session_complete_error": "Failed to complete session",
+	"guests_prepare_error": "Failed to prepare guests",
+	"start_error": "Failed to start",
+	"connecting": "Connecting...",
+	"speaking": "Speaking...",
+	"listening": "Listening...",
+	"waiting_connection": "Waiting for connection...",
+	"waiting_start": "Waiting for conversation to start...",
+	"end_conversation": "End conversation",
+	"preparing_next": "Preparing next guest...",
+	"completed_title": "Speed Dating Complete",
+	"completed_description": "Conversations with all 3 dates are done. Your persona will be built from this record.",
+	"retry": "Try again",
+	"go_to_mypage": "Go to My Page"
+}

@@ -9,6 +9,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, m } from "framer-motion";
 import { ArrowLeft, CheckCircle2, Loader2, MicOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 /** Strip markdown formatting (bold, italic, headers) from AI transcript text */
@@ -28,6 +29,7 @@ function formatTime(ms: number): string {
 }
 
 export function SpeedDatingPage() {
+	const { t } = useTranslation("speed_dating");
 	const navigate = useNavigate();
 	const generatePersonas = useSpeedDatingPersonas();
 	const createSession = useSpeedDatingSessions();
@@ -158,7 +160,7 @@ export function SpeedDatingPage() {
 							"[SpeedDate] Failed to persist transcript:",
 							persistErr,
 						);
-						toast.error("セッション保存に失敗しました");
+						toast.error(t("session_save_error"));
 					});
 					await startDate({
 						signedUrl: signedUrlData.signed_url,
@@ -171,7 +173,7 @@ export function SpeedDatingPage() {
 				}
 			} catch (e) {
 				console.error(e);
-				toast.error("セッションの完了に失敗しました");
+				toast.error(t("session_complete_error"));
 			}
 		};
 		completeCurrentSession();
@@ -193,7 +195,7 @@ export function SpeedDatingPage() {
 			const personasResult = await generatePersonas.mutateAsync();
 			const personas = Array.isArray(personasResult) ? personasResult : [];
 			if (personas.length === 0) {
-				toast.error("ゲストの準備に失敗しました");
+				toast.error(t("guests_prepare_error"));
 				setStep("start");
 				return;
 			}
@@ -226,7 +228,7 @@ export function SpeedDatingPage() {
 			});
 		} catch (e) {
 			console.error(e);
-			toast.error("開始に失敗しました");
+			toast.error(t("start_error"));
 			setStep("start");
 		}
 	};
@@ -254,7 +256,7 @@ export function SpeedDatingPage() {
 							Speed Dating
 						</h1>
 						<p className="text-muted-foreground text-center max-w-md">
-							3人のデート相手と2分間ずつ音声で会話します。会話の記録をもとにあなたのペルソナが作られます。
+							{t("description")}
 						</p>
 						<button
 							type="button"
@@ -268,7 +270,7 @@ export function SpeedDatingPage() {
 							onClick={() => navigate({ to: "/personas/me" })}
 							className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
 						>
-							<ArrowLeft className="w-3 h-3" /> 戻る
+							<ArrowLeft className="w-3 h-3" /> {t("back")}
 						</button>
 					</m.div>
 				)}
@@ -283,7 +285,7 @@ export function SpeedDatingPage() {
 					>
 						<Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
 						<p className="text-sm text-muted-foreground">
-							今夜のゲストを探しています...
+							{t("searching_guests")}
 						</p>
 					</m.div>
 				)}
@@ -340,12 +342,12 @@ export function SpeedDatingPage() {
 							<p className="font-bold">{currentPersonaName}</p>
 							{voiceStatus === "connecting" && (
 								<p className="text-sm text-muted-foreground animate-pulse">
-									接続中...
+									{t("connecting")}
 								</p>
 							)}
 							{voiceStatus === "talking" && (
 								<p className="text-xs text-muted-foreground">
-									{isSpeaking ? "話しています..." : "聞いています..."}
+									{isSpeaking ? t("speaking") : t("listening")}
 								</p>
 							)}
 						</div>
@@ -365,8 +367,8 @@ export function SpeedDatingPage() {
 								{transcript.length === 0 && (
 									<p className="text-center text-sm text-muted-foreground py-4">
 										{voiceStatus === "connecting"
-											? "接続を待っています..."
-											: "会話が始まるのを待っています..."}
+											? t("waiting_connection")
+											: t("waiting_start")}
 									</p>
 								)}
 								{transcript.map((entry) => (
@@ -400,14 +402,14 @@ export function SpeedDatingPage() {
 								className="px-6 py-3 rounded-full bg-destructive text-destructive-foreground font-bold text-sm hover:bg-destructive/90 transition-all flex items-center gap-2"
 							>
 								<MicOff className="w-4 h-4" />
-								会話を終了する
+								{t("end_conversation")}
 							</button>
 						)}
 
 						{voiceStatus === "done" && completeSession.isPending && (
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
 								<Loader2 className="w-4 h-4 animate-spin" />
-								次のゲストを準備しています...
+								{t("preparing_next")}
 							</div>
 						)}
 					</m.div>
@@ -422,10 +424,10 @@ export function SpeedDatingPage() {
 					>
 						<CheckCircle2 className="w-12 h-12 text-green-500" />
 						<h2 className="text-2xl font-black tracking-tighter italic">
-							Speed Dating Complete
+							{t("completed_title")}
 						</h2>
 						<p className="text-muted-foreground text-center max-w-md">
-							3人のデート相手との会話が完了しました。この記録をもとにあなたのペルソナが作られます。
+							{t("completed_description")}
 						</p>
 						<div className="flex gap-3">
 							<button
@@ -439,14 +441,14 @@ export function SpeedDatingPage() {
 								}}
 								className="px-6 py-3 rounded-full border-2 border-foreground/20 font-bold text-sm hover:bg-muted transition-all"
 							>
-								もう一度
+								{t("retry")}
 							</button>
 							<button
 								type="button"
 								onClick={() => navigate({ to: "/personas/me" })}
 								className="px-6 py-3 rounded-full bg-foreground text-background font-bold text-sm hover:scale-105 transition-all"
 							>
-								マイページへ
+								{t("go_to_mypage")}
 							</button>
 						</div>
 					</m.div>

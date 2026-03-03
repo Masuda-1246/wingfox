@@ -93,12 +93,18 @@ interface ScoreDetails {
 }
 
 const TRAIT_AXES = [
-	{ key: "reciprocity" as const, label: "好意の返報性" },
-	{ key: "humor_sharing" as const, label: "ユーモア共有" },
-	{ key: "self_disclosure" as const, label: "自己開示" },
-	{ key: "emotional_responsiveness" as const, label: "感情的応答性" },
-	{ key: "self_esteem" as const, label: "自己肯定感" },
-	{ key: "conflict_resolution" as const, label: "葛藤解決" },
+	{ key: "reciprocity" as const, labelKey: "trait_reciprocity" as const },
+	{ key: "humor_sharing" as const, labelKey: "trait_humor_sharing" as const },
+	{ key: "self_disclosure" as const, labelKey: "trait_self_disclosure" as const },
+	{
+		key: "emotional_responsiveness" as const,
+		labelKey: "trait_emotional_responsiveness" as const,
+	},
+	{ key: "self_esteem" as const, labelKey: "trait_self_esteem" as const },
+	{
+		key: "conflict_resolution" as const,
+		labelKey: "trait_conflict_resolution" as const,
+	},
 ];
 
 const TOPIC_COLORS = [
@@ -164,7 +170,7 @@ export function Chat() {
 	const matches = matchingData?.data ?? [];
 	const sessions: ChatSession[] = matches.map((m) => ({
 		id: m.id,
-		partnerName: m.partner?.nickname ?? "マッチ",
+		partnerName: m.partner?.nickname ?? t("match_fallback"),
 		partnerFoxVariant: 0,
 		partnerImage:
 			m.partner?.persona_icon_url ?? m.partner?.avatar_url ?? undefined,
@@ -429,7 +435,7 @@ export function Chat() {
 		? { ...activeSession, messages: activeMessages }
 		: ({
 				id: activeSessionId,
-				partnerName: partnerName || "マッチ",
+				partnerName: partnerName || t("match_fallback"),
 				partnerImage:
 					detail?.partner?.persona_icon_url ??
 					detail?.partner?.avatar_url ??
@@ -618,11 +624,11 @@ export function Chat() {
 	};
 
 	const handleApproveSuggestion = () => {
-		toast.info("APIでは提案承認は未実装です");
+		toast.info(t("suggestion_approve_not_implemented"));
 	};
 
 	const handleRejectSuggestion = () => {
-		toast.info("提案を破棄しました");
+		toast.info(t("suggestion_discarded"));
 	};
 
 	// Aggregate progress from multiple conversations
@@ -791,7 +797,7 @@ export function Chat() {
 							</div>
 						) : sortedSessions.length === 0 ? (
 							<p className="text-sm text-muted-foreground p-4">
-								マッチング結果がありません
+{t("no_matches")}
 							</p>
 						) : (
 							sortedSessions.map((session) => (
@@ -872,7 +878,7 @@ export function Chat() {
 														return (
 															<div className="flex items-center gap-2 mt-1 min-h-[24px]">
 																<span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-																	{t("match_status_fox_failed", "会話失敗")}
+																	{t("match_status_fox_failed")}
 																</span>
 																<button
 																	type="button"
@@ -886,7 +892,7 @@ export function Chat() {
 																	{retryFoxConversation.isPending ? (
 																		<Loader2 className="w-3 h-3 animate-spin inline" />
 																	) : (
-																		t("retry_measurement", "再測定")
+																		<>{t("retry_measurement")}</>
 																	)}
 																</button>
 															</div>
@@ -908,10 +914,7 @@ export function Chat() {
 														return (
 															<div className="mt-1 min-h-[24px] flex items-center">
 																<span className="text-[10px] font-bold text-yellow-600 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-																	{t(
-																		"match_status_request_expired",
-																		"リクエスト期限切れ",
-																	)}
+																{t("match_status_request_expired")}
 																</span>
 															</div>
 														);
@@ -920,10 +923,7 @@ export function Chat() {
 														return (
 															<div className="mt-1 min-h-[24px] flex items-center">
 																<span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
-																	{t(
-																		"match_status_request_declined",
-																		"リクエスト辞退",
-																	)}
+																{t("match_status_request_declined")}
 																</span>
 															</div>
 														);
@@ -1550,7 +1550,7 @@ export function Chat() {
 														dominantBaseline="central"
 														className="fill-muted-foreground font-bold text-[3.5px]"
 													>
-														{TRAIT_AXES[i].label}
+														{t(TRAIT_AXES[i].labelKey)}
 													</text>
 												))}
 											</svg>
@@ -1561,7 +1561,7 @@ export function Chat() {
 													{t("peak")}
 												</span>
 												<span className="text-xs font-black truncate">
-													{TRAIT_AXES[peakIdx].label}
+													{t(TRAIT_AXES[peakIdx].labelKey)}
 												</span>
 											</div>
 											<div className="flex flex-col items-end">

@@ -7,6 +7,7 @@
 	"discard": "破棄",
 	"approve_send": "承認 & 送信",
 	"suggestion_approved": "AI提案を承認し送信しました",
+	"suggestion_approve_not_implemented": "APIでは提案承認は未実装です",
 	"suggestion_discarded": "提案を破棄しました",
 	"report_conversation": "会話を通報する",
 	"report_question": "このペルソナまたはセッションに問題がありますか？",
@@ -86,5 +87,14 @@
 	"daily_match_view_details": "詳細を見る",
 	"daily_match_dismiss": "閉じる",
 	"daily_match_no_results": "本日の新しいマッチはありませんでした",
-	"daily_match_view_conversation": "Fox会話を見る >"
+	"daily_match_view_conversation": "Fox会話を見る >",
+	"trait_reciprocity": "好意の返報性",
+	"trait_humor_sharing": "ユーモア共有",
+	"trait_self_disclosure": "自己開示",
+	"trait_emotional_responsiveness": "感情的応答性",
+	"trait_self_esteem": "自己肯定感",
+	"trait_conflict_resolution": "葛藤解決",
+	"match_fallback": "マッチ",
+	"match_status_request_expired": "リクエスト期限切れ",
+	"match_status_request_declined": "リクエスト辞退"
 }

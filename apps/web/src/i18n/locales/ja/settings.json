@@ -45,5 +45,8 @@
 	"deleted_toast": "アカウントを削除しました",
 	"delete_error": "削除に失敗しました",
 	"basic_info_title": "基本情報",
-	"basic_info_description": "ニックネーム・性別・誕生年はオンボーディングやマッチングで利用されます。"
+	"basic_info_description": "ニックネーム・性別・誕生年はオンボーディングやマッチングで利用されます。",
+	"gender_undisclosed": "未回答",
+	"delete_account_contact": "アカウント削除はサポートからお問い合わせください",
+	"profile_load_error": "プロフィールの読み込みに失敗しました。"
 }

@@ -10,6 +10,7 @@ import enOnboarding from "./locales/en/onboarding.json";
 import enPersonas from "./locales/en/personas.json";
 import enReports from "./locales/en/reports.json";
 import enSettings from "./locales/en/settings.json";
+import enSpeedDating from "./locales/en/speed_dating.json";
 import jaAuth from "./locales/ja/auth.json";
 import jaChat from "./locales/ja/chat.json";
 import jaCommon from "./locales/ja/common.json";
@@ -18,6 +19,7 @@ import jaOnboarding from "./locales/ja/onboarding.json";
 import jaPersonas from "./locales/ja/personas.json";
 import jaReports from "./locales/ja/reports.json";
 import jaSettings from "./locales/ja/settings.json";
+import jaSpeedDating from "./locales/ja/speed_dating.json";
 
 i18n
 	.use(LanguageDetector)
@@ -33,6 +35,7 @@ i18n
 				personas: jaPersonas,
 				reports: jaReports,
 				settings: jaSettings,
+				speed_dating: jaSpeedDating,
 			},
 			en: {
 				common: enCommon,
@@ -43,9 +46,10 @@ i18n
 				personas: enPersonas,
 				reports: enReports,
 				settings: enSettings,
+				speed_dating: enSpeedDating,
 			},
 		},
-		fallbackLng: "ja",
+		fallbackLng: "en",
 		defaultNS: "common",
 		interpolation: {
 			escapeValue: false,

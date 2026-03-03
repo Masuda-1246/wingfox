@@ -45,5 +45,8 @@
 	"deleted_toast": "Account deleted",
 	"delete_error": "Failed to delete",
 	"basic_info_title": "Basic info",
-	"basic_info_description": "Nickname, gender, and birth year are used in onboarding and matching."
+	"basic_info_description": "Nickname, gender, and birth year are used in onboarding and matching.",
+	"gender_undisclosed": "Undisclosed",
+	"delete_account_contact": "To delete your account, please contact support",
+	"profile_load_error": "Failed to load profile."
 }

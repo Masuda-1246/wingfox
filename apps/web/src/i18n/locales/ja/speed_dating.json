@@ -1,0 +1,20 @@
+{
+	"description": "3人のデート相手と2分間ずつ音声で会話します。会話の記録をもとにあなたのペルソナが作られます。",
+	"back": "戻る",
+	"searching_guests": "今夜のゲストを探しています...",
+	"session_save_error": "セッション保存に失敗しました",
+	"session_complete_error": "セッションの完了に失敗しました",
+	"guests_prepare_error": "ゲストの準備に失敗しました",
+	"start_error": "開始に失敗しました",
+	"connecting": "接続中...",
+	"speaking": "話しています...",
+	"listening": "聞いています...",
+	"waiting_connection": "接続を待っています...",
+	"waiting_start": "会話が始まるのを待っています...",
+	"end_conversation": "会話を終了する",
+	"preparing_next": "次のゲストを準備しています...",
+	"completed_title": "スピードデート完了",
+	"completed_description": "3人のデート相手との会話が完了しました。この記録をもとにあなたのペルソナが作られます。",
+	"retry": "もう一度",
+	"go_to_mypage": "マイページへ"
+}

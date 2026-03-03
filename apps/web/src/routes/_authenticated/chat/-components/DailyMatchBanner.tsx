@@ -67,7 +67,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 							/>
 							<div className="flex-1 min-w-0">
 								<span className="text-xs font-bold truncate block">
-									{match.partner?.nickname ?? "マッチ"}
+									{match.partner?.nickname ?? t("match_fallback")}
 								</span>
 								{match.status === "fox_conversation_in_progress" ? (
 									<span className="text-[10px] text-muted-foreground">
@@ -86,7 +86,7 @@ export function DailyMatchBanner({ onMatchSelect }: DailyMatchBannerProps) {
 										{retryFoxConversation.isPending ? (
 											<Loader2 className="w-3 h-3 animate-spin inline" />
 										) : (
-											t("retry_measurement", "再測定")
+											t("retry_measurement")
 										)}
 									</button>
 								) : match.status === "fox_conversation_completed" ? (
