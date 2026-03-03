@@ -209,6 +209,13 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			return;
 		}
 
+		// All rounds done → compute scores (triggered by delayed alarm from final round)
+		if (state.currentRound >= TOTAL_ROUNDS) {
+			console.log(`[FoxConversationDO:alarm] Computing scores (post-delay) conversationId=${state.conversationId}`);
+			await this.computeScores(supabase, apiKey, state);
+			return;
+		}
+
 		const nextRound = state.currentRound + 1;
 		console.log(`[FoxConversationDO:alarm] START conversationId=${state.conversationId} round=${nextRound}/${TOTAL_ROUNDS} retryCount=${state.retryCount}`);
 
@@ -302,9 +309,9 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				const jitter = Math.floor(Math.random() * 500);
 				await this.ctx.storage.setAlarm(Date.now() + 500 + jitter);
 			} else {
-				// Final round — compute scores
-				console.log(`[FoxConversationDO:alarm] All rounds completed, computing scores conversationId=${state.conversationId}`);
-				await this.computeScores(supabase, apiKey, state);
+				// Final round — delay before scoring to avoid Mistral rate limits after rapid round calls
+				console.log(`[FoxConversationDO:alarm] All rounds completed, scheduling score computation after 2s delay conversationId=${state.conversationId}`);
+				await this.ctx.storage.setAlarm(Date.now() + 2000);
 			}
 		} catch (err) {
 			state.retryCount++;
@@ -386,56 +393,102 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 			let conversationScore = 50;
 			let analysis: Record<string, unknown> = {};
 			let conversationFeatureScores: FeatureScore[] = [];
-			try {
-				console.log(`[FoxConversationDO:computeScores] Calling LLM for score conversationId=${state.conversationId}`);
-				const scoreLang = state.lang ?? "ja";
-				const scorePrompt = buildConversationScorePrompt(logText, scoreLang);
-				const scoreRaw = await chatComplete(
-					apiKey,
-					[{ role: "user", content: scorePrompt }],
-					{ maxTokens: 1024, responseFormat: { type: "json_object" } },
-				);
-				console.log(`[FoxConversationDO:computeScores] LLM score response rawLen=${scoreRaw?.length ?? 0} conversationId=${state.conversationId}`);
-				const parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
-				console.log(`[FoxConversationDO:computeScores] Score parsed score=${parsed.score} conversationId=${state.conversationId}`);
-				conversationScore = parsed.score;
-				analysis = {
-					excitement_level: parsed.excitement_level,
-					common_topics: parsed.common_topics,
-					mutual_interest: parsed.mutual_interest,
-					topic_distribution: parsed.topic_distribution,
-				};
 
-				// Extract per-feature scores from LLM response
-				if (parsed.feature_scores) {
-					for (const [key, value] of Object.entries(parsed.feature_scores)) {
-						const mapping = CONVERSATION_FEATURE_MAP[key];
-						if (!mapping) continue;
-						conversationFeatureScores.push({
-							featureId: mapping.id,
-							featureName: mapping.nameJa,
-							rawScore: value,
-							normalizedScore: value,
-							confidence: 0.7,
-							evidence: { source: "fox_conversation", conversation_id: state.conversationId },
-							sourcePhase: "fox_conversation",
-						});
+			const SCORE_MAX_RETRIES = 3;
+			for (let scoreAttempt = 1; scoreAttempt <= SCORE_MAX_RETRIES; scoreAttempt++) {
+				try {
+					console.log(`[FoxConversationDO:computeScores] Calling LLM for score attempt=${scoreAttempt} conversationId=${state.conversationId}`);
+					const scoreLang = state.lang ?? "ja";
+					const scorePrompt = buildConversationScorePrompt(logText, scoreLang);
+					const scoreRaw = await chatComplete(
+						apiKey,
+						[{ role: "user", content: scorePrompt }],
+						{ maxTokens: 2048, responseFormat: { type: "json_object" } },
+					);
+					console.log(`[FoxConversationDO:computeScores] LLM score response rawLen=${scoreRaw?.length ?? 0} conversationId=${state.conversationId}`);
+					let parsed: z.infer<typeof ConversationScoreSchema>;
+					try {
+						parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw));
+					} catch (parseErr) {
+						const scoreMatch = (scoreRaw ?? "").match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
+						if (scoreMatch) {
+							const n = Number.parseFloat(scoreMatch[1]);
+							const clamped = Math.min(100, Math.max(0, n));
+							parsed = ConversationScoreSchema.parse({
+								score: Math.round(clamped),
+								excitement_level: 0.5,
+								common_topics: [],
+								mutual_interest: 0.5,
+								topic_distribution: [],
+								feature_scores: {
+									reciprocity: 0.5,
+									humor_sharing: 0.5,
+									self_disclosure: 0.5,
+									emotional_responsiveness: 0.5,
+									self_esteem: 0.5,
+									conflict_resolution: 0.5,
+								},
+							});
+							parsed.score = Math.round(clamped);
+						} else {
+							throw parseErr;
+						}
 					}
-				}
-			} catch (e) {
-				console.warn("[FoxConversationDO] Score computation failed, using default score(50):", e);
-				// Fallback: generate default feature scores so fox_feature_scores is always populated
-				if (conversationFeatureScores.length === 0) {
-					for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
-						conversationFeatureScores.push({
-							featureId: mapping.id,
-							featureName: mapping.nameJa,
-							rawScore: 0.5,
-							normalizedScore: 0.5,
-							confidence: 0.3,
-							evidence: { source: "fox_conversation_fallback", conversation_id: state.conversationId },
-							sourcePhase: "fox_conversation",
-						});
+					console.log(`[FoxConversationDO:computeScores] Score parsed score=${parsed.score} conversationId=${state.conversationId}`);
+					conversationScore = parsed.score;
+					analysis = {
+						excitement_level: parsed.excitement_level,
+						common_topics: parsed.common_topics,
+						mutual_interest: parsed.mutual_interest,
+						topic_distribution: parsed.topic_distribution,
+					};
+
+					if (parsed.feature_scores) {
+						conversationFeatureScores = [];
+						for (const [key, value] of Object.entries(parsed.feature_scores)) {
+							const mapping = CONVERSATION_FEATURE_MAP[key];
+							if (!mapping) continue;
+							conversationFeatureScores.push({
+								featureId: mapping.id,
+								featureName: mapping.nameJa,
+								rawScore: value,
+								normalizedScore: value,
+								confidence: 0.7,
+								evidence: { source: "fox_conversation", conversation_id: state.conversationId },
+								sourcePhase: "fox_conversation",
+							});
+						}
+					}
+					console.log(`[FoxConversationDO:computeScores] Score computation OK attempt=${scoreAttempt} score=${conversationScore} conversationId=${state.conversationId}`);
+					break;
+				} catch (e) {
+					const is429 = e instanceof Error && (
+						e.message.includes("429") ||
+						e.message.includes("rate") ||
+						e.message.includes("Too Many Requests")
+					);
+					if (scoreAttempt < SCORE_MAX_RETRIES) {
+						const jitter = Math.floor(Math.random() * 2000);
+						const delay = is429
+							? 5000 * scoreAttempt + jitter
+							: 2000 * scoreAttempt + jitter;
+						console.warn(`[FoxConversationDO:computeScores] Score failed (attempt ${scoreAttempt}/${SCORE_MAX_RETRIES}), retrying in ${delay}ms is429=${is429} conversationId=${state.conversationId}:`, e);
+						await new Promise((resolve) => setTimeout(resolve, delay));
+					} else {
+						console.error(`[FoxConversationDO:computeScores] Score FAILED after ${SCORE_MAX_RETRIES} attempts, using default score(50) conversationId=${state.conversationId}:`, e);
+						if (conversationFeatureScores.length === 0) {
+							for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
+								conversationFeatureScores.push({
+									featureId: mapping.id,
+									featureName: mapping.nameJa,
+									rawScore: 0.5,
+									normalizedScore: 0.5,
+									confidence: 0.3,
+									evidence: { source: "fox_conversation_fallback", conversation_id: state.conversationId },
+									sourcePhase: "fox_conversation",
+								});
+							}
+						}
 					}
 				}
 			}
@@ -532,6 +585,12 @@ export class FoxConversationDO extends DurableObject<DOEnv> {
 				.eq("id", state.matchId);
 			if (matchUpdateError) {
 				console.error(`[FoxConversationDO:computeScores] Failed to update match conversationId=${state.conversationId}`, matchUpdateError);
+				await this.failConversation(
+					supabase,
+					state,
+					`Match update failed: ${matchUpdateError.message}`,
+				);
+				return;
 			}
 
 			const { error: convUpdateError } = await supabase

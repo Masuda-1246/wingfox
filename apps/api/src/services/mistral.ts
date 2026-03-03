@@ -1,8 +1,8 @@
 import { Mistral } from "@mistralai/mistralai";
 
-const DEFAULT_MODEL = "ministral-8b-latest";
+const DEFAULT_MODEL = "ministral-8b-2410";
 export const MISTRAL_LARGE = "mistral-large-latest";
-export const MISTRAL_LIGHT = "ministral-8b-latest";
+export const MISTRAL_LIGHT = "ministral-8b-2410";
 
 const clientCache = new Map<string, Mistral>();
 
@@ -45,14 +45,22 @@ export async function chatComplete(
 	if (!apiKey?.trim()) {
 		throw new Error("MISTRAL_API_KEY is not set or empty. Set it in .mise.local.toml or apps/api/.env");
 	}
-	const client = getMistralClient(apiKey);
-	const response = await client.chat.complete({
+	// Ensure every message has string content (Mistral rejects null/undefined; SDK may send invalid JSON otherwise)
+	const normalizedMessages = messages.map((m) => ({
+		role: m.role,
+		content: typeof m.content === "string" ? m.content : "",
+	}));
+	const request: Parameters<Mistral["chat"]["complete"]>[0] = {
 		model: options?.model ?? DEFAULT_MODEL,
-		messages: messages.map((m) => ({ role: m.role, content: m.content })),
+		messages: normalizedMessages,
 		maxTokens: options?.maxTokens ?? 1024,
-		temperature: options?.temperature,
-		...(options?.responseFormat && { responseFormat: options.responseFormat }),
-	});
+		stream: false,
+	};
+	if (options?.temperature != null) request.temperature = options.temperature;
+	if (options?.responseFormat) request.responseFormat = options.responseFormat;
+
+	const client = getMistralClient(apiKey);
+	const response = await client.chat.complete(request);
 	const choice = response.choices?.[0];
 	if (choice?.finishReason === "length") {
 		console.warn(`[chatComplete] finish_reason=length: output may be truncated (maxTokens=${options?.maxTokens ?? 1024})`);

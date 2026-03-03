@@ -49,7 +49,8 @@ matching.get("/results", requireAuth, async (c) => {
 	// Filter out blocked users
 	const filtered = (rows ?? []).filter((m) => !blockedIds.has(partnerId(m as { user_a_id: string; user_b_id: string })));
 	const list = filtered.slice(0, limit);
-	const next = list.length > limit ? list[list.length - 1]?.created_at : null;
+	const hasMore = filtered.length > limit;
+	const next = hasMore ? list[list.length - 1]?.created_at : null;
 
 	const partnerIds = list.map((m) => partnerId(m as { user_a_id: string; user_b_id: string }));
 	const { data: profiles } = await supabase.from("user_profiles").select("id, nickname, avatar_url").in("id", partnerIds);
@@ -72,6 +73,7 @@ matching.get("/results", requireAuth, async (c) => {
 
 	// バックエンドで完了/失敗しているのに matches が in_progress のままのものを同期する（DO が match を更新し損ねた場合の自己修復）
 	const resolvedStatus = new Map<string, string>();
+	const refreshedMatchData = new Map<string, typeof list[number]>();
 	const stuckCutoff = new Date(Date.now() - STUCK_MATCH_MINUTES * 60 * 1000).toISOString();
 	for (const m of list) {
 		if (m.status !== "fox_conversation_in_progress") continue;
@@ -82,6 +84,13 @@ matching.get("/results", requireAuth, async (c) => {
 				.update({ status: "fox_conversation_completed", updated_at: new Date().toISOString() })
 				.eq("id", m.id);
 			resolvedStatus.set(m.id, "fox_conversation_completed");
+			// Re-read match to get latest scores (runFoxConversation may have saved them between our initial SELECT and now)
+			const { data: fresh } = await supabase
+				.from("matches")
+				.select("id, user_a_id, user_b_id, final_score, profile_score, conversation_score, status, score_details, created_at")
+				.eq("id", m.id)
+				.single();
+			if (fresh) refreshedMatchData.set(m.id, fresh);
 		} else if (fc?.status === "failed") {
 			await supabase
 				.from("matches")
@@ -105,6 +114,7 @@ matching.get("/results", requireAuth, async (c) => {
 		const pid = partnerId(m as { user_a_id: string; user_b_id: string });
 		const partner = profileMap.get(pid);
 		const status = resolvedStatus.get(m.id) ?? m.status;
+		const matchData = refreshedMatchData.get(m.id) ?? m;
 		return {
 			id: m.id,
 			partner_id: pid,
@@ -113,10 +123,10 @@ matching.get("/results", requireAuth, async (c) => {
 				avatar_url: partner.avatar_url,
 				persona_icon_url: personaIconMap.get(pid) ?? null,
 			} : null,
-			final_score: m.final_score,
-			profile_score: m.profile_score,
-			conversation_score: m.conversation_score,
-			score_details: m.score_details,
+			final_score: matchData.final_score,
+			profile_score: matchData.profile_score,
+			conversation_score: matchData.conversation_score,
+			score_details: matchData.score_details,
 			common_tags: [] as string[],
 			status,
 			fox_conversation_status: fcMap.get(m.id)?.status ?? null,
@@ -127,7 +137,7 @@ matching.get("/results", requireAuth, async (c) => {
 	return c.json({
 		data: results,
 		next_cursor: next ?? null,
-		has_more: (rows?.length ?? 0) > limit,
+		has_more: hasMore,
 	});
 });
 

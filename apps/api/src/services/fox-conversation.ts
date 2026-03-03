@@ -199,6 +199,10 @@ export async function runFoxConversation(
 	}
 
 	// ─── Score computation ─────────────────────────────────────────────
+
+	// Delay before scoring to avoid Mistral rate limits after rapid round calls
+	await new Promise((resolve) => setTimeout(resolve, 2000));
+
 	const { data: allMsgs } = await supabase
 		.from("fox_conversation_messages")
 		.select("speaker_user_id, content, round_number")
@@ -208,83 +212,102 @@ export async function runFoxConversation(
 		.map((m) => `Round ${m.round_number} (${m.speaker_user_id === userA ? "A" : "B"}): ${m.content}`)
 		.join("\n");
 
+	console.log(`[runFoxConversation] Score computation START conversationId=${conversationId} messageCount=${allMsgs?.length ?? 0}`);
+
 	let conversationScore = 50;
 	let analysis: Record<string, unknown> = {};
 	let conversationFeatureScores: FeatureScore[] = [];
 
-	try {
-		const scorePrompt = buildConversationScorePrompt(logText, lang);
-		const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
-			maxTokens: 1024,
-			responseFormat: { type: "json_object" },
-		});
-		let parsed: z.infer<typeof ConversationScoreSchema>;
+	const SCORE_MAX_RETRIES = 3;
+	for (let scoreAttempt = 1; scoreAttempt <= SCORE_MAX_RETRIES; scoreAttempt++) {
 		try {
-			parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw ?? "{}"));
-		} catch (parseErr) {
-			// LLM may return truncated JSON (finish_reason=length); try to extract at least score
-			const scoreMatch = (scoreRaw ?? "").match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
-			if (scoreMatch) {
-				const n = Number.parseFloat(scoreMatch[1]);
-				const clamped = Math.min(100, Math.max(0, n));
-				parsed = ConversationScoreSchema.parse({
-					score: Math.round(clamped),
-					excitement_level: 0.5,
-					common_topics: [],
-					mutual_interest: 0.5,
-					topic_distribution: [],
-					feature_scores: {
-						reciprocity: 0.5,
-						humor_sharing: 0.5,
-						self_disclosure: 0.5,
-						emotional_responsiveness: 0.5,
-						self_esteem: 0.5,
-						conflict_resolution: 0.5,
-					},
-				});
-				parsed.score = Math.round(clamped);
-			} else {
-				throw parseErr;
+			const scorePrompt = buildConversationScorePrompt(logText, lang);
+			const scoreRaw = await chatComplete(mistralApiKey, [{ role: "user", content: scorePrompt }], {
+				maxTokens: 2048,
+				responseFormat: { type: "json_object" },
+			});
+			let parsed: z.infer<typeof ConversationScoreSchema>;
+			try {
+				parsed = ConversationScoreSchema.parse(JSON.parse(scoreRaw ?? "{}"));
+			} catch (parseErr) {
+				const scoreMatch = (scoreRaw ?? "").match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
+				if (scoreMatch) {
+					const n = Number.parseFloat(scoreMatch[1]);
+					const clamped = Math.min(100, Math.max(0, n));
+					parsed = ConversationScoreSchema.parse({
+						score: Math.round(clamped),
+						excitement_level: 0.5,
+						common_topics: [],
+						mutual_interest: 0.5,
+						topic_distribution: [],
+						feature_scores: {
+							reciprocity: 0.5,
+							humor_sharing: 0.5,
+							self_disclosure: 0.5,
+							emotional_responsiveness: 0.5,
+							self_esteem: 0.5,
+							conflict_resolution: 0.5,
+						},
+					});
+					parsed.score = Math.round(clamped);
+				} else {
+					throw parseErr;
+				}
 			}
-		}
-		conversationScore = parsed.score;
-		analysis = {
-			excitement_level: parsed.excitement_level,
-			common_topics: parsed.common_topics,
-			mutual_interest: parsed.mutual_interest,
-			topic_distribution: parsed.topic_distribution,
-		};
+			conversationScore = parsed.score;
+			analysis = {
+				excitement_level: parsed.excitement_level,
+				common_topics: parsed.common_topics,
+				mutual_interest: parsed.mutual_interest,
+				topic_distribution: parsed.topic_distribution,
+			};
 
-		// Extract per-feature scores from LLM response
-		if (parsed.feature_scores) {
-			for (const [key, value] of Object.entries(parsed.feature_scores)) {
-				const mapping = CONVERSATION_FEATURE_MAP[key];
-				if (!mapping) continue;
-				conversationFeatureScores.push({
-					featureId: mapping.id,
-					featureName: mapping.nameJa,
-					rawScore: value,
-					normalizedScore: value,
-					confidence: 0.7, // conversation-derived scores have reasonable confidence
-					evidence: { source: "fox_conversation", conversation_id: conversationId },
-					sourcePhase: "fox_conversation",
-				});
+			if (parsed.feature_scores) {
+				conversationFeatureScores = [];
+				for (const [key, value] of Object.entries(parsed.feature_scores)) {
+					const mapping = CONVERSATION_FEATURE_MAP[key];
+					if (!mapping) continue;
+					conversationFeatureScores.push({
+						featureId: mapping.id,
+						featureName: mapping.nameJa,
+						rawScore: value,
+						normalizedScore: value,
+						confidence: 0.7,
+						evidence: { source: "fox_conversation", conversation_id: conversationId },
+						sourcePhase: "fox_conversation",
+					});
+				}
 			}
-		}
-	} catch (e) {
-		console.warn("[runFoxConversation] Score computation failed, using default score(50):", e);
-		// Fallback: generate default feature scores so fox_feature_scores is always populated
-		if (conversationFeatureScores.length === 0) {
-			for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
-				conversationFeatureScores.push({
-					featureId: mapping.id,
-					featureName: mapping.nameJa,
-					rawScore: 0.5,
-					normalizedScore: 0.5,
-					confidence: 0.3,
-					evidence: { source: "fox_conversation_fallback", conversation_id: conversationId },
-					sourcePhase: "fox_conversation",
-				});
+			console.log(`[runFoxConversation] Score computation OK attempt=${scoreAttempt} score=${conversationScore} conversationId=${conversationId}`);
+			break;
+		} catch (e) {
+			const is429 = e instanceof Error && (
+				e.message.includes("429") ||
+				e.message.includes("rate") ||
+				e.message.includes("Too Many Requests")
+			);
+			if (scoreAttempt < SCORE_MAX_RETRIES) {
+				const jitter = Math.floor(Math.random() * 2000);
+				const delay = is429
+					? 5000 * scoreAttempt + jitter
+					: 2000 * scoreAttempt + jitter;
+				console.warn(`[runFoxConversation] Score computation failed (attempt ${scoreAttempt}/${SCORE_MAX_RETRIES}), retrying in ${delay}ms is429=${is429} conversationId=${conversationId}:`, e);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			} else {
+				console.error(`[runFoxConversation] Score computation FAILED after ${SCORE_MAX_RETRIES} attempts, using default score(50) conversationId=${conversationId}:`, e);
+				if (conversationFeatureScores.length === 0) {
+					for (const [, mapping] of Object.entries(CONVERSATION_FEATURE_MAP)) {
+						conversationFeatureScores.push({
+							featureId: mapping.id,
+							featureName: mapping.nameJa,
+							rawScore: 0.5,
+							normalizedScore: 0.5,
+							confidence: 0.3,
+							evidence: { source: "fox_conversation_fallback", conversation_id: conversationId },
+							sourcePhase: "fox_conversation",
+						});
+					}
+				}
 			}
 		}
 	}
@@ -359,7 +382,7 @@ export async function runFoxConversation(
 		};
 	}
 
-	await supabase
+	const { error: matchUpdateError } = await supabase
 		.from("matches")
 		.update({
 			conversation_score: conversationScore,
@@ -368,7 +391,13 @@ export async function runFoxConversation(
 			status: "fox_conversation_completed",
 			updated_at: new Date().toISOString(),
 		})
-		.eq("id", conv.match_id);
+		.eq("id", conv.match_id)
+		.select("id")
+		.single();
+	if (matchUpdateError) {
+		console.error("[runFoxConversation] Failed to save scores to matches:", matchUpdateError);
+		throw new Error(`Failed to save match scores: ${matchUpdateError.message}`);
+	}
 	await supabase
 		.from("fox_conversations")
 		.update({
