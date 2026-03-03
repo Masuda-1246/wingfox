@@ -187,6 +187,7 @@ export function SpeedDatingPage() {
 		currentPersonaIndex,
 		virtualPersonas,
 		startDate,
+		t,
 	]);
 
 	const handleStart = async () => {
