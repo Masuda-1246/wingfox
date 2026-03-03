@@ -158,33 +158,22 @@ export function Settings() {
 
 	useEffect(() => {
 		if (authMe) {
-			const genderMap: Record<string, string> = {
-				male: "男性",
-				female: "女性",
-				other: "その他",
-				undisclosed: "未回答",
-			};
 			setBasicInfo({
 				nickname: authMe.nickname ?? "",
-				gender: authMe.gender ? (genderMap[authMe.gender] ?? "") : "",
+				gender: authMe.gender ?? "",
 				birthYear: authMe.birth_year != null ? String(authMe.birth_year) : "",
 			});
 		}
 	}, [authMe]);
 
 	const handleSaveBasicInfo = async () => {
-		const genderApiMap: Record<
-			string,
-			"male" | "female" | "other" | "undisclosed"
-		> = {
-			男性: "male",
-			女性: "female",
-			その他: "other",
-			未回答: "undisclosed",
-		};
-		const gender = basicInfo.gender
-			? (genderApiMap[basicInfo.gender] ?? "undisclosed")
-			: "undisclosed";
+		const gender =
+			basicInfo.gender === "male" ||
+			basicInfo.gender === "female" ||
+			basicInfo.gender === "other" ||
+			basicInfo.gender === "undisclosed"
+				? basicInfo.gender
+				: "undisclosed";
 		const birthYearNum = basicInfo.birthYear.trim()
 			? Number(basicInfo.birthYear)
 			: null;
@@ -229,7 +218,7 @@ export function Settings() {
 
 	const handleDeleteAccount = async () => {
 		if (confirm(t("delete_confirm"))) {
-			toast.error("アカウント削除はサポートからお問い合わせください");
+			toast.error(t("delete_account_contact"));
 		}
 	};
 
@@ -244,9 +233,7 @@ export function Settings() {
 	if (error) {
 		return (
 			<div className="p-4 md:p-6 max-w-7xl mx-auto">
-				<p className="text-destructive">
-					プロフィールの読み込みに失敗しました。
-				</p>
+				<p className="text-destructive">{t("profile_load_error")}</p>
 			</div>
 		);
 	}
@@ -294,10 +281,10 @@ export function Settings() {
 								className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
 							>
 								<option value="">{t("gender_select")}</option>
-								<option value="男性">{t("gender_male")}</option>
-								<option value="女性">{t("gender_female")}</option>
-								<option value="その他">{t("gender_other")}</option>
-								<option value="未回答">未回答</option>
+								<option value="male">{t("gender_male")}</option>
+								<option value="female">{t("gender_female")}</option>
+								<option value="other">{t("gender_other")}</option>
+								<option value="undisclosed">{t("gender_undisclosed")}</option>
 							</select>
 						</div>
 						<div className="space-y-2">

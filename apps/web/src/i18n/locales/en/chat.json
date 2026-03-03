@@ -7,6 +7,7 @@
 	"discard": "Discard",
 	"approve_send": "Approve & Send",
 	"suggestion_approved": "AI suggestion approved and sent",
+	"suggestion_approve_not_implemented": "Approval is not implemented yet",
 	"suggestion_discarded": "Suggestion discarded",
 	"report_conversation": "Report Conversation",
 	"report_question": "Is there an issue with this persona or session?",
@@ -34,6 +35,8 @@
 	"unmatch_success": "Successfully unmatched",
 	"unmatch_error": "Failed to unmatch",
 	"no_matches": "No matches found",
+	"empty_state_title": "No matches yet",
+	"empty_state_description": "Tap Explore Foxes above to find someone to chat with.",
 	"fox_search_button": "Explore Foxes",
 	"fox_search_searching": "Searching...",
 	"fox_search_in_progress": "Fox conversation in progress",
@@ -86,5 +89,14 @@
 	"daily_match_view_details": "View Details",
 	"daily_match_dismiss": "Dismiss",
 	"daily_match_no_results": "No new matches today",
-	"daily_match_view_conversation": "View Fox chat >"
+	"daily_match_view_conversation": "View Fox chat >",
+	"trait_reciprocity": "Reciprocity",
+	"trait_humor_sharing": "Humor Sharing",
+	"trait_self_disclosure": "Self-Disclosure",
+	"trait_emotional_responsiveness": "Emotional Responsiveness",
+	"trait_self_esteem": "Self-Esteem",
+	"trait_conflict_resolution": "Conflict Resolution",
+	"match_fallback": "Match",
+	"match_status_request_expired": "Request expired",
+	"match_status_request_declined": "Request declined"
 }

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # create-user-with-fox-en.sh
-# オンボーディング完了済みのユーザー + FOX を DB に直接作成する
+# Create onboarding-complete user + FOX in DB (English preset)
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -19,29 +19,29 @@ log_info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-# --- 依存チェック ---
+# --- Dependency check ---
 for cmd in curl jq; do
   if ! command -v "$cmd" &>/dev/null; then
-    log_error "$cmd が見つかりません。インストールしてください。"
+    log_error "$cmd not found. Please install it."
     exit 1
   fi
 done
 
-# --- ヘルプ ---
+# --- Help ---
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/create-user-with-fox-en.sh [OPTIONS]
 
-必須:
-  --email EMAIL          メールアドレス
-  --password PASSWORD    パスワード（6文字以上）
+Required:
+  --email EMAIL          Email address
+  --password PASSWORD    Password (6+ characters)
 
-任意:
-  --nickname NICKNAME    表示名（デフォルト: emailの@前部分）
-  --gender GENDER        性別 (male|female|other|undisclosed, デフォルト: undisclosed)
-  --birth-year YEAR      誕生年 (1900-2100)
-  --preset PRESET        FOXのプリセット (outdoor|indoor|social|creative|family, デフォルト: ランダム)
-  -h, --help             ヘルプ表示
+Optional:
+  --nickname NICKNAME    Display name (default: part before @ in email)
+  --gender GENDER        Gender (male|female|other|undisclosed, default: undisclosed)
+  --birth-year YEAR      Birth year (1900-2100)
+  --preset PRESET        FOX preset (outdoor|indoor|social|creative|family, default: random)
+  -h, --help             Show this help
 USAGE
   exit 0
 }
@@ -63,33 +63,33 @@ while [[ $# -gt 0 ]]; do
     --birth-year) BIRTH_YEAR="$2"; shift 2 ;;
     --preset)     PRESET="$2";     shift 2 ;;
     -h|--help)    usage ;;
-    *) log_error "不明なオプション: $1"; usage ;;
+    *) log_error "Unknown option: $1"; usage ;;
   esac
 done
 
-# --- バリデーション ---
+# --- Validation ---
 if [[ -z "$EMAIL" ]]; then
-  log_error "--email は必須です"
+  log_error "--email is required"
   exit 1
 fi
 
 if [[ -z "$PASSWORD" ]]; then
-  log_error "--password は必須です"
+  log_error "--password is required"
   exit 1
 fi
 
 if [[ ${#PASSWORD} -lt 6 ]]; then
-  log_error "パスワードは6文字以上にしてください"
+  log_error "Password must be at least 6 characters"
   exit 1
 fi
 
 if [[ -n "$GENDER" && ! "$GENDER" =~ ^(male|female|other|undisclosed)$ ]]; then
-  log_error "gender は male|female|other|undisclosed のいずれかです"
+  log_error "gender must be one of: male|female|other|undisclosed"
   exit 1
 fi
 
 if [[ -n "$BIRTH_YEAR" && ( "$BIRTH_YEAR" -lt 1900 || "$BIRTH_YEAR" -gt 2100 ) ]]; then
-  log_error "birth-year は 1900-2100 の範囲で指定してください"
+  log_error "birth-year must be between 1900 and 2100"
   exit 1
 fi
 
@@ -101,24 +101,24 @@ if [[ -n "$PRESET" ]]; then
     [[ "$p" == "$PRESET" ]] && valid=true && break
   done
   if ! $valid; then
-    log_error "preset は outdoor|indoor|social|creative|family のいずれかです"
+    log_error "preset must be one of: outdoor|indoor|social|creative|family"
     exit 1
   fi
 else
   PRESET="${PRESETS[$((RANDOM % ${#PRESETS[@]}))]}"
-  log_info "プリセット未指定のためランダム選択: $PRESET"
+  log_info "Preset not specified, selected at random: $PRESET"
 fi
 
-# デフォルトニックネーム
+# Default nickname
 if [[ -z "$NICKNAME" ]]; then
   NICKNAME="${EMAIL%%@*}"
 fi
 
-# --- 環境変数ロード ---
+# --- Load env ---
 if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
   MISE_FILE="$PROJECT_ROOT/.mise.local.toml"
   if [[ ! -f "$MISE_FILE" ]]; then
-    log_error ".mise.local.toml が見つかりません。SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY を環境変数にセットしてください。"
+    log_error ".mise.local.toml not found. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment."
     exit 1
   fi
   if [[ -z "${SUPABASE_URL:-}" ]]; then
@@ -130,34 +130,34 @@ if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
 fi
 
 if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
-  log_error "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY を取得できませんでした"
+  log_error "Could not get SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"
   exit 1
 fi
 
-# --- 共通ヘッダ ---
+# --- Common headers ---
 AUTH_HEADER="Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
 APIKEY_HEADER="apikey: $SUPABASE_SERVICE_ROLE_KEY"
 CONTENT_TYPE="Content-Type: application/json"
 PREFER_RETURN="Prefer: return=representation"
 
-# --- クリーンアップ（エラー時に auth user を削除） ---
+# --- Cleanup on error (delete auth user) ---
 AUTH_USER_ID=""
 cleanup() {
   if [[ -n "$AUTH_USER_ID" ]]; then
-    log_warn "エラー発生。Auth ユーザー ($AUTH_USER_ID) を削除します..."
+    log_warn "Error occurred. Deleting Auth user ($AUTH_USER_ID)..."
     curl -s -X DELETE \
       "${SUPABASE_URL}/auth/v1/admin/users/${AUTH_USER_ID}" \
       -H "$AUTH_HEADER" \
       -H "$APIKEY_HEADER" > /dev/null 2>&1 || true
-    log_warn "クリーンアップ完了"
+    log_warn "Cleanup done"
   fi
 }
 trap cleanup ERR
 
 # ============================================================
-# Step 1: Supabase Auth ユーザー作成
+# Step 1: Create Supabase Auth user
 # ============================================================
-log_info "Step 1/6: Auth ユーザー作成..."
+log_info "Step 1/6: Creating Auth user..."
 
 AUTH_RESPONSE=$(curl -s -X POST \
   "${SUPABASE_URL}/auth/v1/admin/users" \
@@ -170,28 +170,28 @@ AUTH_RESPONSE=$(curl -s -X POST \
     '{email: $email, password: $password, email_confirm: true}'
   )")
 
-# エラーチェック
+# Error check
 if echo "$AUTH_RESPONSE" | jq -e '.msg // .error // .message' > /dev/null 2>&1; then
   ERROR_MSG=$(echo "$AUTH_RESPONSE" | jq -r '.msg // .error // .message // "Unknown error"')
   if [[ "$ERROR_MSG" != "null" ]]; then
-    log_error "Auth ユーザー作成失敗: $ERROR_MSG"
+    log_error "Auth user creation failed: $ERROR_MSG"
     exit 1
   fi
 fi
 
 AUTH_USER_ID=$(echo "$AUTH_RESPONSE" | jq -r '.id')
 if [[ -z "$AUTH_USER_ID" || "$AUTH_USER_ID" == "null" ]]; then
-  log_error "Auth ユーザー ID を取得できませんでした"
-  log_error "レスポンス: $AUTH_RESPONSE"
+  log_error "Could not get Auth user ID"
+  log_error "Response: $AUTH_RESPONSE"
   exit 1
 fi
 
 log_info "  Auth User ID: $AUTH_USER_ID"
 
 # ============================================================
-# Step 2: user_profiles 作成
+# Step 2: Create user_profiles
 # ============================================================
-log_info "Step 2/6: user_profiles 作成..."
+log_info "Step 2/6: Creating user_profiles..."
 
 UP_RESPONSE=$(curl -s -X POST \
   "${SUPABASE_URL}/rest/v1/user_profiles" \
@@ -207,23 +207,24 @@ UP_RESPONSE=$(curl -s -X POST \
       auth_user_id: $auth_user_id,
       nickname: $nickname,
       gender: $gender,
-      onboarding_status: "confirmed"
+      onboarding_status: "confirmed",
+      language: "en"
     }'
   )")
 
 USER_PROFILE_ID=$(echo "$UP_RESPONSE" | jq -r '.[0].id // .id // empty')
 if [[ -z "$USER_PROFILE_ID" || "$USER_PROFILE_ID" == "null" ]]; then
-  log_error "user_profiles 作成失敗"
-  log_error "レスポンス: $UP_RESPONSE"
+  log_error "user_profiles creation failed"
+  log_error "Response: $UP_RESPONSE"
   exit 1
 fi
 
 log_info "  User Profile ID: $USER_PROFILE_ID"
 
 # ============================================================
-# Step 3: profiles 作成
+# Step 3: Create profiles
 # ============================================================
-log_info "Step 3/6: profiles 作成..."
+log_info "Step 3/6: Creating profiles..."
 
 # Preset-specific profile data
 get_profile_data() {
@@ -370,17 +371,17 @@ PROFILE_RESPONSE=$(curl -s -X POST \
 
 PROFILE_ID=$(echo "$PROFILE_RESPONSE" | jq -r '.[0].id // .id // empty')
 if [[ -z "$PROFILE_ID" || "$PROFILE_ID" == "null" ]]; then
-  log_error "profiles 作成失敗"
-  log_error "レスポンス: $PROFILE_RESPONSE"
+  log_error "profiles creation failed"
+  log_error "Response: $PROFILE_RESPONSE"
   exit 1
 fi
 
 log_info "  Profile ID: $PROFILE_ID"
 
 # ============================================================
-# Step 4: personas 作成 (wingfox)
+# Step 4: Create personas (wingfox)
 # ============================================================
-log_info "Step 4/6: personas (wingfox) 作成..."
+log_info "Step 4/6: Creating personas (wingfox)..."
 
 # Preset-specific section content
 get_section_content() {
@@ -526,7 +527,7 @@ CONSTRAINTS_CONTENT="- Do not generate inappropriate content
 
 CONVERSATION_REFERENCES_CONTENT="Auto-extracted from conversation samples (read-only)"
 
-# キツネアイコン一覧（apps/api/src/lib/fox-icons.ts と一致）
+# Fox icon list (must match apps/api/src/lib/fox-icons.ts)
 FOX_ICONS_MALE=("/foxes/male/normal.png" "/foxes/male/balckfox.png" "/foxes/male/glasses.png" "/foxes/male/face.png" "/foxes/male/sunglasses.png" "/foxes/male/tie.png" "/foxes/male/pias.png" "/foxes/male/redfox.png" "/foxes/male/redfox_face.png" "/foxes/male/redfox_glasses.png" "/foxes/male/blackfox_glasses.png")
 FOX_ICONS_FEMALE=("/foxes/female/ribbon.png" "/foxes/female/whitefox_glasses.png" "/foxes/female/whitefox.png" "/foxes/female/whtefox_hat.png" "/foxes/female/pinkfox.png" "/foxes/female/pinkfox_cap.png" "/foxes/female/whitefox_blue_ribbon.png" "/foxes/female/blue_fox.png" "/foxes/female/pinkfox_ribbon.png")
 FOX_ICONS_ALL=("${FOX_ICONS_MALE[@]}" "${FOX_ICONS_FEMALE[@]}")
@@ -537,12 +538,12 @@ case "$(echo "$GENDER" | tr '[:upper:]' '[:lower:]')" in
   *)      ICON_POOL=("${FOX_ICONS_ALL[@]}") ;;
 esac
 PERSONA_ICON_URL="${ICON_POOL[$((RANDOM % ${#ICON_POOL[@]}))]}"
-log_info "ペルソナアイコン: $PERSONA_ICON_URL (gender=$GENDER)"
+log_info "Persona icon: $PERSONA_ICON_URL (gender=$GENDER)"
 
-# セクション定義（sort_order 順）
+# Section IDs (sort_order)
 SECTION_IDS=("core_identity" "communication_rules" "personality_profile" "interests" "values" "romance_style" "conversation_references" "constraints")
 
-# compiled_document を組み立て（personas.ts:58 の形式に準拠）
+# Build compiled_document (format aligned with personas.ts:58)
 COMPILED_DOCUMENT=""
 for i in "${!SECTION_IDS[@]}"; do
   sid="${SECTION_IDS[$i]}"
@@ -590,17 +591,17 @@ PERSONA_RESPONSE=$(curl -s -X POST \
 
 PERSONA_ID=$(echo "$PERSONA_RESPONSE" | jq -r '.[0].id // .id // empty')
 if [[ -z "$PERSONA_ID" || "$PERSONA_ID" == "null" ]]; then
-  log_error "personas 作成失敗"
-  log_error "レスポンス: $PERSONA_RESPONSE"
+  log_error "personas creation failed"
+  log_error "Response: $PERSONA_RESPONSE"
   exit 1
 fi
 
 log_info "  Persona ID: $PERSONA_ID"
 
 # ============================================================
-# Step 5: persona_sections 作成（8セクション一括）
+# Step 5: Create persona_sections (8 sections)
 # ============================================================
-log_info "Step 5/6: persona_sections 作成（8セクション）..."
+log_info "Step 5/6: Creating persona_sections (8 sections)..."
 
 SECTIONS_JSON="["
 for i in "${!SECTION_IDS[@]}"; do
@@ -636,32 +637,32 @@ SECTIONS_RESPONSE=$(curl -s -X POST \
 
 SECTIONS_COUNT=$(echo "$SECTIONS_RESPONSE" | jq 'if type == "array" then length else 0 end')
 if [[ "$SECTIONS_COUNT" -ne 8 ]]; then
-  log_warn "persona_sections の作成数が期待値と異なります: $SECTIONS_COUNT / 8"
-  log_warn "レスポンス: $SECTIONS_RESPONSE"
+  log_warn "persona_sections count mismatch: $SECTIONS_COUNT / 8"
+  log_warn "Response: $SECTIONS_RESPONSE"
 fi
 
-log_info "  作成セクション数: $SECTIONS_COUNT"
+log_info "  Sections created: $SECTIONS_COUNT"
 
 # ============================================================
-# Step 6: 完了
+# Step 6: Done
 # ============================================================
-log_info "Step 6/6: 完了！"
+log_info "Step 6/6: Done!"
 echo ""
 echo "========================================"
-echo "  ユーザー + FOX 作成完了"
+echo "  User + FOX created"
 echo "========================================"
 echo "  Email:          $EMAIL"
-echo "  Password:       $PASSWORD"
-echo "  Nickname:       $NICKNAME"
-echo "  Gender:         $GENDER"
-echo "  Preset:         $PRESET"
-echo "  Auth User ID:   $AUTH_USER_ID"
+echo "  Password:      (hidden)"
+echo "  Nickname:      $NICKNAME"
+echo "  Gender:        $GENDER"
+echo "  Preset:        $PRESET"
+echo "  Auth User ID:  $AUTH_USER_ID"
 echo "  User Profile ID: $USER_PROFILE_ID"
-echo "  Profile ID:     $PROFILE_ID"
-echo "  Persona ID:     $PERSONA_ID"
+echo "  Profile ID:    $PROFILE_ID"
+echo "  Persona ID:    $PERSONA_ID"
 echo "========================================"
 echo ""
-log_info "このメールアドレスとパスワードでアプリにログインできます。"
+log_info "You can log in to the app with this email and password."
 
-# trap を解除（正常終了時はクリーンアップ不要）
+# Clear trap on success
 trap - ERR

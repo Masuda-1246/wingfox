@@ -7,6 +7,7 @@
 	"discard": "破棄",
 	"approve_send": "承認 & 送信",
 	"suggestion_approved": "AI提案を承認し送信しました",
+	"suggestion_approve_not_implemented": "APIでは提案承認は未実装です",
 	"suggestion_discarded": "提案を破棄しました",
 	"report_conversation": "会話を通報する",
 	"report_question": "このペルソナまたはセッションに問題がありますか？",
@@ -34,6 +35,8 @@
 	"unmatch_success": "マッチを解消しました",
 	"unmatch_error": "マッチ解消に失敗しました",
 	"no_matches": "マッチング結果がありません",
+	"empty_state_title": "まだマッチがいません",
+	"empty_state_description": "上の「Foxを探索する」から、話したい相手を探してみましょう。",
 	"fox_search_button": "Foxを探索する",
 	"fox_search_searching": "検索中...",
 	"fox_search_in_progress": "Fox会話が進行中です",
@@ -86,5 +89,14 @@
 	"daily_match_view_details": "詳細を見る",
 	"daily_match_dismiss": "閉じる",
 	"daily_match_no_results": "本日の新しいマッチはありませんでした",
-	"daily_match_view_conversation": "Fox会話を見る >"
+	"daily_match_view_conversation": "Fox会話を見る >",
+	"trait_reciprocity": "好意の返報性",
+	"trait_humor_sharing": "ユーモア共有",
+	"trait_self_disclosure": "自己開示",
+	"trait_emotional_responsiveness": "感情的応答性",
+	"trait_self_esteem": "自己肯定感",
+	"trait_conflict_resolution": "葛藤解決",
+	"match_fallback": "マッチ",
+	"match_status_request_expired": "リクエスト期限切れ",
+	"match_status_request_declined": "リクエスト辞退"
 }

@@ -1,0 +1,2 @@
+# CI と同じ: format check → build → lint
+pnpm run check && pnpm run build && pnpm run lint

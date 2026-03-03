@@ -30,5 +30,5 @@ export function resolveConversationLangFromUserSettings(
 	if (a === "en" || b === "en") return "en";
 	if (a === "ja" || b === "ja") return "ja";
 	if (fallbackDocument) return detectLangFromDocument(fallbackDocument);
-	return "ja";
+	return "en";
 }
