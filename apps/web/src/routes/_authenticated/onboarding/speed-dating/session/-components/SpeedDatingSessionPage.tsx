@@ -490,38 +490,53 @@ export function SpeedDatingSessionPage({
 		return (
 			<div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-8 px-4">
 				<div className="flex flex-col items-center gap-4">
-					<CheckCircle2 className="w-16 h-16 text-green-500" />
+					{isConversationShort ? (
+						<AlertTriangle className="w-16 h-16 text-amber-500" />
+					) : (
+						<CheckCircle2 className="w-16 h-16 text-green-500" />
+					)}
 					<h3 className="text-xl font-bold text-center">
-						{isLastDate
-							? t("speed_dating.all_dates_complete")
-							: t("speed_dating.date_complete", { name: currentName })}
+						{isConversationShort
+							? t("speed_dating.date_ended_short", { name: currentName })
+							: isLastDate
+								? t("speed_dating.all_dates_complete")
+								: t("speed_dating.date_complete", { name: currentName })}
 					</h3>
 				</div>
 
 				{/* Date progress */}
 				<div className="flex items-center gap-3">
-					{personas.map((p, i) => (
-						<div key={p.id} className="flex items-center gap-3">
-							{i > 0 && (
-								<div
-									className={`w-8 h-0.5 ${i <= personaIndex ? "bg-green-500" : "bg-muted"}`}
-								/>
-							)}
-							<div
-								className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-									i <= personaIndex
-										? "bg-green-500 text-white"
-										: "bg-muted text-muted-foreground"
-								}`}
-							>
-								{i <= personaIndex ? (
-									<CheckCircle2 className="w-5 h-5" />
-								) : (
-									p.name[0]
+					{personas.map((p, i) => {
+						const isCurrent = i === personaIndex;
+						const isDone = i < personaIndex;
+						const isShort = isCurrent && isConversationShort;
+						return (
+							<div key={p.id} className="flex items-center gap-3">
+								{i > 0 && (
+									<div
+										className={`w-8 h-0.5 ${isDone || isCurrent ? (isShort ? "bg-amber-500" : "bg-green-500") : "bg-muted"}`}
+									/>
 								)}
+								<div
+									className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+										isShort
+											? "bg-amber-500 text-white"
+											: isDone || isCurrent
+												? "bg-green-500 text-white"
+												: "bg-muted text-muted-foreground"
+									}`}
+								>
+									{isShort ? (
+										<AlertTriangle className="w-5 h-5" />
+									) : isDone || isCurrent ? (
+										<CheckCircle2 className="w-5 h-5" />
+									) : (
+										p.name[0]
+									)}
+								</div>
 							</div>
-						</div>
-					))}
+						);
+					})}
 				</div>
 
 				{transitionError && (
