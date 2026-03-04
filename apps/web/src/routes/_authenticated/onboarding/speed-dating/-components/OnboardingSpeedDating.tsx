@@ -8,7 +8,13 @@ import {
 import { saveSpeedDatingSession } from "@/lib/speed-dating-session-storage";
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "framer-motion";
-import { AlertTriangle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import {
+	AlertTriangle,
+	ArrowLeft,
+	ArrowRight,
+	Loader2,
+	RefreshCw,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -74,6 +80,8 @@ export function OnboardingSpeedDating({
 	>([]);
 	const [generationError, setGenerationError] = useState<string | null>(null);
 	const [startError, setStartError] = useState<string | null>(null);
+	const [failCount, setFailCount] = useState(0);
+	const MAX_AUTO_RETRIES = 2;
 	const prefetchedFirstRef = useRef<{
 		sessionId: string;
 		personaId: string;
@@ -113,7 +121,8 @@ export function OnboardingSpeedDating({
 		if (cachedPersonas === undefined) return;
 		if (cachedPersonas?.length >= 3) return;
 		if (generatePersonas.isPending) return;
-		if (generationError) return; // Don't retry if there was an error
+		if (generationError) return;
+		if (failCount >= MAX_AUTO_RETRIES) return;
 
 		generatePersonas
 			.mutateAsync()
@@ -123,14 +132,16 @@ export function OnboardingSpeedDating({
 					setPreviewPersonas(
 						personas.map((p: SpeedDatingPersona) => personaToSummary(p)),
 					);
-					setGenerationError(null); // Clear any previous errors
+					setGenerationError(null);
+					setFailCount(0);
 				}
 			})
 			.catch((err) => {
 				console.error("[SpeedDate] Auto-generation failed:", err);
+				setFailCount((c) => c + 1);
 				setGenerationError(t("speed_dating.error_guest_failed"));
 			});
-	}, [cachedPersonas, generationError]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [cachedPersonas, generationError, failCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const regenerateDates = async () => {
 		if (isRegenerating || isStarting) return;
@@ -142,11 +153,13 @@ export function OnboardingSpeedDating({
 			const personas = Array.isArray(personasResult) ? personasResult : [];
 			if (personas.length === 0) {
 				toast.error(t("speed_dating.error_regen_failed"));
+				setFailCount((c) => c + 1);
 				return;
 			}
 			setPreviewPersonas(
 				personas.map((p: SpeedDatingPersona) => personaToSummary(p)),
 			);
+			setFailCount(0);
 			toast.success(t("speed_dating.regen_success"));
 		} catch (e) {
 			const err = e as ApiError;
@@ -155,6 +168,7 @@ export function OnboardingSpeedDating({
 				: t("speed_dating.error_regen_failed");
 			toast.error(errorMessage);
 			setGenerationError(errorMessage);
+			setFailCount((c) => c + 1);
 		} finally {
 			setIsRegenerating(false);
 		}
@@ -238,6 +252,21 @@ export function OnboardingSpeedDating({
 								className="ml-3 text-destructive/70 hover:text-destructive"
 							>
 								×
+							</button>
+						</div>
+					)}
+					{failCount >= MAX_AUTO_RETRIES && (
+						<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm space-y-3">
+							<p className="text-amber-700 dark:text-amber-400">
+								{t("speed_dating.generation_retry_limit")}
+							</p>
+							<button
+								type="button"
+								onClick={() => navigate({ to: "/onboarding/quiz" })}
+								className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 px-4 py-2 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+							>
+								<ArrowLeft className="w-3.5 h-3.5" />
+								{t("speed_dating.back_to_quiz")}
 							</button>
 						</div>
 					)}
