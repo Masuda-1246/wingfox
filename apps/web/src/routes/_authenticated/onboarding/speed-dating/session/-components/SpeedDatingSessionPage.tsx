@@ -16,10 +16,14 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "framer-motion";
 import {
+	AlertTriangle,
+	ArrowLeft,
+	ArrowRight,
 	CheckCircle2,
 	Loader2,
 	MicOff,
 	RefreshCw,
+	SkipForward,
 	Sparkles,
 	XCircle,
 } from "lucide-react";
@@ -28,6 +32,9 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 type GenerationPhase = "profile" | "wingfox" | "complete" | "error";
+
+const PHASE_TIMEOUT_MS = 30_000;
+const MIN_MESSAGES_PER_DATE = 4;
 
 /** Strip markdown formatting (bold, italic, headers) from AI transcript text */
 function stripMarkdown(text: string): string {
@@ -75,16 +82,22 @@ export function SpeedDatingSessionPage({
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [personaIndex, setPersonaIndex] = useState(0);
 	const [phase, setPhase] = useState<
-		"loading" | "connecting" | "chat" | "next" | "finalizing"
+		"loading" | "connecting" | "chat" | "transition" | "next" | "finalizing"
 	>("loading");
 	const [loadingMessage, setLoadingMessage] = useState("");
 	const [generationPhase, setGenerationPhase] =
 		useState<GenerationPhase>("profile");
 	const [generationError, setGenerationError] = useState<string | null>(null);
+	const [transitionError, setTransitionError] = useState<string | null>(null);
+	const [isTimedOut, setIsTimedOut] = useState(false);
+	const [isAdvancing, setIsAdvancing] = useState(false);
+	const [isConversationShort, setIsConversationShort] = useState(false);
+	const [isRedoing, setIsRedoing] = useState(false);
 	const completeSession = useCompleteSpeedDatingSession(sessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
 	const handledDoneRef = useRef(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
 		transcriptRef.current = transcript;
@@ -95,6 +108,23 @@ export function SpeedDatingSessionPage({
 		if (!scrollRef.current) return;
 		scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 	}, [transcript]);
+
+	// Timeout for connecting/next phases
+	useEffect(() => {
+		if (phase === "connecting" || phase === "next") {
+			setIsTimedOut(false);
+			phaseTimeoutRef.current = setTimeout(() => {
+				setIsTimedOut(true);
+			}, PHASE_TIMEOUT_MS);
+			return () => {
+				if (phaseTimeoutRef.current) {
+					clearTimeout(phaseTimeoutRef.current);
+					phaseTimeoutRef.current = null;
+				}
+			};
+		}
+		setIsTimedOut(false);
+	}, [phase]);
 
 	// Restore from sessionStorage or redirect
 	useEffect(() => {
@@ -111,7 +141,6 @@ export function SpeedDatingSessionPage({
 			);
 			return;
 		}
-		// No stored state: go back to start (or returnTo for edit flow)
 		navigate({
 			to: (returnTo as "/personas/me") || "/onboarding/speed-dating",
 		});
@@ -167,9 +196,10 @@ export function SpeedDatingSessionPage({
 			setGenerationPhase("wingfox");
 			await generateWingfox.mutateAsync();
 			setGenerationPhase("complete");
-			// Brief "All done!" pause before navigating
 			await new Promise((resolve) => setTimeout(resolve, 800));
-			navigate({ to: "/onboarding/review" });
+			navigate({
+				to: (returnTo as "/personas/me") || "/onboarding/review",
+			});
 		} catch (e) {
 			console.error("[SpeedDatingSession] Generation failed:", e);
 			const err = e as ApiError;
@@ -178,9 +208,9 @@ export function SpeedDatingSessionPage({
 			);
 			setGenerationPhase("error");
 		}
-	}, [generateProfile, generateWingfox, navigate, t]);
+	}, [generateProfile, generateWingfox, navigate, returnTo, t]);
 
-	// When voice ends: complete session, then next or start generation
+	// When voice ends: persist transcript, then show transition screen
 	useEffect(() => {
 		if (voiceStatus !== "done") {
 			handledDoneRef.current = false;
@@ -193,77 +223,127 @@ export function SpeedDatingSessionPage({
 			source: e.source,
 			message: e.message,
 		}));
-		const persistPromise = completeSession.mutateAsync(transcriptData);
 
-		const run = async () => {
-			try {
-				if (personaIndex < personas.length - 1) {
-					const nextIndex = personaIndex + 1;
-					const nextPersona = personas[nextIndex];
-					if (!nextPersona) return;
-					setLoadingMessage(
-						t("speed_dating.preparing_chat", { name: nextPersona.name }),
-					);
-					setPhase("next");
+		void completeSession.mutateAsync(transcriptData).catch((e) => {
+			console.error("[SpeedDatingSession] persist failed", e);
+			toast.error(t("speed_dating.error_session_save_failed"));
+		});
 
-					const nextSession = (await createSession.mutateAsync(
-						nextPersona.id,
-					)) as { session_id: string };
-					const signedUrlData = await getSignedUrl.mutateAsync(
-						nextSession.session_id,
-					);
+		setIsConversationShort(transcriptData.length < MIN_MESSAGES_PER_DATE);
+		setTransitionError(null);
+		setPhase("transition");
+	}, [voiceStatus, completeSession.mutateAsync, t]);
 
-					void persistPromise.catch((e) => {
-						console.error("[SpeedDatingSession] persist failed", e);
-						toast.error(t("speed_dating.error_session_save_failed"));
-					});
+	const handleProceedToNext = useCallback(async () => {
+		if (isAdvancing) return;
+		setIsAdvancing(true);
+		setTransitionError(null);
 
-					saveSpeedDatingSession({
-						personas,
-						sessionId: nextSession.session_id,
-						personaIndex: nextIndex,
-					});
-					setSessionId(nextSession.session_id);
-					setPersonaIndex(nextIndex);
-					resetVoice();
-					setPhase("chat");
-					await startDate({
-						signedUrl: signedUrlData.signed_url,
-						overrides: signedUrlData.overrides,
-					});
-				} else {
-					// Last date done — persist transcript, then start generation or go to returnTo (edit flow)
-					await persistPromise;
-					clearSpeedDatingSession();
-					setPhase("finalizing");
-					if (returnTo) {
-						// Edit flow: skip profile/wingfox generation, go back to personas/me
-						navigate({ to: returnTo as "/personas/me" });
-					} else {
-						void runGeneration();
-					}
-				}
-			} catch (e) {
-				console.error(e);
-				toast.error(t("speed_dating.error_complete_failed"));
+		try {
+			if (personaIndex < personas.length - 1) {
+				const nextIndex = personaIndex + 1;
+				const nextPersona = personas[nextIndex];
+				if (!nextPersona) return;
+
+				setLoadingMessage(
+					t("speed_dating.preparing_chat", { name: nextPersona.name }),
+				);
+				setPhase("next");
+
+				const nextSession = (await createSession.mutateAsync(
+					nextPersona.id,
+				)) as { session_id: string };
+				const signedUrlData = await getSignedUrl.mutateAsync(
+					nextSession.session_id,
+				);
+
+				saveSpeedDatingSession({
+					personas,
+					sessionId: nextSession.session_id,
+					personaIndex: nextIndex,
+				});
+				setSessionId(nextSession.session_id);
+				setPersonaIndex(nextIndex);
+				resetVoice();
 				setPhase("chat");
+				await startDate({
+					signedUrl: signedUrlData.signed_url,
+					overrides: signedUrlData.overrides,
+				});
+			} else {
+				clearSpeedDatingSession();
+				setPhase("finalizing");
+				void runGeneration();
 			}
-		};
-		run();
+		} catch (e) {
+			console.error("[SpeedDatingSession] handleProceedToNext failed:", e);
+			setTransitionError(t("speed_dating.transition_error"));
+			setPhase("transition");
+		} finally {
+			setIsAdvancing(false);
+		}
 	}, [
-		voiceStatus,
+		isAdvancing,
 		personaIndex,
 		personas,
-		completeSession.mutateAsync,
-		getSignedUrl.mutateAsync,
-		createSession.mutateAsync,
+		createSession,
+		getSignedUrl,
 		resetVoice,
+		startDate,
 		runGeneration,
 		t,
-		startDate,
-		returnTo,
-		navigate,
 	]);
+
+	const handleSkipRemaining = useCallback(() => {
+		clearSpeedDatingSession();
+		if (returnTo) {
+			navigate({ to: returnTo as "/personas/me" });
+		} else {
+			navigate({ to: "/onboarding/review" });
+		}
+	}, [navigate, returnTo]);
+
+	const handleCancelAndBack = useCallback(() => {
+		clearSpeedDatingSession();
+		navigate({
+			to: (returnTo as "/personas/me") || "/onboarding/speed-dating",
+		});
+	}, [navigate, returnTo]);
+
+	const handleRedoDate = useCallback(async () => {
+		if (isRedoing) return;
+		setIsRedoing(true);
+		try {
+			const currentPersona = personas[personaIndex];
+			if (!currentPersona) return;
+			const newSession = (await createSession.mutateAsync(
+				currentPersona.id,
+			)) as { session_id: string };
+			saveSpeedDatingSession({
+				personas,
+				sessionId: newSession.session_id,
+				personaIndex,
+			});
+			setSessionId(newSession.session_id);
+			setIsConversationShort(false);
+			resetVoice();
+			handledDoneRef.current = false;
+			setPhase("connecting");
+			setLoadingMessage(
+				t("speed_dating.preparing_chat", { name: currentPersona.name }),
+			);
+		} catch (e) {
+			console.error("[SpeedDatingSession] handleRedoDate failed:", e);
+			toast.error(t("speed_dating.transition_error"));
+		} finally {
+			setIsRedoing(false);
+		}
+	}, [isRedoing, personas, personaIndex, createSession, resetVoice, t]);
+
+	const handleVoiceRetry = useCallback(() => {
+		resetVoice();
+		setPhase("connecting");
+	}, [resetVoice]);
 
 	const handleEndConversation = useCallback(() => endDate(), [endDate]);
 
@@ -271,14 +351,21 @@ export function SpeedDatingSessionPage({
 	const isLowTime = remainingMs < 30_000;
 	const isVoiceActive =
 		voiceStatus === "talking" || voiceStatus === "connecting";
+	const isLastDate = personaIndex >= personas.length - 1;
 
 	const GENERATION_STEPS = [
 		{ key: "profile" as const, label: t("speed_dating.step_profile") },
 		{ key: "wingfox" as const, label: t("speed_dating.step_wingfox") },
 	];
 
+	// Loading phase: show spinner instead of null
 	if (personas.length === 0) {
-		return null; // redirecting
+		return (
+			<div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-6">
+				<Loader2 className="w-10 h-10 animate-spin text-secondary" />
+				<p className="text-lg font-bold">{t("speed_dating.preparing")}</p>
+			</div>
+		);
 	}
 
 	// Finalizing phase: generation progress
@@ -313,7 +400,6 @@ export function SpeedDatingSessionPage({
 							</h3>
 						</div>
 
-						{/* 2-step progress indicator */}
 						<div className="flex items-center gap-3">
 							{GENERATION_STEPS.map((s, i) => {
 								const stepOrder = ["profile", "wingfox", "complete"] as const;
@@ -380,7 +466,11 @@ export function SpeedDatingSessionPage({
 							</button>
 							<button
 								type="button"
-								onClick={() => navigate({ to: "/onboarding/review" })}
+								onClick={() =>
+									navigate({
+										to: (returnTo as "/personas/me") || "/onboarding/review",
+									})
+								}
 								className="px-6 py-3 border border-border rounded-full font-bold text-sm hover:bg-muted transition-all"
 							>
 								{t("speed_dating.skip_to_review")}
@@ -392,12 +482,184 @@ export function SpeedDatingSessionPage({
 		);
 	}
 
+	// Transition phase: shown after each date ends
+	if (phase === "transition") {
+		const nextPersona =
+			personaIndex < personas.length - 1 ? personas[personaIndex + 1] : null;
+
+		return (
+			<div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-8 px-4">
+				<div className="flex flex-col items-center gap-4">
+					{isConversationShort ? (
+						<AlertTriangle className="w-16 h-16 text-amber-500" />
+					) : (
+						<CheckCircle2 className="w-16 h-16 text-green-500" />
+					)}
+					<h3 className="text-xl font-bold text-center">
+						{isConversationShort
+							? t("speed_dating.date_ended_short", { name: currentName })
+							: isLastDate
+								? t("speed_dating.all_dates_complete")
+								: t("speed_dating.date_complete", { name: currentName })}
+					</h3>
+				</div>
+
+				{/* Date progress */}
+				<div className="flex items-center gap-3">
+					{personas.map((p, i) => {
+						const isCurrent = i === personaIndex;
+						const isDone = i < personaIndex;
+						const isShort = isCurrent && isConversationShort;
+						return (
+							<div key={p.id} className="flex items-center gap-3">
+								{i > 0 && (
+									<div
+										className={`w-8 h-0.5 ${isDone || isCurrent ? (isShort ? "bg-amber-500" : "bg-green-500") : "bg-muted"}`}
+									/>
+								)}
+								<div
+									className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+										isShort
+											? "bg-amber-500 text-white"
+											: isDone || isCurrent
+												? "bg-green-500 text-white"
+												: "bg-muted text-muted-foreground"
+									}`}
+								>
+									{isShort ? (
+										<AlertTriangle className="w-5 h-5" />
+									) : isDone || isCurrent ? (
+										<CheckCircle2 className="w-5 h-5" />
+									) : (
+										p.name[0]
+									)}
+								</div>
+							</div>
+						);
+					})}
+				</div>
+
+				{transitionError && (
+					<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive max-w-md text-center">
+						<AlertTriangle className="inline w-4 h-4 mr-2 -translate-y-px" />
+						{transitionError}
+					</div>
+				)}
+
+				{isConversationShort && !transitionError && (
+					<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400 max-w-md text-center">
+						<AlertTriangle className="inline w-4 h-4 mr-2 -translate-y-px" />
+						{t("speed_dating.conversation_too_short")}
+					</div>
+				)}
+
+				{nextPersona && !transitionError && !isConversationShort && (
+					<div className="rounded-xl border border-secondary/20 bg-secondary/5 px-5 py-3 text-sm text-foreground">
+						{t("speed_dating.next_date_info", { name: nextPersona.name })}
+					</div>
+				)}
+
+				<div className="flex flex-col items-center gap-3">
+					{transitionError ? (
+						<>
+							<button
+								type="button"
+								onClick={handleProceedToNext}
+								disabled={isAdvancing}
+								className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 shadow-md shadow-secondary/20"
+							>
+								{isAdvancing ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<RefreshCw className="w-4 h-4" />
+								)}
+								{t("speed_dating.retry_next_session")}
+							</button>
+							<button
+								type="button"
+								onClick={handleCancelAndBack}
+								className="px-6 py-3 border border-border rounded-full font-bold text-sm hover:bg-muted transition-all flex items-center gap-2"
+							>
+								<ArrowLeft className="w-4 h-4" />
+								{t("speed_dating.back_to_speed_dating")}
+							</button>
+						</>
+					) : isConversationShort ? (
+						<>
+							<button
+								type="button"
+								onClick={() => void handleRedoDate()}
+								disabled={isRedoing}
+								className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 shadow-md shadow-secondary/20"
+							>
+								{isRedoing ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<RefreshCw className="w-4 h-4" />
+								)}
+								{t("speed_dating.redo_this_date")}
+							</button>
+							<button
+								type="button"
+								onClick={handleProceedToNext}
+								disabled={isAdvancing}
+								className="px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+							>
+								<ArrowRight className="w-4 h-4" />
+								{t("speed_dating.continue_anyway")}
+							</button>
+						</>
+					) : (
+						<>
+							<button
+								type="button"
+								onClick={handleProceedToNext}
+								disabled={isAdvancing}
+								className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 shadow-md shadow-secondary/20"
+							>
+								{isAdvancing ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<ArrowRight className="w-4 h-4" />
+								)}
+								{isLastDate
+									? t("speed_dating.proceed_to_generation")
+									: t("speed_dating.proceed_next_date")}
+							</button>
+							<button
+								type="button"
+								onClick={handleSkipRemaining}
+								className="px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+							>
+								<SkipForward className="w-4 h-4" />
+								{t("speed_dating.skip_remaining")}
+							</button>
+						</>
+					)}
+				</div>
+			</div>
+		);
+	}
+
 	// Full-screen overlay for connecting or "next" phase
 	if (phase === "connecting" || phase === "next") {
 		return (
 			<div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-6">
 				<Loader2 className="w-10 h-10 animate-spin text-secondary" />
 				<p className="text-lg font-bold">{loadingMessage}</p>
+				{isTimedOut && (
+					<p className="text-sm text-amber-500 max-w-md text-center">
+						{t("speed_dating.connection_timeout")}
+					</p>
+				)}
+				<button
+					type="button"
+					onClick={handleCancelAndBack}
+					className="mt-4 px-6 py-3 border border-border rounded-full font-bold text-sm hover:bg-muted transition-all flex items-center gap-2"
+				>
+					<ArrowLeft className="w-4 h-4" />
+					{t("speed_dating.cancel_and_back")}
+				</button>
 			</div>
 		);
 	}
@@ -497,7 +759,7 @@ export function SpeedDatingSessionPage({
 								)}
 							</div>
 						)}
-						{voiceStatus === "idle" && (
+						{voiceStatus === "idle" && !voiceError && (
 							<div className="flex items-center gap-2 mt-1">
 								<Loader2 className="w-3 h-3 animate-spin text-white/60" />
 								<p className="text-sm text-white/60">
@@ -509,8 +771,28 @@ export function SpeedDatingSessionPage({
 				</div>
 
 				{voiceError && (
-					<div className="mb-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm backdrop-blur">
-						{voiceError}
+					<div className="mb-4 flex flex-col items-center gap-3">
+						<div className="px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm backdrop-blur">
+							{voiceError}
+						</div>
+						<div className="flex gap-3">
+							<button
+								type="button"
+								onClick={handleVoiceRetry}
+								className="px-5 py-2.5 rounded-full bg-white/15 text-white font-bold text-sm hover:bg-white/25 backdrop-blur transition-all flex items-center gap-2 border border-white/20"
+							>
+								<RefreshCw className="w-3.5 h-3.5" />
+								{t("speed_dating.retry_voice")}
+							</button>
+							<button
+								type="button"
+								onClick={handleCancelAndBack}
+								className="px-5 py-2.5 rounded-full bg-white/10 text-white/70 font-bold text-sm hover:bg-white/15 backdrop-blur transition-all flex items-center gap-2 border border-white/10"
+							>
+								<ArrowLeft className="w-3.5 h-3.5" />
+								{t("speed_dating.back_to_speed_dating")}
+							</button>
+						</div>
 					</div>
 				)}
 

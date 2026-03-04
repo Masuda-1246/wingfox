@@ -38,7 +38,7 @@ personas.post("/wingfox/generate", requireAuth, async (c) => {
 		.select("id, completed_at")
 		.eq("user_id", userId)
 		.eq("status", "completed")
-		.order("completed_at", { ascending: true, nullsFirst: false })
+		.order("completed_at", { ascending: false, nullsFirst: false })
 		.limit(WINGFOX_MAX_SESSIONS);
 	const sessionIds = (sessions ?? []).map((s) => s.id);
 	if (sessionIds.length < WINGFOX_MAX_SESSIONS) {

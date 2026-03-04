@@ -1,5 +1,6 @@
 /** sessionStorage key for speed-dating session restore on reload */
 const KEY = "speed-dating-session";
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export type PersistedPersona = { id: string; name: string };
 
@@ -7,11 +8,18 @@ export type SpeedDatingSessionState = {
 	personas: PersistedPersona[];
 	sessionId: string;
 	personaIndex: number;
+	savedAt: number;
 };
 
-export function saveSpeedDatingSession(state: SpeedDatingSessionState): void {
+export function saveSpeedDatingSession(
+	state: Omit<SpeedDatingSessionState, "savedAt">,
+): void {
 	try {
-		sessionStorage.setItem(KEY, JSON.stringify(state));
+		const withTimestamp: SpeedDatingSessionState = {
+			...state,
+			savedAt: Date.now(),
+		};
+		sessionStorage.setItem(KEY, JSON.stringify(withTimestamp));
 	} catch {
 		// ignore
 	}
@@ -34,6 +42,10 @@ export function loadSpeedDatingSession(): SpeedDatingSessionState | null {
 			data.personaIndex > 2
 		)
 			return null;
+		if (data.savedAt && Date.now() - data.savedAt > SESSION_TTL_MS) {
+			clearSpeedDatingSession();
+			return null;
+		}
 		return data;
 	} catch {
 		return null;
