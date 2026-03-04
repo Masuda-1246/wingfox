@@ -25,6 +25,7 @@ import {
 	usePartnerFoxChatMessages,
 	useSendPartnerFoxMessage,
 } from "@/lib/hooks/usePartnerFoxChats";
+import { usePersonasList } from "@/lib/hooks/usePersonasApi";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
@@ -319,6 +320,9 @@ export function Chat() {
 	const matchDetail = useMatchingResult(activeSessionId, { enabled: !!user });
 	const detail = matchDetail.data;
 	const prevActiveSessionIdRef = useRef<string>("");
+
+	const { data: personasList } = usePersonasList("wingfox");
+	const myPersonaIconUrl = personasList?.[0]?.icon_url ?? null;
 
 	// Refetch detail when switching to another chat so analysis panel isn’t stuck on stale/initial values
 	useEffect(() => {
@@ -1383,6 +1387,8 @@ export function Chat() {
 										msg.senderId === "me" ||
 										msg.senderId === "user" ||
 										msg.senderId === "my_fox";
+									const isFoxSender =
+										msg.senderId === "my_fox" || msg.senderId === "partner_fox";
 									return (
 										<m.div
 											key={msg.id}
@@ -1395,14 +1401,25 @@ export function Chat() {
 										>
 											<div
 												className={cn(
-													"w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-border",
-													isMe ? "bg-foreground text-background" : "bg-muted",
+													"w-8 h-8 rounded-full shrink-0 border border-border overflow-hidden",
+													!isFoxSender &&
+														(isMe
+															? "bg-foreground text-background flex items-center justify-center"
+															: "bg-muted flex items-center justify-center"),
 												)}
 											>
-												{isMe ? (
-													<User className="w-4 h-4" />
+												{msg.senderId === "my_fox" ? (
+													<FoxAvatar
+														iconUrl={myPersonaIconUrl ?? undefined}
+														className="w-full h-full object-cover"
+													/>
+												) : msg.senderId === "partner_fox" ? (
+													<FoxAvatar
+														iconUrl={displaySession.partnerImage}
+														className="w-full h-full object-cover"
+													/>
 												) : (
-													<Bot className="w-4 h-4" />
+													<User className="w-4 h-4" />
 												)}
 											</div>
 											<div
