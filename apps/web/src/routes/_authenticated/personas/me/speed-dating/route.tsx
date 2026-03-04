@@ -1,4 +1,3 @@
-import { UpperHeader } from "@/components/layouts/UpperHeader";
 import { ContentPending } from "@/components/route-pending";
 import { OnboardingSpeedDating } from "@/routes/_authenticated/onboarding/speed-dating/-components/OnboardingSpeedDating";
 import { createFileRoute } from "@tanstack/react-router";
@@ -11,10 +10,5 @@ export const Route = createFileRoute(
 });
 
 function SpeedDatingEditPage() {
-	return (
-		<>
-			<UpperHeader />
-			<OnboardingSpeedDating returnTo="/personas/me" />
-		</>
-	);
+	return <OnboardingSpeedDating returnTo="/personas/me" />;
 }

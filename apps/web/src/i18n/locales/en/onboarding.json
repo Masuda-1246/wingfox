@@ -434,7 +434,10 @@
 		"proceed_to_generation": "Generate profile",
 		"all_dates_complete": "All dates complete!",
 		"transition_error": "Failed to prepare next session",
-		"retry_next_session": "Retry"
+		"retry_next_session": "Retry",
+		"conversation_too_short": "The conversation was too short. Profile generation may not have enough data.",
+		"redo_this_date": "Redo this date",
+		"continue_anyway": "Continue anyway"
 	},
 	"review": {
 		"title": "Profile Review",

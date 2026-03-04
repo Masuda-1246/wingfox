@@ -398,7 +398,10 @@
 		"proceed_to_generation": "プロフィール生成へ進む",
 		"all_dates_complete": "すべてのデートが完了しました！",
 		"transition_error": "次のセッションの準備に失敗しました",
-		"retry_next_session": "リトライ"
+		"retry_next_session": "リトライ",
+		"conversation_too_short": "会話が短かったため、プロフィール生成に十分なデータが得られない可能性があります。",
+		"redo_this_date": "このデートをやり直す",
+		"continue_anyway": "このまま進む"
 	},
 	"review": {
 		"title": "プロフィール確認",

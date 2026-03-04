@@ -34,6 +34,7 @@ import { toast } from "sonner";
 type GenerationPhase = "profile" | "wingfox" | "complete" | "error";
 
 const PHASE_TIMEOUT_MS = 30_000;
+const MIN_MESSAGES_PER_DATE = 4;
 
 /** Strip markdown formatting (bold, italic, headers) from AI transcript text */
 function stripMarkdown(text: string): string {
@@ -90,6 +91,8 @@ export function SpeedDatingSessionPage({
 	const [transitionError, setTransitionError] = useState<string | null>(null);
 	const [isTimedOut, setIsTimedOut] = useState(false);
 	const [isAdvancing, setIsAdvancing] = useState(false);
+	const [isConversationShort, setIsConversationShort] = useState(false);
+	const [isRedoing, setIsRedoing] = useState(false);
 	const completeSession = useCompleteSpeedDatingSession(sessionId);
 	const transcriptRef = useRef<TranscriptEntry[]>([]);
 	const handledDoneRef = useRef(false);
@@ -194,7 +197,9 @@ export function SpeedDatingSessionPage({
 			await generateWingfox.mutateAsync();
 			setGenerationPhase("complete");
 			await new Promise((resolve) => setTimeout(resolve, 800));
-			navigate({ to: "/onboarding/review" });
+			navigate({
+				to: (returnTo as "/personas/me") || "/onboarding/review",
+			});
 		} catch (e) {
 			console.error("[SpeedDatingSession] Generation failed:", e);
 			const err = e as ApiError;
@@ -203,7 +208,7 @@ export function SpeedDatingSessionPage({
 			);
 			setGenerationPhase("error");
 		}
-	}, [generateProfile, generateWingfox, navigate, t]);
+	}, [generateProfile, generateWingfox, navigate, returnTo, t]);
 
 	// When voice ends: persist transcript, then show transition screen
 	useEffect(() => {
@@ -224,6 +229,7 @@ export function SpeedDatingSessionPage({
 			toast.error(t("speed_dating.error_session_save_failed"));
 		});
 
+		setIsConversationShort(transcriptData.length < MIN_MESSAGES_PER_DATE);
 		setTransitionError(null);
 		setPhase("transition");
 	}, [voiceStatus, completeSession.mutateAsync, t]);
@@ -267,11 +273,7 @@ export function SpeedDatingSessionPage({
 			} else {
 				clearSpeedDatingSession();
 				setPhase("finalizing");
-				if (returnTo) {
-					navigate({ to: returnTo as "/personas/me" });
-				} else {
-					void runGeneration();
-				}
+				void runGeneration();
 			}
 		} catch (e) {
 			console.error("[SpeedDatingSession] handleProceedToNext failed:", e);
@@ -289,8 +291,6 @@ export function SpeedDatingSessionPage({
 		resetVoice,
 		startDate,
 		runGeneration,
-		returnTo,
-		navigate,
 		t,
 	]);
 
@@ -309,6 +309,36 @@ export function SpeedDatingSessionPage({
 			to: (returnTo as "/personas/me") || "/onboarding/speed-dating",
 		});
 	}, [navigate, returnTo]);
+
+	const handleRedoDate = useCallback(async () => {
+		if (isRedoing) return;
+		setIsRedoing(true);
+		try {
+			const currentPersona = personas[personaIndex];
+			if (!currentPersona) return;
+			const newSession = (await createSession.mutateAsync(
+				currentPersona.id,
+			)) as { session_id: string };
+			saveSpeedDatingSession({
+				personas,
+				sessionId: newSession.session_id,
+				personaIndex,
+			});
+			setSessionId(newSession.session_id);
+			setIsConversationShort(false);
+			resetVoice();
+			handledDoneRef.current = false;
+			setPhase("connecting");
+			setLoadingMessage(
+				t("speed_dating.preparing_chat", { name: currentPersona.name }),
+			);
+		} catch (e) {
+			console.error("[SpeedDatingSession] handleRedoDate failed:", e);
+			toast.error(t("speed_dating.transition_error"));
+		} finally {
+			setIsRedoing(false);
+		}
+	}, [isRedoing, personas, personaIndex, createSession, resetVoice, t]);
 
 	const handleVoiceRetry = useCallback(() => {
 		resetVoice();
@@ -436,7 +466,11 @@ export function SpeedDatingSessionPage({
 							</button>
 							<button
 								type="button"
-								onClick={() => navigate({ to: "/onboarding/review" })}
+								onClick={() =>
+									navigate({
+										to: (returnTo as "/personas/me") || "/onboarding/review",
+									})
+								}
 								className="px-6 py-3 border border-border rounded-full font-bold text-sm hover:bg-muted transition-all"
 							>
 								{t("speed_dating.skip_to_review")}
@@ -497,7 +531,14 @@ export function SpeedDatingSessionPage({
 					</div>
 				)}
 
-				{nextPersona && !transitionError && (
+				{isConversationShort && !transitionError && (
+					<div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400 max-w-md text-center">
+						<AlertTriangle className="inline w-4 h-4 mr-2 -translate-y-px" />
+						{t("speed_dating.conversation_too_short")}
+					</div>
+				)}
+
+				{nextPersona && !transitionError && !isConversationShort && (
 					<div className="rounded-xl border border-secondary/20 bg-secondary/5 px-5 py-3 text-sm text-foreground">
 						{t("speed_dating.next_date_info", { name: nextPersona.name })}
 					</div>
@@ -526,6 +567,31 @@ export function SpeedDatingSessionPage({
 							>
 								<ArrowLeft className="w-4 h-4" />
 								{t("speed_dating.back_to_speed_dating")}
+							</button>
+						</>
+					) : isConversationShort ? (
+						<>
+							<button
+								type="button"
+								onClick={() => void handleRedoDate()}
+								disabled={isRedoing}
+								className="px-8 py-4 bg-secondary text-secondary-foreground rounded-full font-bold text-sm tracking-wide hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-40 shadow-md shadow-secondary/20"
+							>
+								{isRedoing ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<RefreshCw className="w-4 h-4" />
+								)}
+								{t("speed_dating.redo_this_date")}
+							</button>
+							<button
+								type="button"
+								onClick={handleProceedToNext}
+								disabled={isAdvancing}
+								className="px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+							>
+								<ArrowRight className="w-4 h-4" />
+								{t("speed_dating.continue_anyway")}
 							</button>
 						</>
 					) : (
