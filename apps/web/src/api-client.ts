@@ -1,6 +1,7 @@
 import type { AppType } from "@repo/api";
 import { hc } from "hono/client";
 import i18n from "./i18n";
+import { getIsSigningOut } from "./lib/auth-state";
 import { supabase } from "./lib/supabase";
 
 function getBaseUrl(): string {
@@ -23,7 +24,8 @@ const _client = hc<AppType>(getBaseUrl(), {
 		if (
 			res.status === 401 &&
 			typeof window !== "undefined" &&
-			window.location.pathname !== "/login"
+			window.location.pathname !== "/login" &&
+			!getIsSigningOut()
 		) {
 			window.location.href = "/login";
 		}

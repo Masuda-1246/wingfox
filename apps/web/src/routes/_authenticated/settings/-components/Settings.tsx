@@ -211,9 +211,15 @@ export function Settings() {
 	};
 
 	const handleLogout = async () => {
-		await signOut();
-		toast.success(t("logout_success", "Signed out successfully"));
-		navigate({ to: "/login" });
+		try {
+			await signOut();
+			toast.success(t("logout_success", "Signed out successfully"));
+		} catch (err) {
+			console.error("Logout error:", err);
+			toast.error(t("logout_error", "Failed to sign out. Please try again."));
+		} finally {
+			navigate({ to: "/login" });
+		}
 	};
 
 	const handleDeleteAccount = async () => {

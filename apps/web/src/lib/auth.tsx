@@ -1,3 +1,5 @@
+import { setIsSigningOut } from "@/lib/auth-state";
+import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 import {
@@ -40,12 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
+		} = supabase.auth.onAuthStateChange((event, session) => {
 			setState({
 				user: session?.user ?? null,
 				session,
 				loading: false,
 			});
+			if (event === "SIGNED_OUT") {
+				queryClient.clear();
+			}
 		});
 
 		supabase.auth.getSession().then(({ data: { session } }) => {
@@ -80,7 +85,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	);
 
 	const signOut = useCallback(async () => {
-		await supabase.auth.signOut();
+		setIsSigningOut(true);
+		try {
+			queryClient.clear();
+			const { error } = await supabase.auth.signOut();
+			if (error) {
+				console.warn(
+					"Global signOut failed, falling back to local:",
+					error.message,
+				);
+				await supabase.auth.signOut({ scope: "local" });
+			}
+		} finally {
+			setIsSigningOut(false);
+		}
 	}, []);
 
 	const value: AuthContextValue = {
