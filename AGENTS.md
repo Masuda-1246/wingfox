@@ -52,4 +52,5 @@ POST /api/internal/fox-conversations/execute   # runs Mistral AI fox conversatio
 - Docker is needed for `npx supabase start`. In the Cloud Agent environment, Docker requires `fuse-overlayfs` and `iptables-legacy` configuration.
 - The `/api/internal/*` endpoints have no authentication — they are meant to be called by cron/worker, not exposed publicly.
 - There are two registration routes (`/register` works with Supabase, `/signup` is a broken mock) — use `/register`.
-- `onboarding_status` in `user_profiles` controls routing. Users created via `create-user-with-fox.sh` have status `"confirmed"` and skip onboarding. If fox-search/speed-dating is triggered on such a user, the status may revert — fix it via direct DB update if needed.
+- `onboarding_status` in `user_profiles` controls routing. Users created via `create-user-with-fox.sh` have status `"confirmed"` and skip onboarding.
+- **Onboarding vs edit flows**: First-time onboarding uses `/onboarding/*` only. Confirmed users must use **edit routes** `/personas/me/quiz` (quiz) and `/personas/me/speed-dating` (regenerate fox); the API does not update `onboarding_status` when the user is already `confirmed`, so editing no longer reverts status. The sitemap is in `docs/sitemap.pen` (Pencil format).

@@ -1,0 +1,88 @@
+{
+  "id": "sitemap-root",
+  "type": "frame",
+  "x": 0,
+  "y": 0,
+  "width": 800,
+  "layout": "flex",
+  "flexDirection": "column",
+  "gap": 24,
+  "padding": 32,
+  "children": [
+    {
+      "id": "title",
+      "type": "text",
+      "content": "WingFox サイトマップ",
+      "fill": "#000000",
+      "fontSize": 24,
+      "fontWeight": "bold"
+    },
+    {
+      "id": "section-public",
+      "type": "frame",
+      "layout": "flex",
+      "flexDirection": "column",
+      "gap": 8,
+      "padding": 16,
+      "fill": "#f0f0f0",
+      "cornerRadius": 8,
+      "children": [
+        { "id": "label-public", "type": "text", "content": "未認証", "fill": "#333", "fontSize": 14, "fontWeight": "bold" },
+        { "id": "r-index", "type": "text", "content": "/", "fill": "#333", "fontSize": 12 },
+        { "id": "r-login", "type": "text", "content": "/login", "fill": "#333", "fontSize": 12 },
+        { "id": "r-register", "type": "text", "content": "/register", "fill": "#333", "fontSize": 12 },
+        { "id": "r-speed-dating-root", "type": "text", "content": "/speed-dating", "fill": "#333", "fontSize": 12 }
+      ]
+    },
+    {
+      "id": "section-auth",
+      "type": "frame",
+      "layout": "flex",
+      "flexDirection": "column",
+      "gap": 8,
+      "padding": 16,
+      "fill": "#e8f4e8",
+      "cornerRadius": 8,
+      "children": [
+        { "id": "label-auth", "type": "text", "content": "認証必須", "fill": "#333", "fontSize": 14, "fontWeight": "bold" },
+        { "id": "r-chat", "type": "text", "content": "/chat", "fill": "#333", "fontSize": 12 },
+        { "id": "r-settings", "type": "text", "content": "/settings", "fill": "#333", "fontSize": 12 },
+        { "id": "r-personas-me", "type": "text", "content": "/personas/me", "fill": "#333", "fontSize": 12 },
+        { "id": "r-speed-dating-standalone", "type": "text", "content": "/speed-dating-standalone", "fill": "#333", "fontSize": 12 }
+      ]
+    },
+    {
+      "id": "section-onboarding",
+      "type": "frame",
+      "layout": "flex",
+      "flexDirection": "column",
+      "gap": 8,
+      "padding": 16,
+      "fill": "#e0e8ff",
+      "cornerRadius": 8,
+      "children": [
+        { "id": "label-onboarding", "type": "text", "content": "オンボーディング（初回のみ）", "fill": "#333", "fontSize": 14, "fontWeight": "bold" },
+        { "id": "r-onboarding-profile", "type": "text", "content": "/onboarding/profile", "fill": "#333", "fontSize": 12 },
+        { "id": "r-onboarding-quiz", "type": "text", "content": "/onboarding/quiz", "fill": "#333", "fontSize": 12 },
+        { "id": "r-onboarding-speed-dating", "type": "text", "content": "/onboarding/speed-dating → session → complete", "fill": "#333", "fontSize": 12 },
+        { "id": "r-onboarding-review", "type": "text", "content": "/onboarding/review → 確定 → /personas/me", "fill": "#333", "fontSize": 12 }
+      ]
+    },
+    {
+      "id": "section-edit",
+      "type": "frame",
+      "layout": "flex",
+      "flexDirection": "column",
+      "gap": 8,
+      "padding": 16,
+      "fill": "#fff0e0",
+      "cornerRadius": 8,
+      "children": [
+        { "id": "label-edit", "type": "text", "content": "編集（confirmed のみ）", "fill": "#333", "fontSize": 14, "fontWeight": "bold" },
+        { "id": "r-me-quiz", "type": "text", "content": "/personas/me/quiz（クイズ編集）", "fill": "#333", "fontSize": 12 },
+        { "id": "r-me-speed-dating", "type": "text", "content": "/personas/me/speed-dating（フォックス再生成）", "fill": "#333", "fontSize": 12 },
+        { "id": "note-edit", "type": "text", "content": "保存・完了後は /personas/me に戻る。onboarding_status は更新しない。", "fill": "#666", "fontSize": 11 }
+      ]
+    }
+  ]
+}

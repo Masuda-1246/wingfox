@@ -54,11 +54,8 @@ export const Route = createFileRoute("/_authenticated")({
 		}
 		const onOnboarding = pathname.startsWith("/onboarding");
 		if (onboardingStatus === "confirmed") {
-			if (
-				onOnboarding &&
-				!pathname.startsWith("/onboarding/speed-dating") &&
-				!pathname.startsWith("/onboarding/quiz")
-			) {
+			// Confirmed users must not use onboarding routes; redirect to personas/me. Edit flow uses /personas/me/quiz and /personas/me/speed-dating.
+			if (onOnboarding) {
 				throw redirect({ to: "/personas/me" });
 			}
 			return;
