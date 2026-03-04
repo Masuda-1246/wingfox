@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SpeedDatingRouteRouteImport } from './routes/speed-dating/route'
 import { Route as RegisterRouteRouteImport } from './routes/register/route'
 import { Route as LoginRouteRouteImport } from './routes/login/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -30,11 +29,6 @@ import { Route as AuthenticatedOnboardingProfileRouteRouteImport } from './route
 import { Route as AuthenticatedPersonasMeSpeedDatingRouteRouteImport } from './routes/_authenticated/personas/me/speed-dating/route'
 import { Route as AuthenticatedPersonasMeQuizRouteRouteImport } from './routes/_authenticated/personas/me/quiz/route'
 
-const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
-  id: '/speed-dating',
-  path: '/speed-dating',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RegisterRouteRoute = RegisterRouteRouteImport.update({
   id: '/register',
   path: '/register',
@@ -148,7 +142,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
@@ -169,7 +162,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/speed-dating': typeof SpeedDatingRouteRoute
   '/chat': typeof AuthenticatedChatRouteRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRoute
@@ -192,7 +184,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRouteRoute
   '/register': typeof RegisterRouteRoute
-  '/speed-dating': typeof SpeedDatingRouteRoute
   '/_authenticated/chat': typeof AuthenticatedChatRouteRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRoute
@@ -215,7 +206,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
-    | '/speed-dating'
     | '/chat'
     | '/onboarding'
     | '/settings'
@@ -236,7 +226,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
-    | '/speed-dating'
     | '/chat'
     | '/onboarding'
     | '/settings'
@@ -258,7 +247,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/register'
-    | '/speed-dating'
     | '/_authenticated/chat'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
@@ -281,18 +269,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRouteRoute: typeof LoginRouteRoute
   RegisterRouteRoute: typeof RegisterRouteRoute
-  SpeedDatingRouteRoute: typeof SpeedDatingRouteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/speed-dating': {
-      id: '/speed-dating'
-      path: '/speed-dating'
-      fullPath: '/speed-dating'
-      preLoaderRoute: typeof SpeedDatingRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -508,7 +488,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRouteRoute: LoginRouteRoute,
   RegisterRouteRoute: RegisterRouteRoute,
-  SpeedDatingRouteRoute: SpeedDatingRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
