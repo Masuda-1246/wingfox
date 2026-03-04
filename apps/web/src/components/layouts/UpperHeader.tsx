@@ -141,10 +141,16 @@ export function UpperHeader() {
 	}, []);
 
 	const handleSignOut = async () => {
-		await signOut();
-		setIsUserMenuOpen(false);
-		toast.success(t("signed_out_success"));
-		navigate({ to: "/login" });
+		try {
+			await signOut();
+			toast.success(t("signed_out_success"));
+		} catch (err) {
+			console.error("Sign out error:", err);
+			toast.error(t("sign_out_error", "Failed to sign out. Please try again."));
+		} finally {
+			setIsUserMenuOpen(false);
+			navigate({ to: "/login" });
+		}
 	};
 
 	return (

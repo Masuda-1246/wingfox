@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { getIsSigningOut } from "@/lib/auth-state";
 import { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -15,7 +16,9 @@ export const queryClient = new QueryClient({
 			onError: (error: unknown) => {
 				if (error instanceof ApiError) {
 					if (error.status === 401) {
-						window.location.href = "/login";
+						if (!getIsSigningOut() && window.location.pathname !== "/login") {
+							window.location.href = "/login";
+						}
 						return;
 					}
 					toast.error(error.message);
