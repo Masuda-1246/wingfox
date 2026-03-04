@@ -3,16 +3,13 @@ import { ContentPending } from "@/components/route-pending";
 import { unwrapApiResponse } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 import type { PersonaListItem, ProfileMe } from "@/lib/types";
-import { createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useMatches } from "@tanstack/react-router";
 import { PersonasMe } from "./-components/PersonasMe";
 
 export const Route = createFileRoute("/_authenticated/personas/me")({
 	pendingComponent: ContentPending,
-	component: PersonasMe,
+	component: PersonasMeLayout,
 	loader: async () => {
-		// Prefetch all independent data in parallel before component mounts.
-		// This eliminates the waterfall: personas list, profile, quiz questions, quiz answers
-		// all start fetching at the same time instead of sequentially.
 		await Promise.allSettled([
 			queryClient.ensureQueryData({
 				queryKey: ["personas", "list", "wingfox"],
@@ -46,7 +43,6 @@ export const Route = createFileRoute("/_authenticated/personas/me")({
 			}),
 		]);
 
-		// Now prefetch sections if we got a persona (second wave, but persona data is in cache)
 		const personas = queryClient.getQueryData<PersonaListItem[]>([
 			"personas",
 			"list",
@@ -66,3 +62,15 @@ export const Route = createFileRoute("/_authenticated/personas/me")({
 		}
 	},
 });
+
+function PersonasMeLayout() {
+	const matches = useMatches();
+	const isExactMatch =
+		matches[matches.length - 1]?.id === "/_authenticated/personas/me";
+
+	if (isExactMatch) {
+		return <PersonasMe />;
+	}
+
+	return <Outlet />;
+}
