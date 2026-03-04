@@ -510,10 +510,19 @@ speedDating.post("/sessions/:id/complete", requireAuth, async (c) => {
 		.eq("status", "completed");
 	const allDone = (count ?? 0) >= 3;
 	if (allDone) {
-		await supabase
+		// Only update onboarding_status when not already confirmed (edit flow must not revert status)
+		const { data: profile } = await supabase
 			.from("user_profiles")
-			.update({ onboarding_status: "speed_dating_completed", updated_at: new Date().toISOString() })
-			.eq("id", userId);
+			.select("onboarding_status")
+			.eq("id", userId)
+			.single();
+		const currentStatus = profile?.onboarding_status ?? "not_started";
+		if (currentStatus !== "confirmed") {
+			await supabase
+				.from("user_profiles")
+				.update({ onboarding_status: "speed_dating_completed", updated_at: new Date().toISOString() })
+				.eq("id", userId);
+		}
 	}
 	return jsonData(c, { session_id: id, status: "completed", all_sessions_completed: allDone });
 });

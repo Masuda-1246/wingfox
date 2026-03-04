@@ -34,7 +34,7 @@ function normalizeOptions(
 	return Array.isArray(arr) ? arr : [];
 }
 
-export function OnboardingQuiz() {
+export function OnboardingQuiz({ editMode = false }: { editMode?: boolean }) {
 	const { t } = useTranslation("onboarding");
 	const navigate = useNavigate();
 	const { data: questions, isLoading } = useQuizQuestions();
@@ -160,12 +160,12 @@ export function OnboardingQuiz() {
 			} catch (err) {
 				console.error("Failed to clear quiz draft:", err);
 			}
-			navigate({ to: "/onboarding/speed-dating" });
+			navigate({ to: editMode ? "/personas/me" : "/onboarding/speed-dating" });
 		} catch (e) {
 			console.error(e);
 			toast.error(t("quiz.submit_error"));
 		}
-	}, [sortedQuestions, answers, submit, t, navigate]);
+	}, [sortedQuestions, answers, submit, t, navigate, editMode]);
 
 	if (isLoading || !questions?.length) {
 		return (
@@ -192,7 +192,7 @@ export function OnboardingQuiz() {
 			<div className="rounded-2xl border border-border bg-card p-8 md:p-10 shadow-sm">
 				<div className="space-y-6">
 					<div className="space-y-1">
-						<OnboardingStepLabel step={2} total={4} />
+						{!editMode && <OnboardingStepLabel step={2} total={4} />}
 						<p className="text-muted-foreground text-sm">
 							{step + 1} / {sortedQuestions.length}
 						</p>

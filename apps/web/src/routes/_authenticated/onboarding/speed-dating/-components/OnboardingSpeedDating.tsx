@@ -59,7 +59,9 @@ function personaToSummary(
 	};
 }
 
-export function OnboardingSpeedDating() {
+export function OnboardingSpeedDating({
+	returnTo,
+}: { returnTo?: string } = {}) {
 	const { t } = useTranslation("onboarding");
 	const navigate = useNavigate();
 	const { data: cachedPersonas } = useCachedPersonas();
@@ -198,7 +200,10 @@ export function OnboardingSpeedDating() {
 				sessionId,
 				personaIndex: 0,
 			});
-			navigate({ to: "/onboarding/speed-dating-session" });
+			navigate({
+				to: "/onboarding/speed-dating-session",
+				search: returnTo ? { returnTo } : undefined,
+			});
 		} catch (e) {
 			console.error("[SpeedDate] startSpeedDate", e);
 			const errorMessage = t("speed_dating.error_start_failed");

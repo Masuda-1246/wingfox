@@ -51,7 +51,9 @@ function formatTime(ms: number): string {
 	return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function SpeedDatingSessionPage() {
+export function SpeedDatingSessionPage({
+	returnTo,
+}: { returnTo?: string } = {}) {
 	const { t } = useTranslation("onboarding");
 	const navigate = useNavigate();
 	const createSession = useSpeedDatingSessions();
@@ -109,9 +111,11 @@ export function SpeedDatingSessionPage() {
 			);
 			return;
 		}
-		// No stored state: go back to start
-		navigate({ to: "/onboarding/speed-dating" as const });
-	}, [navigate, t]);
+		// No stored state: go back to start (or returnTo for edit flow)
+		navigate({
+			to: (returnTo as "/personas/me") || "/onboarding/speed-dating",
+		});
+	}, [navigate, t, returnTo]);
 
 	// When we have sessionId and phase is connecting: get signed URL and start voice
 	useEffect(() => {
@@ -134,7 +138,9 @@ export function SpeedDatingSessionPage() {
 					console.error("[SpeedDatingSession] getSignedUrl failed", err);
 					toast.error(t("speed_dating.error_voice_failed"));
 					clearSpeedDatingSession();
-					navigate({ to: "/onboarding/speed-dating" as const });
+					navigate({
+						to: (returnTo as "/personas/me") || "/onboarding/speed-dating",
+					});
 				}
 			}
 		})();
@@ -150,6 +156,7 @@ export function SpeedDatingSessionPage() {
 		navigate,
 		startDate,
 		t,
+		returnTo,
 	]);
 
 	const runGeneration = useCallback(async () => {
@@ -225,11 +232,16 @@ export function SpeedDatingSessionPage() {
 						overrides: signedUrlData.overrides,
 					});
 				} else {
-					// Last date done — persist transcript, then start generation
+					// Last date done — persist transcript, then start generation or go to returnTo (edit flow)
 					await persistPromise;
 					clearSpeedDatingSession();
 					setPhase("finalizing");
-					void runGeneration();
+					if (returnTo) {
+						// Edit flow: skip profile/wingfox generation, go back to personas/me
+						navigate({ to: returnTo as "/personas/me" });
+					} else {
+						void runGeneration();
+					}
 				}
 			} catch (e) {
 				console.error(e);
@@ -249,6 +261,8 @@ export function SpeedDatingSessionPage() {
 		runGeneration,
 		t,
 		startDate,
+		returnTo,
+		navigate,
 	]);
 
 	const handleEndConversation = useCallback(() => endDate(), [endDate]);

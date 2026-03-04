@@ -27,6 +27,8 @@ import { Route as AuthenticatedOnboardingSpeedDatingRouteRouteImport } from './r
 import { Route as AuthenticatedOnboardingReviewRouteRouteImport } from './routes/_authenticated/onboarding/review/route'
 import { Route as AuthenticatedOnboardingQuizRouteRouteImport } from './routes/_authenticated/onboarding/quiz/route'
 import { Route as AuthenticatedOnboardingProfileRouteRouteImport } from './routes/_authenticated/onboarding/profile/route'
+import { Route as AuthenticatedPersonasMeSpeedDatingRouteRouteImport } from './routes/_authenticated/personas/me/speed-dating/route'
+import { Route as AuthenticatedPersonasMeQuizRouteRouteImport } from './routes/_authenticated/personas/me/quiz/route'
 
 const SpeedDatingRouteRoute = SpeedDatingRouteRouteImport.update({
   id: '/speed-dating',
@@ -129,6 +131,18 @@ const AuthenticatedOnboardingProfileRouteRoute =
     path: '/profile',
     getParentRoute: () => AuthenticatedOnboardingRouteRoute,
   } as any)
+const AuthenticatedPersonasMeSpeedDatingRouteRoute =
+  AuthenticatedPersonasMeSpeedDatingRouteRouteImport.update({
+    id: '/speed-dating',
+    path: '/speed-dating',
+    getParentRoute: () => AuthenticatedPersonasMeRouteRoute,
+  } as any)
+const AuthenticatedPersonasMeQuizRouteRoute =
+  AuthenticatedPersonasMeQuizRouteRouteImport.update({
+    id: '/quiz',
+    path: '/quiz',
+    getParentRoute: () => AuthenticatedPersonasMeRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRouteRoute
@@ -146,8 +160,10 @@ export interface FileRoutesByFullPath {
   '/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
   '/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
-  '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/personas/me': typeof AuthenticatedPersonasMeRouteRouteWithChildren
   '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
+  '/personas/me/quiz': typeof AuthenticatedPersonasMeQuizRouteRoute
+  '/personas/me/speed-dating': typeof AuthenticatedPersonasMeSpeedDatingRouteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRouteRoute
@@ -165,8 +181,10 @@ export interface FileRoutesByTo {
   '/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
   '/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
-  '/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/personas/me': typeof AuthenticatedPersonasMeRouteRouteWithChildren
   '/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
+  '/personas/me/quiz': typeof AuthenticatedPersonasMeQuizRouteRoute
+  '/personas/me/speed-dating': typeof AuthenticatedPersonasMeSpeedDatingRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -186,8 +204,10 @@ export interface FileRoutesById {
   '/_authenticated/onboarding/speed-dating-complete': typeof AuthenticatedOnboardingSpeedDatingCompleteRouteRoute
   '/_authenticated/onboarding/speed-dating-session': typeof AuthenticatedOnboardingSpeedDatingSessionRouteRoute
   '/_authenticated/personas/create': typeof AuthenticatedPersonasCreateRouteRoute
-  '/_authenticated/personas/me': typeof AuthenticatedPersonasMeRouteRoute
+  '/_authenticated/personas/me': typeof AuthenticatedPersonasMeRouteRouteWithChildren
   '/_authenticated/personas/quiz': typeof AuthenticatedPersonasQuizRouteRoute
+  '/_authenticated/personas/me/quiz': typeof AuthenticatedPersonasMeQuizRouteRoute
+  '/_authenticated/personas/me/speed-dating': typeof AuthenticatedPersonasMeSpeedDatingRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,6 +229,8 @@ export interface FileRouteTypes {
     | '/personas/create'
     | '/personas/me'
     | '/personas/quiz'
+    | '/personas/me/quiz'
+    | '/personas/me/speed-dating'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,6 +250,8 @@ export interface FileRouteTypes {
     | '/personas/create'
     | '/personas/me'
     | '/personas/quiz'
+    | '/personas/me/quiz'
+    | '/personas/me/speed-dating'
   id:
     | '__root__'
     | '/'
@@ -248,6 +272,8 @@ export interface FileRouteTypes {
     | '/_authenticated/personas/create'
     | '/_authenticated/personas/me'
     | '/_authenticated/personas/quiz'
+    | '/_authenticated/personas/me/quiz'
+    | '/_authenticated/personas/me/speed-dating'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -386,6 +412,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingProfileRouteRouteImport
       parentRoute: typeof AuthenticatedOnboardingRouteRoute
     }
+    '/_authenticated/personas/me/speed-dating': {
+      id: '/_authenticated/personas/me/speed-dating'
+      path: '/speed-dating'
+      fullPath: '/personas/me/speed-dating'
+      preLoaderRoute: typeof AuthenticatedPersonasMeSpeedDatingRouteRouteImport
+      parentRoute: typeof AuthenticatedPersonasMeRouteRoute
+    }
+    '/_authenticated/personas/me/quiz': {
+      id: '/_authenticated/personas/me/quiz'
+      path: '/quiz'
+      fullPath: '/personas/me/quiz'
+      preLoaderRoute: typeof AuthenticatedPersonasMeQuizRouteRouteImport
+      parentRoute: typeof AuthenticatedPersonasMeRouteRoute
+    }
   }
 }
 
@@ -419,13 +459,31 @@ const AuthenticatedOnboardingRouteRouteWithChildren =
     AuthenticatedOnboardingRouteRouteChildren,
   )
 
+interface AuthenticatedPersonasMeRouteRouteChildren {
+  AuthenticatedPersonasMeQuizRouteRoute: typeof AuthenticatedPersonasMeQuizRouteRoute
+  AuthenticatedPersonasMeSpeedDatingRouteRoute: typeof AuthenticatedPersonasMeSpeedDatingRouteRoute
+}
+
+const AuthenticatedPersonasMeRouteRouteChildren: AuthenticatedPersonasMeRouteRouteChildren =
+  {
+    AuthenticatedPersonasMeQuizRouteRoute:
+      AuthenticatedPersonasMeQuizRouteRoute,
+    AuthenticatedPersonasMeSpeedDatingRouteRoute:
+      AuthenticatedPersonasMeSpeedDatingRouteRoute,
+  }
+
+const AuthenticatedPersonasMeRouteRouteWithChildren =
+  AuthenticatedPersonasMeRouteRoute._addFileChildren(
+    AuthenticatedPersonasMeRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRouteRoute: typeof AuthenticatedChatRouteRoute
   AuthenticatedOnboardingRouteRoute: typeof AuthenticatedOnboardingRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRoute
   AuthenticatedSpeedDatingStandaloneRouteRoute: typeof AuthenticatedSpeedDatingStandaloneRouteRoute
   AuthenticatedPersonasCreateRouteRoute: typeof AuthenticatedPersonasCreateRouteRoute
-  AuthenticatedPersonasMeRouteRoute: typeof AuthenticatedPersonasMeRouteRoute
+  AuthenticatedPersonasMeRouteRoute: typeof AuthenticatedPersonasMeRouteRouteWithChildren
   AuthenticatedPersonasQuizRouteRoute: typeof AuthenticatedPersonasQuizRouteRoute
 }
 
@@ -437,7 +495,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSpeedDatingStandaloneRouteRoute:
     AuthenticatedSpeedDatingStandaloneRouteRoute,
   AuthenticatedPersonasCreateRouteRoute: AuthenticatedPersonasCreateRouteRoute,
-  AuthenticatedPersonasMeRouteRoute: AuthenticatedPersonasMeRouteRoute,
+  AuthenticatedPersonasMeRouteRoute:
+    AuthenticatedPersonasMeRouteRouteWithChildren,
   AuthenticatedPersonasQuizRouteRoute: AuthenticatedPersonasQuizRouteRoute,
 }
 

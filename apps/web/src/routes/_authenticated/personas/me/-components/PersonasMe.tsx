@@ -575,7 +575,7 @@ function PersonasMeHeader({
 							<Edit2 className="w-4 h-4 mr-2" />
 							{t("me.edit")}
 						</Button>
-						<Link to="/onboarding/speed-dating">
+						<Link to="/personas/me/speed-dating">
 							<Button variant="outline">
 								<RefreshCw className="w-4 h-4 mr-2" />
 								{t("me.regenerate")}
@@ -851,7 +851,7 @@ function PersonasMeQuizCard({
 					<p className="text-sm text-muted-foreground">
 						{t("me.quiz_results_empty")}
 					</p>
-					<Link to="/onboarding/quiz">
+					<Link to="/personas/me/quiz">
 						<Button variant="secondary" className="text-sm">
 							{t("me.quiz_button")}
 						</Button>
@@ -1083,7 +1083,7 @@ export function PersonasMe() {
 		return (
 			<div className="p-4 md:p-6 w-full max-w-md mx-auto flex flex-col items-center justify-center min-h-[40vh] text-center space-y-4">
 				<p className="text-muted-foreground">{t("me.no_persona_title")}</p>
-				<Link to="/onboarding/quiz">
+				<Link to="/personas/me/quiz">
 					<Button variant="secondary" className="text-sm">
 						<Sparkles className="w-4 h-4 mr-2" />
 						{t("me.start_speed_date")}

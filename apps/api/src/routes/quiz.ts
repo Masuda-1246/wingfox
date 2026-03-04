@@ -30,7 +30,7 @@ quiz.get("/questions", requireAuth, async (c) => {
 	return jsonData(c, data ?? []);
 });
 
-/** POST /api/quiz/answers - submit answers (UPSERT), set onboarding_status to quiz_completed */
+/** POST /api/quiz/answers - submit answers (UPSERT). Sets onboarding_status to quiz_completed only when not already confirmed (edit mode). */
 quiz.post("/answers", requireAuth, async (c) => {
 	const parsed = postAnswersSchema.safeParse(await c.req.json());
 	if (!parsed.success) {
@@ -55,10 +55,19 @@ quiz.post("/answers", requireAuth, async (c) => {
 		);
 	}
 
-	await supabase
+	// Only update onboarding_status when not already confirmed (edit flow must not revert status)
+	const { data: profile } = await supabase
 		.from("user_profiles")
-		.update({ onboarding_status: "quiz_completed", updated_at: new Date().toISOString() })
-		.eq("id", userId);
+		.select("onboarding_status")
+		.eq("id", userId)
+		.single();
+	const currentStatus = profile?.onboarding_status ?? "not_started";
+	if (currentStatus !== "confirmed") {
+		await supabase
+			.from("user_profiles")
+			.update({ onboarding_status: "quiz_completed", updated_at: new Date().toISOString() })
+			.eq("id", userId);
+	}
 
 	return jsonData(c, { message: "Answers saved", count: parsed.data.answers.length });
 });
