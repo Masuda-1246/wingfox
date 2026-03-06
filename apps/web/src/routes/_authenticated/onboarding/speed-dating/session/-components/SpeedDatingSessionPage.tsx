@@ -599,15 +599,6 @@ export function SpeedDatingSessionPage({
 								)}
 								{t("speed_dating.redo_this_date")}
 							</button>
-							<button
-								type="button"
-								onClick={handleProceedToNext}
-								disabled={isAdvancing}
-								className="px-6 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-							>
-								<ArrowRight className="w-4 h-4" />
-								{t("speed_dating.continue_anyway")}
-							</button>
 						</>
 					) : (
 						<>

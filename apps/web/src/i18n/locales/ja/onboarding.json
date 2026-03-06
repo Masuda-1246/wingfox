@@ -401,8 +401,7 @@
 		"retry_next_session": "リトライ",
 		"conversation_too_short": "会話が短かったため、プロフィール生成に十分なデータが得られない可能性があります。",
 		"date_ended_short": "{{name}}との会話が短すぎました",
-		"redo_this_date": "このデートをやり直す",
-		"continue_anyway": "このまま進む"
+		"redo_this_date": "このデートをやり直す"
 	},
 	"review": {
 		"title": "プロフィール確認",

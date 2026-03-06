@@ -437,8 +437,7 @@
 		"retry_next_session": "Retry",
 		"conversation_too_short": "The conversation was too short. Profile generation may not have enough data.",
 		"date_ended_short": "Conversation with {{name}} was too short",
-		"redo_this_date": "Redo this date",
-		"continue_anyway": "Continue anyway"
+		"redo_this_date": "Redo this date"
 	},
 	"review": {
 		"title": "Profile Review",
